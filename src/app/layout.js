@@ -1,4 +1,5 @@
 import React from "react";
+import { Provider } from "./components/Nav/Provider";
 import { Nav } from "./components/Nav/Nav";
 export const metadata = {
   title: "Online Shopping website",
@@ -9,8 +10,10 @@ export default function Rootlayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <Nav></Nav>
-        <main>{children}</main>
+        <Provider>
+          <Nav></Nav>
+          <main>{children}</main>
+        </Provider>
       </body>
     </html>
   );

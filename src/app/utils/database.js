@@ -1,20 +1,21 @@
 import mongoose from "mongoose";
+
 let isConnected = false;
-export const connectTODB = async () => {
-  if (isConnected) {
-    console.log("mongoDB connected");
-    return;
-  }
+
+export const connectToDB = async () => {
+  if (isConnected) return;
+
   try {
-    console.log("monogo_uri:", process.env.MONGODB_URI);
-    await mongoose.connect(process.env.MONOGODB_URI, {
+    console.log("Connecting to MongoDB...");
+    await mongoose.connect(process.env.MONGODB_URI, {
       dbName: "Emzon",
-      usenewURLParser: true,
-      useUnifiedTopoLogy: true,
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     });
     isConnected = true;
-    console.log("MOngoDB connected");
-  } catch (error) {
-    console.log(error);
+    console.log("MongoDB connected");
+  } catch (err) {
+    console.error("MongoDB connection error:", err);
+    throw err;
   }
 };

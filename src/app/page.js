@@ -22,6 +22,7 @@ export default function Home() {
     setError(null);
 
     if (category) {
+      // 🔹 Find the matching category
       const matchedCategory = productsData.find((c) =>
         c.category_name.toLowerCase().includes(category.toLowerCase())
       );
@@ -37,14 +38,21 @@ export default function Home() {
         setError("Product not found");
       }
     } else {
-      // default = show all
-      const list = productsData.flatMap((c) =>
-        c.products.map((p) => ({
+      // 🔹 Default = show Appliances only
+      const appliancesCategory = productsData.find(
+        (c) => c.category_name.toLowerCase() === "appliances"
+      );
+
+      if (appliancesCategory) {
+        const list = appliancesCategory.products.map((p) => ({
           ...p,
           id: p.id || Math.random().toString(36).substring(2, 9),
-        }))
-      );
-      setProducts(list);
+        }));
+        setProducts(list);
+      } else {
+        setProducts([]);
+        setError("Appliances category not found");
+      }
     }
 
     setLoading(false);
@@ -87,7 +95,7 @@ export default function Home() {
       {loading ? (
         <p>Loading products...</p>
       ) : error ? (
-        <p className="text-red-500 font-semibold">{error}</p>
+        <p className="text-red-500 font-semibold"></p>
       ) : products.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {products.map((product, index) => (

@@ -12,12 +12,6 @@ export const SearchBar = () => {
   const handleSearch = async (e) => {
     e.preventDefault();
 
-    if (!session) {
-      setError("You must be logged in to search.");
-      clearAfterTimeout();
-      return;
-    }
-
     if (!query.trim()) return;
 
     try {
@@ -42,7 +36,7 @@ export const SearchBar = () => {
         // Instead of clearing immediately, wait until the dropdown fades out
         setTimeout(() => {
           setQuery("");
-        }, 2000);
+        }, 1000);
 
         clearAfterTimeout();
         return;
@@ -51,7 +45,12 @@ export const SearchBar = () => {
       // ✅ Match found -> reload homepage with category
       setError(null);
       setQuery(""); // clear search bar after valid search too
-      router.push(`/?category=${encodeURIComponent(query)}`);
+      if (data.valid) {
+        if (data.type === "category") {
+          // Always push the corrected category
+          router.push(`/?category=${encodeURIComponent(data.category)}`);
+        }
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to search");

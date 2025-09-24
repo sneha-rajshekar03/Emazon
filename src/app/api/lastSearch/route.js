@@ -10,7 +10,7 @@ export async function GET() {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
-      return NextResponse.json({ category: null });
+      return NextResponse.json({ category: null, query: null });
     }
 
     const lastSearch = await SearchHistory.findOne({
@@ -18,13 +18,13 @@ export async function GET() {
     })
       .sort({ searchedAt: -1 })
       .lean();
-
+    console.log(lastSearch, "latsnfn");
     return NextResponse.json({
       category: lastSearch?.category || null,
       query: lastSearch?.query || null,
     });
   } catch (err) {
     console.error("Last search API error:", err);
-    return NextResponse.json({ category: null });
+    return NextResponse.json({ category: null, query: null });
   }
 }

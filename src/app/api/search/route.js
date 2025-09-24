@@ -4,6 +4,7 @@ import productsData from "../products/products.json";
 import { getServerSession } from "next-auth";
 import { connectToDB } from "@app/utils/database";
 import SearchHistory from "@app/models/searchHistory";
+import { authOptions } from "@app/api/auth/[...nextauth]/route"; // ✅ added
 
 export async function POST(req) {
   try {
@@ -31,7 +32,6 @@ export async function POST(req) {
         originalName: c.category_name,
         category_name: c.category_name.toLowerCase().trim(),
       }));
-
       // Direct includes
       const direct = normalizedCategories.find((c) =>
         c.category_name.includes(q)

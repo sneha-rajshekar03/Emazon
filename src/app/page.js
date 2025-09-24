@@ -7,39 +7,43 @@ import productsData from "./api/products/products.json";
 
 export default function Home() {
   const searchParams = useSearchParams();
+  const urlCategory = searchParams.get("category");
   const [products, setProducts] = useState([]);
   const [hero, setHero] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userColor, setUserColor] = useState("#ffffff");
   const [error, setError] = useState(null);
   const [category, setCategory] = useState(null); // start empty
-
-  // ✅ read category from URL (don’t fallback to Appliances blindly)
-  let catFromUrl = searchParams.get("category"); // 🔹 Load last search or default on first render
   useEffect(() => {
-    let lastSearch = null;
+    async function initCategory() {
+      try {
+        const res = await fetch("/api/lastSearch");
+        if (!res.ok) {
+          throw new Error(`Failed to fetch last search: ${res.status}`);
+        }
 
-    if (typeof window !== "undefined") {
-      lastSearch = localStorage.getItem("lastSearch");
+        const data = await res.json();
+        if (data?.category) {
+          setCategory(data.category); // from DB
+        } else if (urlCategory) {
+          setCategory(urlCategory); // from URL
+        } else {
+          setCategory("Appliances"); // fallback
+        }
+      } catch (err) {
+        console.error("Error fetching last search:", err);
+        setCategory("Appliances");
+      }
     }
-
-    if (catFromUrl) {
-      setCategory(catFromUrl);
-    } else if (lastSearch) {
-      setCategory(lastSearch);
-    } else {
-      setCategory("Appliances"); // default fallback
-    }
-  }, [catFromUrl]);
+    initCategory();
+  }, [urlCategory]);
   // Filter products whenever category changes
   useEffect(() => {
     if (!category) return;
 
     setLoading(true);
     setError(null);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("lastSearch", category);
-    }
+
     if (category) {
       // 🔹 Find the matching category
       const matchedCategory = productsData.find((c) =>
@@ -104,7 +108,7 @@ export default function Home() {
     }
     fetchUser();
   }, []);
-
+  console.log(products);
   return (
     <main className="p-6">
       {/* Hero banner */}

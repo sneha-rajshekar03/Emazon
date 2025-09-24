@@ -3,59 +3,67 @@
 import { useEffect, useState } from "react";
 import ProductCard from "./components/products/ProductCard";
 import HeroBanner from "./components/HeroBanner/HeroBanner";
+import productsData from "./api/products/products.json";
 
 export default function Home() {
   const [products, setProducts] = useState([]);
   const [hero, setHero] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Set the internal category here
+  const category = "Appliances"; // Change this to whatever category you want
 
   useEffect(() => {
-    // Fetch product list
-    async function fetchProducts() {
-      try {
-        const res = await fetch("/api/products");
-        const data = await res.json();
-        // Ensure products have unique keys (asin)
-        setProducts(
-          data.products.map((p) => ({
-            ...p,
-            id: p.asin || p.id || Math.random().toString(36).substr(2, 9),
-          }))
-        );
-      } catch (err) {
-        console.error("Error fetching products:", err);
-      }
-    }
+    setLoading(true);
 
-    // Fetch hero banner
+    // Filter products based on internal category
+    const filteredProducts = category
+      ? productsData.find((c) => c.category_name === category)?.products || []
+      : productsData.flatMap((c) => c.products);
+
+    // Ensure each product has a unique ID
+    const list = filteredProducts.map((p) => ({
+      ...p,
+      id: p.id || Math.random().toString(36).substring(2, 9),
+    }));
+
+    setProducts(list);
+    setLoading(false);
+  }, [category]);
+
+  // Fetch hero banner
+  useEffect(() => {
     async function fetchHero() {
       try {
         const res = await fetch("/api/hero");
         const data = await res.json();
-        setHero(data.hero);
+        setHero(data.hero ?? data);
       } catch (err) {
         console.error("Error fetching hero:", err);
       }
     }
-
-    fetchProducts();
     fetchHero();
   }, []);
 
   return (
     <main className="p-6">
-      {/* Hero Banner */}
+      {/* Hero banner */}
       {hero && <HeroBanner hero={hero} />}
 
-      {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-8">
-        {products.slice(0, 9).map((product, index) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            priority={index < 2}
-          />
-        ))}
-      </div>
+      {/* Product Grid */}
+      {loading ? (
+        <p>Loading products...</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {products.map((product, index) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              priority={index < 2}
+            />
+          ))}
+        </div>
+      )}
     </main>
   );
 }

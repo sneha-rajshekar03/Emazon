@@ -17,6 +17,10 @@ export const Nav = () => {
   const pathname = usePathname();
   const hideOnLogin = pathname === "/login";
 
+  // 👇 This will always log in your browser dev console
+  console.log("Session image URL:", session?.user?.image);
+  console.log("Full session object:", session);
+
   return (
     <nav className="bg-[#eeeef2] p-2 flex items-center">
       {/* Logo */}
@@ -62,9 +66,7 @@ export const Nav = () => {
                 </button>
               </div>
             ) : (
-              <>
-                <Account />
-              </>
+              <Account />
             )}
           </div>
         </>

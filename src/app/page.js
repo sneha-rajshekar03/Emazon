@@ -9,19 +9,18 @@ export default function Home() {
   const [products, setProducts] = useState([]);
   const [hero, setHero] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [userColor, setUserColor] = useState("#ffffff"); // fallback color
 
-  // Set the internal category here
-  const category = "Appliances"; // Change this to whatever category you want
+  const category = "Appliances"; // internal category
 
+  // Filter products based on category
   useEffect(() => {
     setLoading(true);
 
-    // Filter products based on internal category
     const filteredProducts = category
       ? productsData.find((c) => c.category_name === category)?.products || []
       : productsData.flatMap((c) => c.products);
 
-    // Ensure each product has a unique ID
     const list = filteredProducts.map((p) => ({
       ...p,
       id: p.id || Math.random().toString(36).substring(2, 9),
@@ -45,6 +44,20 @@ export default function Home() {
     fetchHero();
   }, []);
 
+  // Fetch logged-in user including color
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/userColor"); // your API returns user with color
+        const data = await res.json();
+        setUserColor(data.user?.color || "#ffffff");
+      } catch (err) {
+        console.error("Error fetching user color:", err);
+      }
+    }
+    fetchUser();
+  }, []);
+
   return (
     <main className="p-6">
       {/* Hero banner */}
@@ -59,6 +72,7 @@ export default function Home() {
             <ProductCard
               key={product.id}
               product={product}
+              color={userColor} // ✅ pass color here
               priority={index < 2}
             />
           ))}

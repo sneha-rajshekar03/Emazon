@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
 const searchHistorySchema = new mongoose.Schema({
-  userId: { type: String, required: true }, // can be email or actual userId
-  email: { type: String, required: true },
+  userId: { type: String }, // can be email or actual userId
+  email: { type: String },
   query: { type: String, required: true },
   category: { type: String, required: true },
   searchedAt: { type: Date, default: Date.now },

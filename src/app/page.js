@@ -12,15 +12,34 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [userColor, setUserColor] = useState("#ffffff");
   const [error, setError] = useState(null);
+  const [category, setCategory] = useState(null); // start empty
 
   // ✅ read category from URL (don’t fallback to Appliances blindly)
-  const category = searchParams.get("category");
+  let catFromUrl = searchParams.get("category"); // 🔹 Load last search or default on first render
+  useEffect(() => {
+    let lastSearch = null;
 
+    if (typeof window !== "undefined") {
+      lastSearch = localStorage.getItem("lastSearch");
+    }
+
+    if (catFromUrl) {
+      setCategory(catFromUrl);
+    } else if (lastSearch) {
+      setCategory(lastSearch);
+    } else {
+      setCategory("Appliances"); // default fallback
+    }
+  }, [catFromUrl]);
   // Filter products whenever category changes
   useEffect(() => {
+    if (!category) return;
+
     setLoading(true);
     setError(null);
-
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lastSearch", category);
+    }
     if (category) {
       // 🔹 Find the matching category
       const matchedCategory = productsData.find((c) =>

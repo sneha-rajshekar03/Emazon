@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import fuzzysort from "fuzzysort";
 import productsData from "../products/products.json";
+import { getServerSession } from "next-auth";
+import { connectToDB } from "@app/utils/database";
+import SearchHistory from "@app/models/searchHistory";
 
 export async function POST(req) {
   try {
@@ -46,6 +49,16 @@ export async function POST(req) {
     })();
 
     if (matchedCategory) {
+      const session = await getServerSession();
+      if (session?.user?.email) {
+        await connectToDB();
+        await SearchHistory.create({
+          userId: session.user.email,
+          query,
+          email: session.user.email,
+          category: matchedCategory.originalName,
+        });
+      }
       return NextResponse.json({
         valid: true,
         type: "category",

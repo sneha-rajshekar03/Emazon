@@ -1,21 +1,43 @@
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+
 export function ProductDescription({ product }) {
   return (
-    <div className="border-t pt-6">
-      <h2 className="text-xl font-semibold mb-3">About this item</h2>
+    <Card className="p-6">
+      <Tabs defaultValue="description" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="description">Description</TabsTrigger>
+          <TabsTrigger value="features">Features</TabsTrigger>
+          <TabsTrigger value="specifications">Specs</TabsTrigger>
+        </TabsList>
 
-      {/* If features exist, show them as list */}
-      {product.features && product.features.length > 0 ? (
-        <ul className="list-disc pl-6 space-y-2 text-gray-800 text-sm leading-relaxed">
-          {product.features.map((f, idx) => (
-            <li key={idx}>{f}</li>
-          ))}
-        </ul>
-      ) : (
-        // fallback if no features in JSON
-        <p className="text-gray-600 text-sm">
-          {product.description || "No additional information available."}
-        </p>
-      )}
-    </div>
+        <TabsContent value="description" className="space-y-4 mt-6">
+          <h3>Product Description</h3>
+          <p className="text-muted-foreground leading-relaxed">
+            {product.description}
+          </p>
+        </TabsContent>
+
+        <TabsContent value="features" className="space-y-4 mt-6">
+          <h3>Key Features</h3>
+          <div className="grid gap-3"></div>
+        </TabsContent>
+
+        <TabsContent value="specifications" className="space-y-4 mt-6">
+          <h3>Technical Specifications</h3>
+          <div className="grid gap-4">
+            {
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                <span className="text-muted-foreground">text</span>
+                <Badge variant="secondary" className="text-xs">
+                  meow
+                </Badge>
+              </div>
+            }
+          </div>
+        </TabsContent>
+      </Tabs>
+    </Card>
   );
 }

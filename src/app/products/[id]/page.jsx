@@ -56,7 +56,7 @@ export default function AmazonProductPage() {
           <BuyBox product={product} />
           <ProductDescription product={product} />
           <ProductReviews product={product} />
-          <Random />
+          <Random product={product} />
         </div>
       </div>
     </div>

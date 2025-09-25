@@ -1,29 +1,52 @@
-import React from "react";
 import { useState } from "react";
 import Image from "next/image";
-export const Thumbnails = ({ product }) => {
-  const [mainImage, setMainImage] = useState(product.image_url);
+export function Thumbnails({ product }) {
+  const [selectedImage, setSelectedImage] = useState(0);
 
   return (
     <div className="flex flex-col gap-2">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <button
-          key={i}
-          onClick={() => setMainImage(product.image_url)}
-          className={`border p-1 rounded hover:border-amazonOrange ${
-            mainImage === product.image_url ? "border-amazonOrange" : ""
-          }`}
-        >
-          <Image
-            src={product.image_url}
-            alt={`Thumbnail ${i + 1}`}
-            width={60}
-            height={60}
-            className="object-contain"
-            unoptimized
-          />
-        </button>
-      ))}
+      <button
+        onClick={() => {}}
+        className="relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all"
+      >
+        <Image
+          src={product.image_url}
+          alt={product.name}
+          className="w-full h-full object-cover"
+          width={200}
+          height={200}
+          unoptimized
+        />
+        {/* Selection overlay */}
+      </button>
+      <button
+        onClick={() => {}}
+        className="relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all"
+      >
+        <Image
+          src={product.image_url}
+          alt={product.name}
+          className="w-full h-full object-cover"
+          width={200}
+          height={200}
+          unoptimized
+        />
+        {/* Selection overlay */}
+      </button>
+      <button
+        onClick={() => {}}
+        className="relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all"
+      >
+        <Image
+          src={product.image_url}
+          alt={product.name}
+          className="w-full h-full object-cover"
+          width={200}
+          height={200}
+          unoptimized
+        />
+        {/* Selection overlay */}
+      </button>
     </div>
   );
-};
+}

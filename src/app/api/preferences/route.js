@@ -11,10 +11,13 @@ export async function GET(req) {
       return NextResponse.json({ error: "Missing userId" }, { status: 400 });
     }
 
-    const prefs = await UserPreference.findOne({ userId });
-    return NextResponse.json({
-      preferences: prefs?.interactions || [],
-    });
+    const userPrefs = await UserPreference.findOne({ userId }).lean();
+    if (!userPrefs) {
+      return NextResponse.json({ preferences: [] });
+    }
+    userPrefs.preferences.sort((a, b) => b.score - a.score);
+
+    return NextResponse.json(userPrefs);
   } catch (err) {
     console.error("❌ GET /api/preferences error:", err);
     return NextResponse.json(
@@ -33,39 +36,37 @@ export async function POST(req) {
     if (!userId || !Array.isArray(interactions)) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
-
+    let userPref = await UserPreference.findOne({ userId });
+    if (!userPref) {
+      userPref = await UserPreference.create({ userId, preferences: [] });
+    }
     for (const { element, score } of interactions) {
-      const updated = await UserPreference.findOneAndUpdate(
-        { userId, "preferences.element": element },
-        {
-          $set: {
-            "preferences.$.score": score, // 🔥 overwrite instead of incremen
-          },
-        },
-        { new: true }
-      );
+      if (score < 0) continue;
 
-      if (!updated) {
-        // If section doesn’t exist yet, push new one
-        await UserPreference.findOneAndUpdate(
-          { userId },
-          {
-            $setOnInsert: { userId },
-            $push: {
-              preferences: {
-                element: element,
-                score: score,
-              },
-            },
-          },
-          { upsert: true, new: true }
-        );
+      const normalized = element.trim().toLowerCase();
+
+      const pref = userPref.preferences.find((p) => p.element === normalized);
+      if (pref) {
+        pref.score = score; // overwrite instead of increment
+      } else {
+        userPref.preferences.push({ element: normalized, score });
       }
     }
 
-    return NextResponse.json({ success: true });
+    // Save updated preferences
+    await userPref.save();
+
+    // Sort before returning
+    const sortedPrefs = [...userPref.preferences].sort(
+      (a, b) => b.score - a.score
+    );
+
+    return NextResponse.json({ success: true, preferences: sortedPrefs });
   } catch (err) {
     console.error("❌ Error saving preferences:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    );
   }
 }

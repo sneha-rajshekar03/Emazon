@@ -14,11 +14,11 @@ import { trackInteraction } from "@app/utils/interactionTracker";
 import { getPrioritizedInteractions } from "@app/utils/interactionTracker";
 import { resetInteractions } from "@app/utils/interactionTracker";
 import { getInteractionScores } from "@app/utils/interactionTracker";
+import { usePreferences } from "@app/hooks/usePreferences";
 export default function AmazonProductPage() {
   const { product_id } = useParams();
   const [product, setProduct] = useState(null);
   const { data: session } = useSession(); // null if guest
-  const [preferences, setPreferences] = useState([]);
   const defaultOrder = [
     "ProductHeader",
     "BuyBox",
@@ -28,38 +28,12 @@ export default function AmazonProductPage() {
   ];
   const [error, setError] = useState(null);
   const pathname = usePathname();
+  const { preferences, updatePreferences, interactionScores } =
+    usePreferences();
 
   // 🖼️ Gallery state lives here
   const [selectedImage, setSelectedImage] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
-  useEffect(() => {
-    if (pathname.startsWith("/products/")) {
-      // 🔄 Reset interactions when landing on a new product
-      resetInteractions();
-      console.log("✅ Reset interactions for new product page:", pathname);
-    }
-
-    // 📝 When leaving product page, save scores
-    return () => {
-      if (pathname.startsWith("/products/")) {
-        const scores = getInteractionScores();
-        console.log("💾 Saving interactions before leaving:", scores);
-
-        // send to API
-        fetch("/api/preferences", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: "demo-user", // replace with real userId from session
-            interactions: Object.entries(scores).map(([element, score]) => ({
-              element,
-              score,
-            })),
-          }),
-        });
-      }
-    };
-  }, [pathname]);
 
   useEffect(() => {
     function handleUnload() {
@@ -94,66 +68,6 @@ export default function AmazonProductPage() {
   }, []);
 
   useEffect(() => {
-    const handleSave = async () => {
-      if (pathname.startsWith("/product")) {
-        const sorted = getPrioritizedInteractions();
-        console.log("Leaving product page →", sorted);
-
-        if (session?.user?.id) {
-          // ✅ Logged-in → save in DB
-          try {
-            console.log("Sending to API:", {
-              userId: session.user.id,
-              interactions: sorted,
-            });
-
-            const response = await fetch("/api/interactions", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: session.user.id,
-                interactions: sorted,
-              }),
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(
-                `HTTP ${response.status}: ${
-                  errorData.error || response.statusText
-                }`
-              );
-            }
-
-            const data = await response.json();
-            console.log("✅ DB save response:", data);
-
-            // Update preferences state with returned data
-            if (data.preferences) {
-              setPreferences(data.preferences);
-            }
-          } catch (err) {
-            console.error("❌ Save error:", err);
-          }
-        } else {
-          // 🟡 Guest → store only for session
-          try {
-            sessionStorage.setItem("guestInteractions", JSON.stringify(sorted));
-            console.log("🟡 Guest interactions saved locally:", sorted);
-          } catch (err) {
-            console.error("❌ SessionStorage error:", err);
-          }
-        }
-      }
-    };
-
-    // 🔹 Run when leaving page (dependency change)
-    return () => {
-      handleSave();
-    };
-  }, [pathname, session]);
-
-  useEffect(() => {
     if (!session?.user?.id) {
       try {
         sessionStorage.removeItem("guestInteractions");
@@ -162,37 +76,6 @@ export default function AmazonProductPage() {
       }
     }
   }, [session]);
-
-  useEffect(() => {
-    async function fetchPreferences() {
-      if (!session?.user?.id) {
-        console.log("No session, skipping preferences fetch");
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/preferences?userId=${session.user.id}`);
-
-        if (!res.ok) {
-          throw new Error(`Failed to fetch preferences: ${res.status}`);
-        }
-
-        const data = await res.json();
-        console.log("Fetched preferences:", data);
-
-        if (data?.preferences) {
-          // Handle both score and count fields for backward compatibility
-          const sorted = [...data.preferences].sort(
-            (a, b) => (b.score || b.count || 0) - (a.score || a.count || 0)
-          );
-          setPreferences(sorted);
-        }
-      } catch (err) {
-        console.error("❌ Error fetching preferences:", err);
-      }
-    }
-    fetchPreferences();
-  }, [session?.user?.id]); // Only fetch when user is logged in
 
   useEffect(() => {
     async function fetchProduct() {
@@ -293,6 +176,20 @@ export default function AmazonProductPage() {
             onMouseLeave={() => trackInteraction("Random", "hover-end")}
           />
         </div>
+      </div>
+      <div className="p-4">
+        <h2 className="text-lg font-bold mb-2">🔹 Your Preferences</h2>
+        <ul className="list-disc pl-5">
+          {preferences.length > 0 ? (
+            preferences.map((pref, idx) => (
+              <li key={idx}>
+                {pref.element || pref.section} → {pref.score || pref.count || 0}
+              </li>
+            ))
+          ) : (
+            <li>No preferences yet.</li>
+          )}
+        </ul>
       </div>
     </div>
   );

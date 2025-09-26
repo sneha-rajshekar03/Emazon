@@ -11,11 +11,12 @@ import { Account } from "./Account";
 import { CartIcon } from "./CartIcon";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-
+import { usePreferences } from "@app/hooks/usePreferences";
 export const Nav = () => {
   const { data: session } = useSession();
   const pathname = usePathname();
   const hideOnLogin = pathname === "/login";
+  const { signOutWithSave } = usePreferences();
 
   // 👇 This will always log in your browser dev console
   console.log("Session image URL:", session?.user?.image);
@@ -59,7 +60,7 @@ export const Nav = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => signOut()}
+                  onClick={() => signOutWithSave()}
                   className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   Sign Out

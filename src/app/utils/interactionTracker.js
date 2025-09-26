@@ -67,3 +67,21 @@ export function resetInteractions() {
   hoverStartTimes = {};
   console.log("🔄 Interactions reset");
 }
+// 🔹 Fetch preferences from DB and initialize scores
+export async function fetchPreferences(userId) {
+  try {
+    const res = await fetch(`/api/preferences?userId=${userId}`);
+    if (!res.ok) throw new Error("Failed to fetch preferences");
+
+    const data = await res.json();
+
+    // Replace local scores with DB scores
+    data.preferences.forEach((p) => {
+      interactionScores[p.section] = p.score;
+    });
+
+    console.log("✅ Loaded preferences from DB:", interactionScores);
+  } catch (err) {
+    console.error("❌ Error fetching preferences:", err);
+  }
+}

@@ -1,3 +1,5 @@
+"use client";
+
 import { Star, ThumbsUp, MoreVertical } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,9 +50,9 @@ const ratingDistribution = [
   { stars: 1, count: 1, percentage: 1 },
 ];
 
-export function ProductReviews({ product }) {
+export function ProductReviews({ product, ...props }) {
   return (
-    <Card className="p-6 space-y-6">
+    <Card {...props} className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h3>Customer Reviews</h3>
         <Button variant="outline" size="sm">

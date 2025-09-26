@@ -1,8 +1,10 @@
+"use client";
+
 import { Star, Heart, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-export function ProductHeader({ product }) {
+export function ProductHeader({ product, ...props }) {
   const discount = product.originalPrice
     ? Math.round(
         ((product.originalPrice - product.price) / product.originalPrice) * 100
@@ -10,7 +12,7 @@ export function ProductHeader({ product }) {
     : 0;
 
   return (
-    <div className="space-y-4">
+    <div {...props} className="space-y-4">
       {/* Brand */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground uppercase tracking-wide">

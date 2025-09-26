@@ -1,10 +1,12 @@
+"use client";
+
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
-export function ProductDescription({ product }) {
+export function ProductDescription({ product, ...props }) {
   return (
-    <Card className="p-6">
+    <Card {...props} className="p-6">
       <Tabs defaultValue="description" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="description">Description</TabsTrigger>

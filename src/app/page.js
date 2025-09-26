@@ -99,7 +99,6 @@ export default function Home() {
     }
     fetchUser();
   }, []);
-  console.log(products);
   return (
     <main className="p-6">
       {/* Hero banner */}

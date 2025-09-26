@@ -1,3 +1,5 @@
+"use client";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Heart, Star } from "lucide-react";
@@ -25,9 +27,9 @@ const relatedProducts = [
   },
 ];
 
-export function Random({ product }) {
+export function Random({ product, ...props }) {
   return (
-    <div className="space-y-6">
+    <div {...props} className="space-y-6">
       {/* Recently Viewed */}
       <Card className="p-6">
         <h3 className="mb-4">Recently Viewed</h3>

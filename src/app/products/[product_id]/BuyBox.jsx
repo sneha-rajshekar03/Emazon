@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Minus, Plus, ShoppingCart, Zap, Shield, Truck } from "lucide-react";
 
-export function BuyBox({ product }) {
+export function BuyBox({ product, ...props }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
@@ -19,7 +21,7 @@ export function BuyBox({ product }) {
   const sizes = ["Small", "Medium", "Large"];
 
   return (
-    <Card className="p-6 space-y-6 border-2">
+    <Card {...props} className="p-6 space-y-6 border-2">
       {/* Color Selection */}
       <div className="space-y-3">
         <label className="block text-sm">Color</label>

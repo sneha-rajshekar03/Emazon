@@ -9,35 +9,29 @@ export async function POST(req) {
     console.log("📥 Received interactions body:", body);
 
     const { userId, interactions } = body;
-    if (!userId || !interactions) {
+    if (!userId || !Array.isArray(interactions)) {
       return NextResponse.json(
         { success: false, error: "Missing userId or interactions" },
         { status: 400 }
       );
     }
 
-    let userPref = await UserPreference.findOne({ userId });
-    if (!userPref) {
-      userPref = await UserPreference.create({ userId, preferences: [] });
-    }
+    // 🔥 Replace old preferences with fresh ones
+    const normalized = interactions.map(({ element, score }) => ({
+      element: element.trim().toLowerCase(),
+      score: score > 0 ? score : 0,
+    }));
 
-    for (const { element, score } of interactions) {
-      // Only care about meaningful scores
-      if (score <= 0) continue;
+    const userPref = await UserPreference.findOneAndUpdate(
+      { userId },
+      { userId, preferences: normalized },
+      { upsert: true, new: true }
+    );
 
-      const pref = userPref.preferences.find((p) => p.element === element);
-      if (pref) {
-        // increment existing
-        pref.score += score;
-      } else {
-        // add new
-        userPref.preferences.push({ element, score });
-      }
-    }
+    // sort before sending back
+    const sorted = [...userPref.preferences].sort((a, b) => b.score - a.score);
 
-    await userPref.save();
-
-    return NextResponse.json({ success: true, data: userPref });
+    return NextResponse.json({ success: true, preferences: sorted });
   } catch (err) {
     console.error("❌ Error saving interactions:", err);
     return NextResponse.json(

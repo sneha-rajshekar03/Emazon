@@ -1,6 +1,28 @@
 import { NextResponse } from "next/server";
 import { connectToDB } from "@app/utils/database";
 import UserPreference from "@app/models/UserPreference";
+export async function GET(req) {
+  try {
+    await connectToDB();
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    }
+
+    const prefs = await UserPreference.findOne({ userId });
+    return NextResponse.json({
+      preferences: prefs?.interactions || [],
+    });
+  } catch (err) {
+    console.error("❌ GET /api/preferences error:", err);
+    return NextResponse.json(
+      { error: "Server error", details: err.message },
+      { status: 500 }
+    );
+  }
+}
 export async function POST(req) {
   try {
     await connectToDB();
@@ -14,10 +36,11 @@ export async function POST(req) {
 
     for (const { element, score } of interactions) {
       const updated = await UserPreference.findOneAndUpdate(
-        { userId, "preferences.section": element },
+        { userId, "preferences.element": element },
         {
-          $set: { "preferences.$.lastInteracted": new Date() },
-          $inc: { "preferences.$.count": score },
+          $set: {
+            "preferences.$.score": score, // 🔥 overwrite instead of incremen
+          },
         },
         { new: true }
       );
@@ -30,9 +53,8 @@ export async function POST(req) {
             $setOnInsert: { userId },
             $push: {
               preferences: {
-                section: element,
-                count: score,
-                lastInteracted: new Date(),
+                element: element,
+                score: score,
               },
             },
           },

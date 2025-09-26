@@ -1,41 +1,55 @@
+// interactionTracker.js
+
 let interactionScores = {};
-const hoverStartTimes = {}; // to store when hover started
+let hoverStartTimes = {}; // store hover start times
 
+/**
+ * Track user interactions (clicks + hovers).
+ * @param {string} elementId - The element identifier
+ * @param {"click"|"hover-start"|"hover-end"} type - Interaction type
+ */
 export function trackInteraction(elementId, type) {
-  console.log("trackInteraction CALLED with:", elementId, type); // 👈 debug
+  if (!elementId) return;
 
+  console.log("trackInteraction CALLED with:", elementId, type);
+
+  // Ensure the element has an initial score
   if (!interactionScores[elementId]) {
     interactionScores[elementId] = 0;
   }
 
   if (type === "click") {
+    // Clicks carry more weight
     interactionScores[elementId] += 5;
   } else if (type === "hover-start") {
-    // store start time
+    // Record when hover started
     hoverStartTimes[elementId] = Date.now();
   } else if (type === "hover-end") {
     if (hoverStartTimes[elementId]) {
-      const hoverDuration = (Date.now() - hoverStartTimes[elementId]) / 1000; // seconds
+      const hoverDuration = (Date.now() - hoverStartTimes[elementId]) / 1000; // in seconds
       console.log(`[HOVER] ${elementId} duration:`, hoverDuration);
 
-      if (hoverDuration >= 5) {
-        interactionScores[elementId] += 3; // reward long hover
-      } else {
-        interactionScores[elementId] += 1; // short hover
-      }
+      // Weight based on duration
+      interactionScores[elementId] += hoverDuration >= 5 ? 3 : 1;
 
-      delete hoverStartTimes[elementId]; // clean up
+      // Clean up
+      delete hoverStartTimes[elementId];
     }
   }
 
   console.log(`[TRACKED] ${type} on ${elementId}`, interactionScores);
 }
 
+/**
+ * Get all interaction scores.
+ */
 export function getInteractionScores() {
-  return interactionScores;
+  return { ...interactionScores }; // return a copy to avoid mutation
 }
 
-// 🔹 Prioritize by score
+/**
+ * Get sorted interactions (highest priority first).
+ */
 export function getPrioritizedInteractions() {
   const sorted = Object.entries(interactionScores)
     .map(([element, score]) => ({ element, score }))
@@ -43,4 +57,13 @@ export function getPrioritizedInteractions() {
 
   console.log("Prioritized interactions:", sorted);
   return sorted;
+}
+
+/**
+ * Reset all interactions (start fresh).
+ */
+export function resetInteractions() {
+  interactionScores = {};
+  hoverStartTimes = {};
+  console.log("🔄 Interactions reset");
 }

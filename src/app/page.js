@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "./components/products/ProductCard";
 import HeroBanner from "./components/HeroBanner/HeroBanner";
-import productsData from "./api/products/products.json";
 
 export default function Home() {
   const searchParams = useSearchParams();
@@ -44,41 +43,33 @@ export default function Home() {
     setLoading(true);
     setError(null);
 
-    if (category) {
-      // 🔹 Find the matching category
-      const matchedCategory = productsData.find((c) =>
-        c.category_name.toLowerCase().includes(category.toLowerCase())
-      );
+    async function fetchProducts() {
+      try {
+        const res = await fetch(
+          `/api/products?category=${encodeURIComponent(category)}`
+        );
+        const data = await res.json();
 
-      if (matchedCategory) {
-        const list = matchedCategory.products.map((p) => ({
-          ...p,
-          id: p.id || Math.random().toString(36).substring(2, 9),
-        }));
-        setProducts(list);
-      } else {
-        setProducts([]);
-        setError("Product not found");
-      }
-    } else {
-      // 🔹 Default = show Appliances only
-      const appliancesCategory = productsData.find(
-        (c) => c.category_name.toLowerCase() === "appliances"
-      );
-
-      if (appliancesCategory) {
-        const list = appliancesCategory.products.map((p) => ({
-          ...p,
-          id: p.id || Math.random().toString(36).substring(2, 9),
-        }));
-        setProducts(list);
-      } else {
-        setProducts([]);
-        setError("Appliances category not found");
+        if (data.products?.length > 0) {
+          setProducts(
+            data.products.map((p) => ({
+              ...p,
+              id: p.product_id || Math.random().toString(36).substring(2, 9),
+            }))
+          );
+        } else {
+          setProducts([]);
+          setError("Product not found");
+        }
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setError("Server error");
+      } finally {
+        setLoading(false);
       }
     }
 
-    setLoading(false);
+    fetchProducts();
   }, [category]);
 
   // Fetch hero banner
@@ -121,9 +112,9 @@ export default function Home() {
         <p className="text-red-500 font-semibold"></p>
       ) : products.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {products.map((product, index) => (
+          {products.slice(0, 12).map((product, index) => (
             <ProductCard
-              key={product.id}
+              key={product.product_id}
               product={product}
               color={userColor}
               priority={index < 2}

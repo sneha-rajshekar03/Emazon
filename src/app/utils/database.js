@@ -9,8 +9,6 @@ export const connectToDB = async () => {
     console.log("Connecting to MongoDB...");
     await mongoose.connect(process.env.MONGODB_URI, {
       dbName: "Emzon",
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
     });
     isConnected = true;
     console.log("MongoDB connected");

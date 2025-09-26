@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDB } from "@app/utils/database";
 import SearchHistory from "@app/models/SearchHistory";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@app/api/auth/[...nextauth]/route"; // adjust path
-
+import { authOptions } from "../auth/[...nextauth]/route";
 export async function GET() {
   try {
     await connectToDB();

@@ -15,12 +15,11 @@ export default function ProductCard({ product, color }) {
         }}
       >
         {/* Image Section */}
-        <div className="flex justify-center items-center h-48 bg-gray-50 rounded-xl">
+        <div className="relative w-40 h-40">
           <Image
-            src={product.image_url}
-            alt={product.name}
-            width={180}
-            height={180}
+            src={product.imgUrl}
+            alt={product.title}
+            fill
             className="object-contain"
             unoptimized
           />
@@ -29,7 +28,7 @@ export default function ProductCard({ product, color }) {
         {/* Text Section */}
         <div className="mt-4 space-y-2">
           <h2 className="font-semibold text-lg line-clamp-2 text-gray-800">
-            {product.name}
+            {product.title}
           </h2>
           <p className="text-xl font-bold text-gray-900">₹{product.price}</p>
           <p className="text-sm text-gray-500">Eligible for FREE Delivery</p>

@@ -10,31 +10,37 @@ import { Thumbnails } from "./Thumbnails";
 import { Random } from "./Random";
 
 export default function AmazonProductPage() {
-  const { id } = useParams();
+  const { product_id } = useParams();
   const [product, setProduct] = useState(null);
   const [error, setError] = useState(null);
+
+  // 🖼️ Gallery state lives here
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const res = await fetch("/api/products");
+        const res = await fetch(`/api/products/${product_id}`);
+        console.log("page prodcut", res);
         if (!res.ok) throw new Error("Failed to fetch products");
 
         const data = await res.json();
-        const allProducts = data.flatMap((cat) => cat.products);
-        const found = allProducts.find((p) => p.id === id);
+        console.log("Page DATA", data);
 
-        if (!found) throw new Error("Product not found");
-        setProduct(found);
+        setProduct(data);
       } catch (err) {
         setError(err.message);
       }
     }
     fetchProduct();
-  }, [id]);
+  }, [product_id]);
 
   if (error) return <p className="p-8 text-lg text-red-500">{error}</p>;
   if (!product) return <p className="p-8">Loading...</p>;
+
+  // Build an array of images (for now duplicates if only one exists)
+  const images = [product.imgUrl, product.imgUrl, product.imgUrl];
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -43,10 +49,21 @@ export default function AmazonProductPage() {
         <div className="md:col-span-5">
           <div className="sticky top-4 flex gap-4 items-start">
             {/* Vertical thumbnails */}
-            <div className="flex flex-col gap-3.5"></div>
-            <Thumbnails product={product} />
+            <Thumbnails
+              images={images}
+              selectedImage={selectedImage}
+              setSelectedImage={setSelectedImage}
+              product={product}
+            />
+
             {/* Main image */}
-            <MainImage product={product} />
+            <MainImage
+              product={product}
+              images={images}
+              selectedImage={selectedImage}
+              isZoomed={isZoomed}
+              onZoomToggle={() => setIsZoomed(!isZoomed)}
+            />
           </div>
         </div>
 

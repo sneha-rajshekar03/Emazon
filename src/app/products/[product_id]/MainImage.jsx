@@ -1,24 +1,27 @@
-import { useState } from "react";
 import { ZoomIn } from "lucide-react";
 import Image from "next/image";
-export function MainImage({ product }) {
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [isZoomed, setIsZoomed] = useState(false);
-  const [mainImage, setMainImage] = useState(product.image_url);
 
+export function MainImage({
+  product,
+  images,
+  selectedImage,
+  isZoomed,
+  onZoomToggle,
+}) {
   return (
     <div className="relative">
+      {/* Main Image */}
       <div
         className={`relative bg-gray-50 rounded-xl overflow-hidden transition-all duration-300 ${
           isZoomed ? "cursor-zoom-out" : "cursor-zoom-in"
         }`}
-        onClick={() => setIsZoomed(!isZoomed)}
+        onClick={onZoomToggle}
       >
         <Image
-          src={mainImage}
-          alt={product.name}
-          width={30}
-          height={30}
+          src={images[selectedImage]}
+          alt={product.title}
+          width={500}
+          height={500}
           className={`w-full h-auto object-cover transition-transform duration-300 ${
             isZoomed ? "scale-150" : "scale-100"
           }`}
@@ -35,7 +38,7 @@ export function MainImage({ product }) {
 
       {/* Image counter */}
       <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
-        {selectedImage + 1} / {mainImage.length}
+        {selectedImage + 1} / {images.length}
       </div>
     </div>
   );

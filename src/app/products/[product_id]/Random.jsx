@@ -35,8 +35,8 @@ export function Random({ product }) {
           <div className="flex gap-3">
             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
               <Image
-                src={product.image_url}
-                alt={product.name}
+                src={product.imgUrl}
+                alt={product.title}
                 className="w-full h-full object-cover"
                 width={200}
                 height={200}
@@ -51,8 +51,8 @@ export function Random({ product }) {
           <div className="flex gap-3">
             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
               <Image
-                src={product.image_url}
-                alt={product.name}
+                src={product.imgUrl}
+                alt={product.title}
                 className="w-full h-full object-cover"
                 width={200}
                 height={200}

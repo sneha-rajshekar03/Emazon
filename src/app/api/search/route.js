@@ -1,10 +1,16 @@
+// /app/api/search/route.js
 import { NextResponse } from "next/server";
 import fuzzysort from "fuzzysort";
-import productsData from "../products/products.json";
 import { getServerSession } from "next-auth";
 import { connectToDB } from "@app/utils/database";
-import SearchHistory from "@app/models/searchHistory";
-import { authOptions } from "@app/api/auth/[...nextauth]/route"; // ✅ added
+import SearchHistory from "@app/models/SearchHistory";
+import { authOptions } from "@app/api/auth/[...nextauth]/route";
+import Product from "@app/models/Product";
+
+// 🔹 normalize query & strings (handles plural/singular)
+function normalize(str) {
+  return str.toLowerCase().trim().replace(/s$/, ""); // strip trailing 's'
+}
 
 export async function POST(req) {
   try {
@@ -14,65 +20,57 @@ export async function POST(req) {
       return NextResponse.json({ valid: false, products: [] });
     }
 
-    const q = query.toLowerCase().trim();
+    const q = normalize(query);
 
-    // 🔹 Flatten products for fuzzy search
-    const allProducts = productsData.flatMap((c) =>
-      c.products.map((p) => ({
-        ...p,
-        category: c.category_name,
-        searchable: `${p.name} ${c.category_name}`.toLowerCase(),
-      }))
-    );
+    // ✅ connect once
+    await connectToDB();
 
-    // 🔹 1) Category match (direct substring OR fuzzy)
-    const matchedCategory = (() => {
-      const normalizedCategories = productsData.map((c) => ({
-        ...c,
-        originalName: c.category_name,
-        category_name: c.category_name.toLowerCase().trim(),
-      }));
-      // Direct includes
-      const direct = normalizedCategories.find((c) =>
-        c.category_name.includes(q)
-      );
-      if (direct) return direct;
+    // 🔹 Step 1: Direct category match
+    const categories = await Product.distinct("category_name");
+    const direct = categories.find((cat) => normalize(cat).includes(q));
 
-      // Fuzzy category search
-      const categoryResults = fuzzysort.go(q, normalizedCategories, {
-        key: "category_name",
-        limit: 1,
-        threshold: -10000,
-      });
+    if (direct) {
+      const productsInCat = await Product.find({
+        category_name: new RegExp(`^${direct}$`, "i"),
+      }).lean();
 
-      return categoryResults.length > 0 ? categoryResults[0].obj : null;
-    })();
-
-    if (matchedCategory) {
-      const session = await getServerSession();
+      // save to history
+      const session = await getServerSession(authOptions);
       if (session?.user?.email) {
-        await connectToDB();
         await SearchHistory.create({
           userId: session.user.email,
           query,
           email: session.user.email,
-          category: matchedCategory.originalName,
+          category: direct,
         });
       }
+
       return NextResponse.json({
         valid: true,
         type: "category",
-        category: matchedCategory.originalName,
-        products: matchedCategory.products,
+        category: direct,
+        products: productsInCat.slice(0, 12),
       });
     }
 
-    // 🔹 2) Product match (fuzzy search on name + category)
-    const results = fuzzysort.go(q, allProducts, {
-      key: "searchable",
-      limit: 9,
-      threshold: -10000,
+    // 🔹 Step 2: Narrow down candidates with Mongo regex
+    const candidates = await Product.find(
+      {
+        $or: [
+          { title: { $regex: q, $options: "i" } },
+          { category_name: { $regex: q, $options: "i" } },
+        ],
+      },
+      "title category_name product_id imgUrl price stars"
+    ).lean();
+
+    // 🔹 Step 3: Fuzzy search on narrowed candidates
+    const results = fuzzysort.go(q, candidates, {
+      key: "title",
+      limit: 12,
+      threshold: -100, // stricter = avoids bad matches
     });
+
     const matchedProducts = results.map((r) => r.obj);
 
     if (matchedProducts.length > 0) {
@@ -83,7 +81,7 @@ export async function POST(req) {
       });
     }
 
-    // 🔹 3) Nothing found
+    // 🔹 Step 4: Nothing found
     return NextResponse.json({ valid: false, products: [] });
   } catch (err) {
     console.error("Search API error:", err);

@@ -14,7 +14,7 @@ export function ProductHeader({ product }) {
       {/* Brand */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground uppercase tracking-wide">
-          BRAND
+          {product.brand || "BRAND"}
         </span>
         <div className="flex gap-2">
           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -27,7 +27,12 @@ export function ProductHeader({ product }) {
       </div>
 
       {/* Product Name */}
-      <h1 className="text-3xl">{product.name}</h1>
+      <h1 className="text-3xl font-bold">{product.name}</h1>
+
+      {/* Product Title / Subtitle */}
+      {product.title && (
+        <p className="text-muted-foreground text-base">{product.title}</p>
+      )}
 
       {/* Rating and Reviews */}
       <div className="flex items-center gap-4">

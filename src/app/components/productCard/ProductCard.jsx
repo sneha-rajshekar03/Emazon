@@ -30,7 +30,7 @@ export default function ProductCard({ product, color }) {
           <h2 className="font-semibold text-lg line-clamp-2 text-gray-800">
             {product.title}
           </h2>
-          <p className="text-xl font-bold text-gray-900">₹{product.price}</p>
+          <p className="text-xl font-bold text-gray-900">${product.price}</p>
           <p className="text-sm text-gray-500">Eligible for FREE Delivery</p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import ProductCard from "./components/products/ProductCard";
+import ProductCard from "./components/productCard/ProductCard";
 import HeroBanner from "./components/HeroBanner/HeroBanner";
 
 export default function Home() {

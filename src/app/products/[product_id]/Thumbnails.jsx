@@ -7,9 +7,10 @@ export function Thumbnails({
   selectedImage,
   setSelectedImage,
   product,
+  isVerticalLayout = false, // Add this prop
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className={`flex gap-2 ${isVerticalLayout ? "flex-row" : "flex-col"}`}>
       {images.map((img, idx) => (
         <button
           key={idx}

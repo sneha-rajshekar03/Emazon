@@ -12,7 +12,7 @@ import { CartIcon } from "./CartIcon";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { usePreferences } from "@app/hooks/usePreferences";
-export const Nav = () => {
+export const Nav = ({ color }) => {
   const { data: session } = useSession();
   const pathname = usePathname();
   const hideOnLogin = pathname === "/login";
@@ -61,7 +61,16 @@ export const Nav = () => {
                 <button
                   type="button"
                   onClick={() => signOutWithSave()}
-                  className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                  className="px-3 py-1.5 text-sm rounded transition font-medium shadow-sm"
+                  style={{
+                    background: `linear-gradient(
+  135deg,
+  rgba(255, 255, 255, 0.01),
+  ${color || "rgba(240, 245, 255, 0.02)"}
+)`,
+                    color: "#333", // keep text dark for better readability
+                    border: `1px solid ${color || "rgba(255, 99, 99, 0.5)"}`,
+                  }}
                 >
                   Sign Out
                 </button>

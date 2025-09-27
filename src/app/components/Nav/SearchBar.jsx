@@ -73,11 +73,12 @@ export const SearchBar = () => {
           placeholder="Search Amazon"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 p-3 rounded-l-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          className="flex-1 p-3 rounded-l-md border focus:outline-none focus:ring-2 transition"
         />
+
         <button
           type="submit"
-          className="bg-amber-500 px-4 py-3 rounded-r-md hover:bg-amber-600 active:bg-yellow-600 transition-colors"
+          className="px-4 py-3 rounded-r-md font-medium transition shadow-sm hover:brightness-95 active:brightness-90"
         >
           🔍
         </button>

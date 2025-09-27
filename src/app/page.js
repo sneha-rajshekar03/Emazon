@@ -2,13 +2,17 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "./components/productCard/ProductCard";
-import HeroBanner from "./components/HeroBanner/HeroBanner";
+import HeaderSlider from "./components/Nav/HeaderSlider";
+import Head from "next/head";
+import Banner from "./components/Nav/Banner";
+import NewsLetter from "./components/Nav/NewsLetter";
+import Footer from "./components/Nav/Footer";
+import FeaturedProduct from "./components/Nav/FeaturedProducts";
 
 export default function Home() {
   const searchParams = useSearchParams();
   const urlCategory = searchParams.get("category");
   const [products, setProducts] = useState([]);
-  const [hero, setHero] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userColor, setUserColor] = useState("#ffffff");
   const [error, setError] = useState(null);
@@ -72,20 +76,6 @@ export default function Home() {
     fetchProducts();
   }, [category]);
 
-  // Fetch hero banner
-  useEffect(() => {
-    async function fetchHero() {
-      try {
-        const res = await fetch("/api/hero");
-        const data = await res.json();
-        setHero(data.hero ?? data);
-      } catch (err) {
-        console.error("Error fetching hero:", err);
-      }
-    }
-    fetchHero();
-  }, []);
-
   // Fetch logged-in user including color
   useEffect(() => {
     async function fetchUser() {
@@ -99,10 +89,11 @@ export default function Home() {
     }
     fetchUser();
   }, []);
+  console.log(products);
   return (
     <main className="p-6">
       {/* Hero banner */}
-      {hero && <HeroBanner hero={hero} />}
+      <HeaderSlider color={userColor} />
 
       {/* Product Grid */}
       {loading ? (
@@ -123,6 +114,8 @@ export default function Home() {
       ) : (
         <></>
       )}
+      <NewsLetter />
+      <Footer />
     </main>
   );
 }

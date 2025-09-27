@@ -23,7 +23,7 @@ export function ProductDescription({ product, ...props }) {
 
         <TabsContent value="features" className="space-y-4 mt-6">
           <h3>Key Features</h3>
-          <div className="grid gap-3"></div>
+          <div className="grid gap-3"> {product.description}</div>
         </TabsContent>
 
         <TabsContent value="specifications" className="space-y-4 mt-6">
@@ -31,7 +31,10 @@ export function ProductDescription({ product, ...props }) {
           <div className="grid gap-4">
             {
               <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                <span className="text-muted-foreground">text</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  {product.description}
+                </span>
                 <Badge variant="secondary" className="text-xs">
                   meow
                 </Badge>

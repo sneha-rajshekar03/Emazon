@@ -23,6 +23,7 @@ const ProfileSchema = new mongoose.Schema(
     pets: String,
     petType: String, // Add this line
     paymentMode: String,
+    preferredLanguage: String, // Add this field for language preference
   },
   {
     timestamps: true,

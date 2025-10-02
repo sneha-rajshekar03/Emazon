@@ -15,7 +15,7 @@ import { getPrioritizedInteractions } from "@app/utils/interactionTracker";
 import { resetInteractions } from "@app/utils/interactionTracker";
 import { getInteractionScores } from "@app/utils/interactionTracker";
 import { usePreferences } from "@app/hooks/usePreferences";
-
+import ProfilePopupSystem from "@app/profile/page";
 export default function AmazonProductPage() {
   const { product_id } = useParams();
   const [product, setProduct] = useState(null);
@@ -319,6 +319,7 @@ export default function AmazonProductPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Dynamic Layout Container */}
+
       <div
         className={`
         max-w-7xl mx-auto p-4 bg-white gap-6 transition-all duration-500

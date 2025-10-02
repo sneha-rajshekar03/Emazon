@@ -140,6 +140,11 @@ export async function PUT(request) {
     const body = await request.json();
     const { userId, ...updateData } = body;
 
+    console.log("=== PUT Profile Debug ===");
+    console.log("userId:", userId);
+    console.log("updateData:", updateData);
+    console.log("========================");
+
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "UserId is required" },
@@ -149,19 +154,30 @@ export async function PUT(request) {
 
     await connectToDB();
 
-    // Update profile with timestamp
+    // Use $set operator for proper updates
     const profile = await Profile.findOneAndUpdate(
       { userId },
       {
-        ...updateData,
-        updatedAt: new Date(),
+        $set: {
+          ...updateData,
+          updatedAt: new Date(),
+        },
       },
       {
-        new: true,
-        runValidators: true,
-        upsert: true,
+        new: true, // Return updated document
+        runValidators: true, // Run schema validators
+        upsert: true, // Create if doesn't exist
       }
     );
+
+    if (!profile) {
+      return NextResponse.json(
+        { success: false, error: "Failed to update profile" },
+        { status: 500 }
+      );
+    }
+
+    console.log("✅ Profile updated successfully:", profile.preferredLanguage);
 
     return NextResponse.json({ success: true, data: profile });
   } catch (error) {

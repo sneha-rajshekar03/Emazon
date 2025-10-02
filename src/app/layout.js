@@ -6,7 +6,7 @@ import { authOptions } from "./api/auth/[...nextauth]/route";
 import { useSystemTheme } from "./hooks/useSystemTheme";
 import ThemeProvider from "./components/ThemeProvider";
 import { CartProvider } from "./context/CartContent";
-
+import ProfilePopupManager from "./components/ProfilePopupManager/ProfilePopupManager";
 export const metadata = {
   title: "Online Shopping website",
   description: "E-commerce Website",
@@ -22,6 +22,7 @@ export default async function Rootlayout({ children }) {
             <CartProvider>
               <Nav />
               {children}
+              <ProfilePopupManager />
             </CartProvider>
           </ThemeProvider>
         </Provider>

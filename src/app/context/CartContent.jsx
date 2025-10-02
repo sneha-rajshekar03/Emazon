@@ -284,7 +284,7 @@ export function CartProvider({ children }) {
     return cart.reduce((count, item) => count + item.quantity, 0);
   };
 
-  const checkout = async () => {
+  const checkout = async (paymentMethod) => {
     console.log("🛒 [CART CONTEXT] Checkout initiated");
     console.log("🛒 [CART CONTEXT] User logged in:", !!session?.user?.id);
     console.log("🛒 [CART CONTEXT] Cart items:", cart.length);
@@ -306,8 +306,9 @@ export function CartProvider({ children }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          user_id: session.user.id,
           items: cart,
-          total: getCartTotal(),
+          payment_method: paymentMethod, // Add this
         }),
       });
 

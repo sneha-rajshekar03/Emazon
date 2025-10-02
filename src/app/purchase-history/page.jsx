@@ -11,6 +11,7 @@ export default function PurchaseHistoryPage() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log("📜 [PURCHASE PAGE] Status:", status);
     if (status === "authenticated") {
       fetchPurchases();
     } else if (status === "unauthenticated") {
@@ -19,17 +20,52 @@ export default function PurchaseHistoryPage() {
   }, [status]);
 
   const fetchPurchases = async () => {
+    console.log("📜 [PURCHASE PAGE] Fetching purchases...");
     try {
       const res = await fetch("/api/purchase-history");
+      console.log("📜 [PURCHASE PAGE] Response status:", res.status);
+
       if (res.ok) {
         const data = await res.json();
+        console.log("📜 [PURCHASE PAGE] Data received:", data);
+        console.log(
+          "📜 [PURCHASE PAGE] Number of purchases:",
+          data.purchases?.length
+        );
+        console.log(
+          "📜 [PURCHASE PAGE] Purchases:",
+          JSON.stringify(data.purchases, null, 2)
+        );
         setPurchases(data.purchases);
+      } else {
+        const errorData = await res.json();
+        console.error("❌ [PURCHASE PAGE] Error response:", errorData);
       }
     } catch (error) {
-      console.error("Error fetching purchases:", error);
+      console.error("❌ [PURCHASE PAGE] Error fetching purchases:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to format payment method display
+  const formatPaymentMethod = (method) => {
+    const paymentMethods = {
+      upi: "UPI",
+      card: "Card",
+      cod: "Cash on Delivery",
+    };
+    return paymentMethods[method] || "Not Specified";
+  };
+
+  // Helper function to get payment method badge color
+  const getPaymentMethodColor = (method) => {
+    const colors = {
+      upi: "bg-purple-100 text-purple-800",
+      card: "bg-blue-100 text-blue-800",
+      cod: "bg-green-100 text-green-800",
+    };
+    return colors[method] || "bg-gray-100 text-gray-800";
   };
 
   if (loading) {
@@ -75,6 +111,18 @@ export default function PurchaseHistoryPage() {
                       }
                     )}
                   </p>
+                  {/* Payment Method Badge - Only show if payment method exists */}
+                  {purchase.payment_method && (
+                    <div className="mt-2">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getPaymentMethodColor(
+                          purchase.payment_method
+                        )}`}
+                      >
+                        {formatPaymentMethod(purchase.payment_method)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600">Total Amount</p>
@@ -94,12 +142,12 @@ export default function PurchaseHistoryPage() {
                     {item.image && (
                       <img
                         src={item.image}
-                        alt={item.name}
+                        alt={item.title || item.name}
                         className="w-16 h-16 object-cover rounded"
                       />
                     )}
                     <div className="flex-1">
-                      <p className="font-medium">{item.name}</p>
+                      <p className="font-medium">{item.title || item.name}</p>
                       <p className="text-sm text-gray-600">
                         ${item.price.toFixed(2)} × {item.quantity}
                       </p>

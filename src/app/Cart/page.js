@@ -1,11 +1,22 @@
 "use client";
 import { useCart } from "@app/context/CartContent";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  Minus,
+  ShoppingBag,
+  ArrowLeft,
+  X,
+  CheckCircle,
+  CreditCard,
+  Smartphone,
+  Banknote,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function CartPage() {
   const {
@@ -19,39 +30,124 @@ export default function CartPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalContent, setModalContent] = useState({
+    type: "",
+    message: "",
+    orderId: "",
+    amount: 0,
+  });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState("");
+  const [countdown, setCountdown] = useState(5);
 
   const subtotal = getCartTotal();
   const tax = subtotal * 0.1;
   const shipping = subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
   const total = subtotal + tax + shipping;
 
+  useEffect(() => {
+    if (showModal && modalContent.type === "success") {
+      setCountdown(5);
+      const interval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setShowModal(false);
+            return 5;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [showModal, modalContent.type]);
+
   const handleCheckout = async () => {
     if (!session?.user?.id) {
-      alert("Please log in to checkout");
-      router.push("/login");
+      setModalContent({
+        type: "error",
+        message: "Please log in to checkout",
+        orderId: "",
+        amount: 0,
+      });
+      setShowModal(true);
+      setTimeout(() => router.push("/login"), 2000);
       return;
     }
 
     if (cart.length === 0) {
-      alert("Your cart is empty");
+      setModalContent({
+        type: "error",
+        message: "Your cart is empty",
+        orderId: "",
+        amount: 0,
+      });
+      setShowModal(true);
       return;
     }
 
+    setShowPaymentModal(true);
+  };
+
+  const processCheckout = async () => {
+    if (!selectedPayment) {
+      setModalContent({
+        type: "error",
+        message: "Please select a payment method",
+        orderId: "",
+        amount: 0,
+      });
+      setShowModal(true);
+      return;
+    }
+
+    setShowPaymentModal(false);
     setIsCheckingOut(true);
+
     try {
       const result = await checkout();
-      alert(
-        `✅ Order placed successfully!\n\nOrder ID: ${
-          result.purchase_id
-        }\nTotal: $${result.total_amount.toFixed(2)}`
-      );
-      router.push("/purchase-history");
+      setModalContent({
+        type: "success",
+        message: "Order placed successfully!",
+        orderId: result.purchase_id,
+        amount: result.total_amount,
+      });
+      setShowModal(true);
+      setSelectedPayment("");
     } catch (error) {
-      alert(`❌ Checkout failed: ${error.message}`);
+      setModalContent({
+        type: "error",
+        message: `Checkout failed: ${error.message}`,
+        orderId: "",
+        amount: 0,
+      });
+      setShowModal(true);
     } finally {
       setIsCheckingOut(false);
     }
   };
+
+  const paymentMethods = [
+    {
+      id: "upi",
+      name: "UPI",
+      icon: Smartphone,
+      description: "Pay using UPI apps",
+    },
+    {
+      id: "card",
+      name: "Credit/Debit Card",
+      icon: CreditCard,
+      description: "Visa, Mastercard, Amex",
+    },
+    {
+      id: "cod",
+      name: "Cash on Delivery",
+      icon: Banknote,
+      description: "Pay when you receive",
+    },
+  ];
 
   if (isLoading) {
     return (
@@ -95,12 +191,20 @@ export default function CartPage() {
                 <p className="text-gray-600 mb-6">
                   Start shopping to add items!
                 </p>
-                <Link
-                  href="/"
-                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-                >
-                  Browse Products
-                </Link>
+                <div className="flex flex-row justify-center gap-5">
+                  <Link
+                    href="/"
+                    className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                  >
+                    Browse Products
+                  </Link>
+                  <Link
+                    href="/purchase-history"
+                    className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold "
+                  >
+                    previous history{" "}
+                  </Link>
+                </div>
               </div>
             ) : (
               cart.map((item) => (
@@ -249,6 +353,134 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* Payment Method Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <button
+              onClick={() => setShowPaymentModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              Select Payment Method
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Choose how you would like to pay
+            </p>
+
+            <div className="space-y-3 mb-6">
+              {paymentMethods.map((method) => {
+                const Icon = method.icon;
+                return (
+                  <button
+                    key={method.id}
+                    onClick={() => setSelectedPayment(method.id)}
+                    className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                      selectedPayment === method.id
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`p-2 rounded-lg ${
+                          selectedPayment === method.id
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        <Icon className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900">
+                          {method.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {method.description}
+                        </div>
+                      </div>
+                      {selectedPayment === method.id && (
+                        <CheckCircle className="w-6 h-6 text-blue-600" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={processCheckout}
+              disabled={!selectedPayment}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            >
+              Confirm Payment
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Success/Error Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <div className="text-center">
+              {modalContent.type === "success" ? (
+                <>
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-10 h-10 text-green-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    {modalContent.message}
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-gray-600 mb-1">Order ID</p>
+                    <p className="text-lg font-mono font-semibold text-gray-900">
+                      {modalContent.orderId}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-3 mb-1">
+                      Total Amount
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      ${modalContent.amount.toFixed(2)}
+                    </p>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    This message will close in {countdown} second
+                    {countdown !== 1 ? "s" : ""}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <X className="w-10 h-10 text-red-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    Oops!
+                  </h3>
+                  <p className="text-gray-600 mb-6">{modalContent.message}</p>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors"
+                  >
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

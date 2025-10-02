@@ -8,7 +8,7 @@ const PurchaseHistorySchema = new mongoose.Schema({
   items: [
     {
       product_id: { type: String, required: true },
-      title: { type: String, required: true }, // Changed from name
+      title: { type: String, required: true },
       price: { type: Number, required: true },
       quantity: { type: Number, required: true },
       image: String,
@@ -17,6 +17,12 @@ const PurchaseHistorySchema = new mongoose.Schema({
   ],
   total_amount: {
     type: Number,
+    required: true,
+  },
+  payment_method: {
+    type: String,
+    enum: ["upi", "card", "cod"],
+    default: "cod", // Default value for existing records
     required: true,
   },
   purchase_date: {

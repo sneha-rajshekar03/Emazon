@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@app/api/auth/[...nextauth]/route";
 import { connectToDB } from "@app/utils/database";
+import Cart from "@app/models/Cart";
 import PurchaseHistory from "@app/models/PurchaseHistory";
-
-// GET - Fetch user's purchase history
 export async function GET(req) {
   console.log("📜 [PURCHASE HISTORY API] GET request received");
   try {
@@ -38,6 +37,13 @@ export async function GET(req) {
       purchases?.length || 0
     );
 
+    if (purchases && purchases.length > 0) {
+      console.log(
+        "📜 [PURCHASE HISTORY API] First purchase:",
+        JSON.stringify(purchases[0], null, 2)
+      );
+    }
+
     return NextResponse.json({
       purchases: purchases || [],
     });
@@ -48,5 +54,105 @@ export async function GET(req) {
     );
     console.error("❌ [PURCHASE HISTORY API] Error stack:", error.stack);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+export async function POST(req) {
+  console.log("🛒 [CHECKOUT API] POST request received");
+  try {
+    const session = await getServerSession(authOptions);
+    console.log("🛒 [CHECKOUT API] Session:", session ? "Found" : "Not found");
+    console.log("🛒 [CHECKOUT API] User ID:", session?.user?.id);
+
+    if (!session?.user?.id) {
+      console.log("❌ [CHECKOUT API] Unauthorized - no session");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("🛒 [CHECKOUT API] Connecting to DB...");
+    await connectToDB();
+
+    // Parse request body to get payment method
+    const body = await req.json();
+    console.log("🛒 [CHECKOUT API] Request body:", JSON.stringify(body));
+
+    const paymentMethod = body.payment_method;
+    console.log("🛒 [CHECKOUT API] Payment method received:", paymentMethod);
+    console.log("🛒 [CHECKOUT API] Payment method type:", typeof paymentMethod);
+
+    // Validate payment method
+    if (!paymentMethod || !["upi", "card", "cod"].includes(paymentMethod)) {
+      console.log("❌ [CHECKOUT API] Invalid payment method:", paymentMethod);
+      return NextResponse.json(
+        { error: "Invalid payment method. Must be upi, card, or cod" },
+        { status: 400 }
+      );
+    }
+
+    console.log("🛒 [CHECKOUT API] Fetching cart...");
+    // Get user's cart
+    const cart = await Cart.findOne({ user_id: session.user.id });
+
+    if (!cart || cart.items.length === 0) {
+      console.log("❌ [CHECKOUT API] Cart is empty");
+      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
+    }
+
+    console.log("🛒 [CHECKOUT API] Cart items:", cart.items.length);
+
+    // Calculate total
+    const totalAmount = cart.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    console.log("🛒 [CHECKOUT API] Total amount:", totalAmount);
+
+    // Prepare purchase data
+    const purchaseData = {
+      user_id: session.user.id,
+      items: cart.items,
+      total_amount: totalAmount,
+      payment_method: paymentMethod,
+    };
+
+    console.log("🛒 [CHECKOUT API] Creating purchase with data:");
+    console.log(JSON.stringify(purchaseData, null, 2));
+
+    // Create purchase history entry with payment method
+    const purchase = await PurchaseHistory.create(purchaseData);
+
+    console.log("✅ [CHECKOUT API] Purchase created:", purchase._id);
+    console.log(
+      "✅ [CHECKOUT API] Payment method saved:",
+      purchase.payment_method
+    );
+
+    // Verify the saved data
+    const verifyPurchase = await PurchaseHistory.findById(purchase._id);
+    console.log(
+      "🔍 [CHECKOUT API] Verification - Payment method in DB:",
+      verifyPurchase.payment_method
+    );
+
+    console.log("🛒 [CHECKOUT API] Clearing cart...");
+    // Clear the cart after successful checkout
+    await Cart.findOneAndUpdate({ user_id: session.user.id }, { items: [] });
+    console.log("✅ [CHECKOUT API] Cart cleared");
+
+    return NextResponse.json({
+      success: true,
+      purchase_id: purchase._id,
+      total_amount: totalAmount,
+      payment_method: purchase.payment_method,
+    });
+  } catch (error) {
+    console.error("❌ [CHECKOUT API] Error during checkout:", error);
+    console.error("❌ [CHECKOUT API] Error name:", error.name);
+    console.error("❌ [CHECKOUT API] Error message:", error.message);
+    console.error("❌ [CHECKOUT API] Error stack:", error.stack);
+    return NextResponse.json(
+      { error: error.message || "Server error" },
+      { status: 500 }
+    );
   }
 }

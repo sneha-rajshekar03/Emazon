@@ -62,7 +62,7 @@ const paymentModes = [
 const fetchUserDetails = async () => {
   const res = await fetch("/api/users");
   if (!res.ok) {
-    throw new Error("Failed to fetch user details");
+    console.log("Failed to fetch user details");
   }
   const data = await res.json();
   return data.user; // Should return { email, name, id, color }
@@ -332,10 +332,10 @@ export default function ProfilePage() {
       console.log("✅ Save result:", result);
 
       setHasChanges(false);
-      alert("Profile saved successfully!");
+      console.log("Profile saved successfully!");
     } catch (error) {
       console.error("❌ Error updating profile:", error);
-      alert(`Failed to save profile: ${error.message}`);
+      console.log(`Failed to save profile: ${error.message}`);
     } finally {
       setSaving(false);
     }

@@ -87,8 +87,10 @@ const HeaderSlider = ({ color }) => {
             <div className="flex items-center flex-1 justify-center">
               <Image
                 className="md:w-72 w-48"
-                src={slide.imgSrc}
+                src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
                 alt={`Slide ${index + 1}`}
+                width={30}
+                height={30}
               />
             </div>
           </div>

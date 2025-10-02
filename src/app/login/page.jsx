@@ -1,13 +1,31 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { signIn, getProviders } from "next-auth/react";
+import { signIn, getProviders, useSession } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+export default function SignInPage() {
   const [providers, setProviders] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { data: session } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // fetch NextAuth providers (like Google, GitHub, etc.)
+  // Get redirect URL from query parameter
+  const redirectUrl = searchParams.get("redirect");
+
+  // Check if user is already logged in and redirect
+  useEffect(() => {
+    if (session) {
+      if (redirectUrl) {
+        router.push(redirectUrl);
+      } else {
+        router.push("/");
+      }
+    }
+  }, [session, router, redirectUrl]);
+
+  // Fetch NextAuth providers
   useEffect(() => {
     const fetchProviders = async () => {
       const resp = await getProviders();
@@ -16,11 +34,22 @@ export default function LoginPage() {
     fetchProviders();
   }, []);
 
-  // Amazon/email login (dummy for now, you can connect to your backend)
-  const handleAmazonLogin = (e) => {
+  // Amazon/email login
+  const handleAmazonLogin = async (e) => {
     e.preventDefault();
     console.log("Amazon login:", { email, password });
     // TODO: call your API or NextAuth Email provider
+    // After successful login, the useEffect above will handle the redirect
+  };
+
+  // Handle Google sign in with redirect
+  const handleGoogleSignIn = async (providerId) => {
+    // Decode the redirect URL and use it as callback
+    const callbackUrl = redirectUrl ? decodeURIComponent(redirectUrl) : "/";
+
+    await signIn(providerId, {
+      callbackUrl: callbackUrl,
+    });
   };
 
   return (
@@ -69,7 +98,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   key={provider.name}
-                  onClick={() => signIn(provider.id)}
+                  onClick={() => handleGoogleSignIn(provider.id)}
                   className="w-full rounded-lg border border-gray-300 bg-white py-2 font-semibold text-gray-700 hover:bg-gray-100"
                 >
                   Continue with {provider.name}

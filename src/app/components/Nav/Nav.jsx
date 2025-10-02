@@ -8,7 +8,7 @@ import { Logo } from "./Logo";
 import { SearchBar } from "./SearchBar";
 import { Language } from "./Language";
 import { Account } from "./Account";
-import { CartIcon } from "./CartIcon";
+import CartButton from "./CartIcon";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { usePreferences } from "@app/hooks/usePreferences";
@@ -23,7 +23,7 @@ export const Nav = ({ color }) => {
   console.log("Full session object:", session);
 
   return (
-    <nav className="bg-[#eeeef2] p-2 flex items-center">
+    <nav className="bg-background text-foreground p-2 flex items-center shadow-sm">
       {/* Logo */}
       <div className="flex-shrink-0">
         <Logo />
@@ -56,7 +56,7 @@ export const Nav = ({ color }) => {
                   />
                 </Link>
                 <div className="hidden md:flex">
-                  <CartIcon />
+                  <CartButton />
                 </div>
                 <button
                   type="button"

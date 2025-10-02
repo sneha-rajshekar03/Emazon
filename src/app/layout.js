@@ -3,6 +3,9 @@ import { Provider } from "./components/Nav/Provider";
 import { Nav } from "./components/Nav/Nav";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]/route";
+import { useSystemTheme } from "./hooks/useSystemTheme";
+import ThemeProvider from "./components/ThemeProvider";
+import { CartProvider } from "./context/CartContent";
 
 export const metadata = {
   title: "Online Shopping website",
@@ -15,8 +18,12 @@ export default async function Rootlayout({ children }) {
     <html lang="en">
       <body>
         <Provider session={session}>
-          <Nav />
-          {children}
+          <ThemeProvider>
+            <CartProvider>
+              <Nav />
+              {children}
+            </CartProvider>
+          </ThemeProvider>
         </Provider>
       </body>
     </html>

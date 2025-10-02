@@ -1,115 +1,108 @@
 "use client";
-
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Minus, Plus, ShoppingCart, Zap, Shield, Truck } from "lucide-react";
+import { useCart } from "@app/context/CartContent";
+import { useSession } from "next-auth/react";
+import { ShoppingCart, Check } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
 
 export function BuyBox({ product, ...props }) {
+  const { addToCart } = useCart();
+  const { data: session } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
   const [quantity, setQuantity] = useState(1);
-  const [selectedColor, setSelectedColor] = useState("");
-  const [selectedSize, setSelectedSize] = useState("");
+  const [added, setAdded] = useState(false);
 
-  const colors = ["Black", "White", "Silver", "Blue"];
-  const sizes = ["Small", "Medium", "Large"];
+  const handleAddToCart = () => {
+    if (!session) {
+      // If not logged in, redirect to login then back to this product page
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    // If logged in, add to cart normally
+    addToCart(product, quantity);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+
+  const handleBuyNow = () => {
+    if (!session) {
+      // If not logged in, redirect to login then to checkout
+      addToCart(product, quantity);
+      router.push(`/login?redirect=/checkout`);
+      return;
+    }
+
+    // If logged in, add to cart and go to checkout
+    addToCart(product, quantity);
+    router.push("/checkout");
+  };
 
   return (
-    <Card {...props} className="p-6 space-y-6 border-2">
-      {/* Color Selection */}
-      <div className="space-y-3">
-        <label className="block text-sm">Color</label>
-        <div className="flex gap-2">
-          {colors.map((color) => (
-            <button
-              key={color}
-              onClick={() => setSelectedColor(color)}
-              className={`px-4 py-2 border rounded-lg text-sm transition-all ${
-                selectedColor === color
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border hover:border-primary"
-              }`}
-            >
-              {color}
-            </button>
-          ))}
-        </div>
+    <div className="bg-white rounded-lg shadow-lg p-6" {...props}>
+      <div className="mb-4">
+        <span className="text-3xl font-bold text-gray-900">
+          ${product.price?.toFixed(2)}
+        </span>
       </div>
 
-      {/* Size Selection */}
-      <div className="space-y-3">
-        <label className="block text-sm">Size</label>
-        <Select value={selectedSize} onValueChange={setSelectedSize}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select size" />
-          </SelectTrigger>
-          <SelectContent>
-            {sizes.map((size) => (
-              <SelectItem key={size} value={size}>
-                {size}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Quantity */}
-      <div className="space-y-3">
-        <label className="block text-sm">Quantity</label>
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Quantity
+        </label>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
+          <button
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
           >
-            <Minus className="h-4 w-4" />
-          </Button>
-          <span className="w-12 text-center">{quantity}</span>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
+            -
+          </button>
+          <input
+            type="number"
+            min="1"
+            value={quantity}
+            onChange={(e) =>
+              setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+            }
+            className="w-20 text-center border border-gray-300 rounded-lg py-2"
+          />
+          <button
             onClick={() => setQuantity(quantity + 1)}
+            className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
           >
-            <Plus className="h-4 w-4" />
-          </Button>
+            +
+          </button>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="space-y-3">
-        <Button className="w-full h-12" disabled={!product.inStock}>
-          <ShoppingCart className="mr-2 h-4 w-4" />
-          Add to Cart
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full h-12"
-          disabled={!product.inStock}
-        >
-          <Zap className="mr-2 h-4 w-4" />
-          Buy Now
-        </Button>
-      </div>
+      <button
+        onClick={handleAddToCart}
+        className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
+          added
+            ? "bg-green-600 text-white"
+            : "bg-blue-600 text-white hover:bg-blue-700"
+        }`}
+      >
+        {added ? (
+          <>
+            <Check className="w-5 h-5" />
+            Added to Cart!
+          </>
+        ) : (
+          <>
+            <ShoppingCart className="w-5 h-5" />
+            {!session ? "Login to Add to Cart" : "Add to Cart"}
+          </>
+        )}
+      </button>
 
-      {/* Features */}
-      <div className="space-y-4 pt-4 border-t">
-        <div className="flex items-center gap-3 text-sm">
-          <Truck className="h-4 w-4 text-muted-foreground" />
-          <span>Free shipping on orders over $75</span>
-        </div>
-        <div className="flex items-center gap-3 text-sm">
-          <Shield className="h-4 w-4 text-muted-foreground" />
-          <span>2-year warranty included</span>
-        </div>
-      </div>
-    </Card>
+      <button
+        onClick={handleBuyNow}
+        className="w-full mt-3 py-3 rounded-lg font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+      >
+        {!session ? "Login to Buy Now" : "Buy Now"}
+      </button>
+    </div>
   );
 }

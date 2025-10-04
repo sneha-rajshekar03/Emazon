@@ -13,34 +13,68 @@ export const ProfilePopup = ({
   setLocationLoading,
   handleClose,
   handleSave,
+  saving,
   isAnswerValid,
   toggleHobby,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(7);
+  const [isPaused, setIsPaused] = useState(false);
   const { hexColor } = useColor();
-  const timerRef = useRef(null);
+  const countdownRef = useRef(null);
 
   useEffect(() => {
     if (!currentQuestion) return;
 
     const showTimer = setTimeout(() => setIsVisible(true), 100);
-    timerRef.current = setTimeout(handleClose, 5000);
+
+    // Reset timer
+    setTimeLeft(7);
+    setIsPaused(false);
 
     return () => {
       clearTimeout(showTimer);
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [currentQuestion, handleClose]);
+  }, [currentQuestion]);
 
-  const clearTimer = () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+  // Separate effect for countdown
+  useEffect(() => {
+    if (!currentQuestion) return;
+
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
     }
+
+    if (!isPaused) {
+      countdownRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 0.1) {
+            clearInterval(countdownRef.current);
+            handleClose();
+            return 0;
+          }
+          return prev - 0.1;
+        });
+      }, 100);
+    }
+
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    };
+  }, [isPaused, currentQuestion, handleClose]);
+
+  const handleMouseEnter = () => {
+    setIsPaused(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsPaused(false);
   };
 
   const detectLocation = async () => {
-    clearTimer();
     if (!navigator.geolocation) return alert("Geolocation not supported");
 
     setLocationLoading(true);
@@ -72,6 +106,7 @@ export const ProfilePopup = ({
 
   if (!currentQuestion) return null;
   const Icon = currentQuestion.icon;
+  const progress = (timeLeft / 7) * 100;
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
@@ -79,9 +114,21 @@ export const ProfilePopup = ({
         className={`w-[380px] p-5 bg-white rounded-3xl shadow-2xl transition-all duration-500 ${
           isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
         }`}
-        onClick={clearTimer}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         style={{ border: `1px solid ${hexColor}30` }}
       >
+        {/* Timer Progress Bar */}
+        <div className="absolute top-0 left-1/2 w-[95%] h-1 -translate-x-1/2 rounded-t-4xl overflow-hidden">
+          <div
+            className="h-full transition-all duration-100 ease-linear"
+            style={{
+              width: `${progress}%`,
+              background: hexColor,
+            }}
+          />
+        </div>
+
         <button
           onClick={handleClose}
           className="absolute top-4 right-4"
@@ -214,15 +261,16 @@ export const ProfilePopup = ({
           </button>
           <button
             onClick={handleSave}
-            disabled={!isAnswerValid}
-            className="flex-1 py-2 px-3 text-sm rounded-lg"
+            disabled={!isAnswerValid || saving}
+            className="flex-1 py-2 px-3 text-sm rounded-lg flex items-center justify-center"
             style={
-              isAnswerValid
+              isAnswerValid && !saving
                 ? { background: hexColor, color: "white" }
                 : { background: "#D1D5DB", color: "#6B7280" }
             }
           >
-            Save
+            {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>

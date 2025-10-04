@@ -41,6 +41,13 @@ export const authOptions = {
       else if (new URL(url).origin === baseUrl) return url;
       return baseUrl;
     },
+    events: {
+      async signOut({ session, token }) {
+        // This runs server-side, but we need client-side localStorage data
+        // So we'll handle this differently - see below
+        console.log("User signed out");
+      },
+    },
   },
 };
 const handler = NextAuth(authOptions);

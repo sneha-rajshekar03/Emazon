@@ -15,7 +15,6 @@ export function usePreferences() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const lastPathRef = useRef(null);
-
   // Normalize element names to lowercase for consistency
   const normalizeElement = (element) => element.trim().toLowerCase();
 

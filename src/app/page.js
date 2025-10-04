@@ -7,7 +7,6 @@ import Head from "next/head";
 import Banner from "./components/Nav/Banner";
 import NewsLetter from "./components/Nav/NewsLetter";
 import Footer from "./components/Nav/Footer";
-import FeaturedProduct from "./components/Nav/FeaturedProducts";
 
 export default function Home() {
   const searchParams = useSearchParams();

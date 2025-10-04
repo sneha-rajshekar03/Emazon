@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useProfileData } from "@app/hooks/useProfileData";
 import { ProfilePopup } from "../ProfilePopup/ProfilePopup";
 import {
   User,
@@ -14,60 +15,69 @@ import {
   MapPin,
 } from "lucide-react";
 
-const POPUP_INTERVAL_MS = 40000;
-const POPUP_INITIAL_DELAY_MS = 70000;
+const POPUP_INTERVAL_MS = 70000;
+const POPUP_INITIAL_DELAY_MS = 40000;
 
-// Define your profile questions here
+const iconMap = {
+  User,
+  Heart,
+  DollarSign,
+  Briefcase,
+  Car,
+  Home,
+  CreditCard,
+  MapPin,
+};
+
 const profileQuestions = [
   {
     field: "age",
     question: "How old are you?",
     type: "number",
     placeholder: "Enter your age",
-    icon: User,
+    icon: "User",
   },
   {
-    field: "relationshipStatus",
-    question: "What's your relationship status?",
-    type: "buttons",
-    options: ["Single", "In a relationship", "Married", "complicated"],
-    icon: Heart,
+    field: "brand",
+    question: "What's your favorite brand?",
+    type: "text",
+    placeholder: "e.g., Apple, Nike",
+    icon: "Heart",
   },
   {
-    field: "budget",
-    question: "What's your monthly budget?",
+    field: "priceRange",
+    question: "What's your typical spending range?",
     type: "select",
-    options: ["Under $1000", "$1000-$3000", "$3000-$5000", "Above $5000"],
-    icon: DollarSign,
+    options: [
+      "Under $50",
+      "$50 - $100",
+      "$100 - $250",
+      "$250 - $500",
+      "$500 - $1000",
+      "Above $1000",
+    ],
+    icon: "DollarSign",
   },
   {
     field: "occupation",
-    question: "What do you do for work?",
+    question: "What do you do for a living?",
     type: "text",
-    placeholder: "e.g., Software Engineer, Teacher",
-    icon: Briefcase,
+    placeholder: "Enter your occupation",
+    icon: "Briefcase",
   },
   {
-    field: "transportation",
-    question: "How do you get around?",
+    field: "travelMode",
+    question: "How do you usually get around?",
+    type: "select",
+    options: ["Car", "Bike", "Public Transport", "Walking", "Multiple"],
+    icon: "Car",
+  },
+  {
+    field: "livingStatus",
+    question: "What's your living situation?",
     type: "buttons",
-    options: ["Car", "Public Transport", "Bike", "Walk"],
-    icon: Car,
-  },
-  {
-    field: "location",
-    question: "Where are you located?",
-    type: "text",
-    placeholder: "Enter your city or location",
-    hasAutoDetect: true,
-    icon: MapPin,
-  },
-  {
-    field: "housingType",
-    question: "What's your housing situation?",
-    type: "buttons",
-    options: ["Own", "Rent", "With Family", "Other"],
-    icon: Home,
+    options: ["Bachelor", "Family"],
+    icon: "Home",
   },
   {
     field: "hobbies",
@@ -76,28 +86,61 @@ const profileQuestions = [
     options: [
       "Reading",
       "Gaming",
-      "Sports",
+      "Traveling",
       "Cooking",
-      "Travel",
+      "Sports",
       "Music",
-      "Art",
       "Photography",
-      "Fitness",
-      "Gardening",
-      "Movies",
-      "Dancing",
+      "Art",
     ],
-    icon: Heart,
+    icon: "Heart",
   },
-];
+  {
+    field: "location",
+    question: "Where are you located?",
+    type: "text",
+    placeholder: "Enter your city/location",
+    hasAutoDetect: true,
+    icon: "MapPin",
+  },
+  {
+    field: "pets",
+    question: "Do you have any pets?",
+    type: "buttons",
+    options: ["Yes", "No"],
+    icon: "Heart",
+  },
+  {
+    field: "petType",
+    question: "What type of pet do you have?",
+    type: "select",
+    options: [
+      "Dog",
+      "Cat",
+      "Bird",
+      "Fish",
+      "Rabbit",
+      "Hamster",
+      "Reptile",
+      "Other",
+    ],
+    condition: (profile) => profile.pets === "Yes",
+    icon: "Heart",
+  },
+  {
+    field: "paymentMode",
+    question: "How do you prefer to pay?",
+    type: "select",
+    options: ["Cash", "Credit Card", "Debit Card", "UPI", "Digital Wallet"],
+    icon: "CreditCard",
+  },
+].map((q) => ({ ...q, icon: iconMap[q.icon] }));
 
 export default function ProfilePopupManager() {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
+  const { profileData: profile, loading, saveProfile } = useProfileData();
 
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -106,17 +149,7 @@ export default function ProfilePopupManager() {
   const [askedQuestions, setAskedQuestions] = useState([]);
 
   const showNextQuestion = useCallback(() => {
-    console.log(
-      "🎯 showNextQuestion called - showPopup:",
-      showPopup,
-      "profile:",
-      !!profile
-    );
-
-    if (showPopup || !profile) {
-      console.log("❌ Already showing popup or no profile");
-      return;
-    }
+    if (showPopup || !profile) return;
 
     const unanswered = profileQuestions.filter((q) => {
       if (q.condition && !q.condition(profile)) return false;
@@ -125,113 +158,41 @@ export default function ProfilePopupManager() {
       return isEmpty && !askedQuestions.includes(q.field);
     });
 
-    console.log("📋 Unanswered questions:", unanswered.length);
-
     if (unanswered.length > 0) {
       const nextQuestion =
         unanswered[Math.floor(Math.random() * unanswered.length)];
-      console.log("✅ Showing question:", nextQuestion.field);
+
       setCurrentQuestion(nextQuestion);
+
       if (nextQuestion.type === "multi-select") {
         setSelectedHobbies(profile.hobbies || []);
       } else {
         setAnswer(profile[nextQuestion.field] || "");
       }
+
       setShowPopup(true);
-    } else {
-      console.log("✅ All questions answered!");
     }
   }, [profile, askedQuestions, showPopup]);
 
-  // Load profile data only for authenticated users
   useEffect(() => {
-    console.log("🔍 ProfilePopupManager - Status:", status);
-    console.log("🔍 ProfilePopupManager - Session:", session);
+    if (status !== "authenticated") return;
+    if (loading || !profile) return;
+    if (pathname.toLowerCase().includes("/profile")) return;
 
-    // Don't load profile if not authenticated
-    if (status !== "authenticated") {
-      console.log("❌ Not authenticated, skipping profile load");
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-
-    const loadProfileData = async () => {
-      setLoading(true);
-      try {
-        const userId = session?.user?.id;
-        console.log("👤 Loading profile for user:", userId);
-
-        if (!userId) {
-          console.error("User ID not found in session");
-          setLoading(false);
-          return;
-        }
-
-        const profileRes = await fetch(`/api/profile?userId=${userId}`);
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          console.log("✅ Profile loaded:", profileData.data);
-          setProfile(profileData.data);
-        } else {
-          console.log("⚠️ No profile found, creating base profile");
-          setProfile({ userId });
-        }
-      } catch (error) {
-        console.error("Popup Manager Error:", error);
-        setProfile({ userId: session?.user?.id });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProfileData();
-  }, [status, session?.user?.id]);
-
-  // Setup popup timers only when profile is loaded and not on profile page
-  useEffect(() => {
-    console.log(
-      "⏰ Timer effect - Status:",
-      status,
-      "Loading:",
-      loading,
-      "Profile:",
-      !!profile,
-      "Pathname:",
-      pathname
-    );
-
-    // Don't setup timers if not authenticated
-    if (status !== "authenticated") {
-      console.log("❌ Timer: Not authenticated");
-      return;
-    }
-    if (loading || !profile) {
-      console.log("❌ Timer: Loading or no profile");
-      return;
-    }
-    if (pathname.toLowerCase().includes("/profile")) {
-      console.log("❌ Timer: On profile page");
-      return;
-    }
-
-    console.log("✅ Setting up popup timers");
     const initialTimeout = setTimeout(() => {
-      console.log("⏰ Initial timeout triggered");
       showNextQuestion();
     }, POPUP_INITIAL_DELAY_MS);
 
     const intervalTimer = setInterval(() => {
-      console.log("⏰ Interval triggered");
       showNextQuestion();
     }, POPUP_INTERVAL_MS);
 
     return () => {
-      console.log("🧹 Cleaning up timers");
       clearTimeout(initialTimeout);
       clearInterval(intervalTimer);
     };
-  }, [status, loading, profile, pathname, showNextQuestion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, loading, profile, pathname]);
 
   const handlePopupClose = () => {
     if (currentQuestion) {
@@ -245,39 +206,51 @@ export default function ProfilePopupManager() {
 
   const handlePopupSave = async () => {
     if (!currentQuestion) return;
-    setSaving(true);
+
     try {
       let valueToSave =
         currentQuestion.type === "multi-select" ? selectedHobbies : answer;
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: profile.userId,
-          [currentQuestion.field]: valueToSave,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
 
-      setProfile((prev) => ({ ...prev, [currentQuestion.field]: valueToSave }));
+      if (currentQuestion.type === "number") {
+        valueToSave = parseInt(valueToSave, 10);
+        if (isNaN(valueToSave) || valueToSave <= 0) {
+          throw new Error("Please enter a valid number");
+        }
+      }
+
+      const updatedFields = {
+        [currentQuestion.field]: valueToSave,
+        ...(currentQuestion.field === "pets" && valueToSave === "No"
+          ? { petType: "" }
+          : {}),
+      };
+
+      // Save to database
+      const result = await saveProfile(updatedFields);
+
+      if (!result.success) {
+        throw new Error(result.message || "Failed to save");
+      }
+
       handlePopupClose();
     } catch (error) {
-      console.error("Popup save error:", error);
-      alert("Failed to save. Please try again.");
-    } finally {
-      setSaving(false);
+      console.error("Save error:", error);
+      alert(error.message || "Failed to save. Please try again.");
     }
   };
 
   const isAnswerValid = () => {
     if (!currentQuestion) return false;
+
     if (currentQuestion.type === "multi-select") {
       return selectedHobbies.length > 0;
     }
+
     if (currentQuestion.type === "number") {
       const num = parseInt(answer, 10);
       return !isNaN(num) && num > 0;
     }
+
     return answer && answer.toString().trim() !== "";
   };
 
@@ -287,19 +260,9 @@ export default function ProfilePopupManager() {
     );
   };
 
-  // Check authentication status AFTER all hooks
-  if (status === "loading") {
-    return null; // Still checking auth status
-  }
-
-  if (status !== "authenticated") {
-    return null; // Not logged in - no popups
-  }
-
-  // Don't render popup if no profile loaded or popup not shown
-  if (!profile || !showPopup) {
-    return null;
-  }
+  if (status === "loading") return null;
+  if (status !== "authenticated") return null;
+  if (!profile || !showPopup) return null;
 
   return (
     <ProfilePopup
@@ -312,7 +275,7 @@ export default function ProfilePopupManager() {
       setLocationLoading={setLocationLoading}
       handleClose={handlePopupClose}
       handleSave={handlePopupSave}
-      saving={saving}
+      saving={false}
       isAnswerValid={isAnswerValid()}
       toggleHobby={togglePopupHobby}
     />

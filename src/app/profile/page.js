@@ -16,176 +16,240 @@ import {
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
-
-// Constants
-const POPUP_INTERVAL_MS = 5000;
-const POPUP_INITIAL_DELAY_MS = 1000;
+import { useColor } from "@app/context/ColorContext";
 
 const themeColors = [
-  { name: "Blue", value: "bg-blue-500", border: "border-blue-500" },
-  { name: "Purple", value: "bg-purple-500", border: "border-purple-500" },
-  { name: "Green", value: "bg-green-500", border: "border-green-500" },
-  { name: "Orange", value: "bg-orange-500", border: "border-orange-500" },
-  { name: "Pink", value: "bg-pink-500", border: "border-pink-500" },
+  {
+    name: "iCloud Blue",
+    value: "bg-blue-300",
+    border: "border-blue-300",
+    hex: "#6EA8F7",
+  },
+  {
+    name: "Lavender",
+    value: "bg-purple-300",
+    border: "border-purple-300",
+    hex: "#B08EF5",
+  },
+  {
+    name: "Mint",
+    value: "bg-emerald-300",
+    border: "border-emerald-300",
+    hex: "#77D8A8",
+  },
+  {
+    name: "Peach",
+    value: "bg-orange-300",
+    border: "border-orange-300",
+    hex: "#F29C5B",
+  },
+  {
+    name: "Rose Gold",
+    value: "bg-rose-300",
+    border: "border-rose-300",
+    hex: "#EF8BAA",
+  },
+  {
+    name: "Sky",
+    value: "bg-sky-300",
+    border: "border-sky-300",
+    hex: "#82CCF7",
+  },
+  {
+    name: "Pale Gold",
+    value: "bg-yellow-200",
+    border: "border-yellow-200",
+    hex: "#F3D86B",
+  },
+  {
+    name: "Aqua",
+    value: "bg-cyan-300",
+    border: "border-cyan-300",
+    hex: "#72DADB",
+  },
+  {
+    name: "Lavender Mist",
+    value: "bg-violet-300",
+    border: "border-violet-300",
+    hex: "#A28BF2",
+  },
+  {
+    name: "Soft Lime",
+    value: "bg-lime-300",
+    border: "border-lime-300",
+    hex: "#B3E676",
+  },
+  {
+    name: "Champagne",
+    value: "bg-amber-200",
+    border: "border-amber-200",
+    hex: "#F3C369",
+  },
+  {
+    name: "Silver",
+    value: "bg-gray-200",
+    border: "border-gray-200",
+    hex: "#CFCFD3",
+  },
+  {
+    name: "Graphite",
+    value: "bg-slate-400",
+    border: "border-slate-400",
+    hex: "#7D8189",
+  },
+  {
+    name: "Platinum",
+    value: "bg-neutral-300",
+    border: "border-neutral-300",
+    hex: "#BFBFBF",
+  },
+  {
+    name: "Warm Stone",
+    value: "bg-stone-200",
+    border: "border-stone-200",
+    hex: "#D7D3CD",
+  },
+  {
+    name: "Seafoam",
+    value: "bg-teal-300",
+    border: "border-teal-300",
+    hex: "#6FD4C8",
+  },
+  {
+    name: "Blush",
+    value: "bg-pink-300",
+    border: "border-pink-300",
+    hex: "#EA93B8",
+  },
+  {
+    name: "Ice Blue",
+    value: "bg-sky-200",
+    border: "border-sky-200",
+    hex: "#A8D7FA",
+  },
+  {
+    name: "Fog",
+    value: "bg-gray-100",
+    border: "border-gray-100",
+    hex: "#E1E1E4",
+  },
+  {
+    name: "Midnight",
+    value: "bg-slate-500",
+    border: "border-slate-500",
+    hex: "#5E6168",
+  },
 ];
 
-const profileQuestions = [
-  {
-    field: "age",
-    question: "How old are you?",
-    type: "number",
-    icon: User,
-    placeholder: "Enter your age",
-  },
-  {
-    field: "brand",
-    question: "What's your favorite brand?",
-    type: "text",
-    icon: Heart,
-    placeholder: "e.g., Nike, Apple",
-  },
-  {
-    field: "priceRange",
-    question: "What's your typical spending range?",
-    type: "select",
-    icon: DollarSign,
-    options: [
-      "Under $50",
-      "$50 - $100",
-      "$100 - $250",
-      "$250 - $500",
-      "$500 - $1000",
-      "Above $1000",
-    ],
-  },
-  {
-    field: "occupation",
-    question: "What do you do for a living?",
-    type: "text",
-    icon: Briefcase,
-    placeholder: "Enter your occupation",
-  },
-  {
-    field: "travelMode",
-    question: "How do you usually get around?",
-    type: "select",
-    icon: Car,
-    options: ["Car", "Bike", "Public Transport", "Walking", "Multiple"],
-  },
-  {
-    field: "livingStatus",
-    question: "What's your living situation?",
-    type: "buttons",
-    icon: Home,
-    options: ["Bachelor", "Family"],
-  },
-  {
-    field: "hobbies",
-    question: "What are your hobbies?",
-    type: "multi-select",
-    icon: Heart,
-    options: [
-      "Reading",
-      "Gaming",
-      "Traveling",
-      "Cooking",
-      "Sports",
-      "Music",
-      "Photography",
-      "Art",
-    ],
-  },
-  {
-    field: "location",
-    question: "Where are you located?",
-    type: "text",
-    icon: MapPin,
-    placeholder: "Enter your city/location",
-    hasAutoDetect: true,
-  },
-  {
-    field: "pets",
-    question: "Do you have any pets?",
-    type: "buttons",
-    icon: Heart,
-    options: ["Yes", "No"],
-  },
-  {
-    field: "petType",
-    question: "What type of pet do you have?",
-    type: "select",
-    icon: Heart,
-    options: [
-      "Dog",
-      "Cat",
-      "Bird",
-      "Fish",
-      "Rabbit",
-      "Hamster",
-      "Reptile",
-      "Other",
-    ],
-    condition: (p) => p.pets === "Yes",
-  },
-  {
-    field: "paymentMode",
-    question: "How do you prefer to pay?",
-    type: "select",
-    icon: CreditCard,
-    options: ["Cash", "Credit Card", "Debit Card", "UPI", "Digital Wallet"],
-  },
-];
-
-// Components
 const CircularProgress = ({ percentage, color }) => {
-  const radius = 70;
+  const radius = 58;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percentage / 100) * circumference;
 
   return (
     <div className="relative w-40 h-40">
-      <svg className="transform -rotate-90 w-40 h-40">
+      <svg className="w-40 h-40 transform -rotate-90">
+        <defs>
+          <linearGradient
+            id={`progressGradient-${color}`}
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
+          >
+            <stop offset="0%" stopColor={color} stopOpacity="1" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+          </linearGradient>
+          <filter id={`shadow-${color}`}>
+            <feDropShadow
+              dx="0"
+              dy="2"
+              stdDeviation="3"
+              floodColor={color}
+              floodOpacity="0.5"
+            />
+          </filter>
+        </defs>
         <circle
           cx="80"
           cy="80"
           r={radius}
-          stroke="currentColor"
-          strokeWidth="10"
+          stroke="#f1f5f9"
+          strokeWidth="12"
           fill="none"
-          className="text-gray-200"
+          opacity="0.3"
         />
         <circle
           cx="80"
           cy="80"
           r={radius}
-          stroke="currentColor"
-          strokeWidth="10"
+          stroke={`url(#progressGradient-${color})`}
+          strokeWidth="12"
           fill="none"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className={color}
           strokeLinecap="round"
+          filter={`url(#shadow-${color})`}
+          style={{
+            transition: "stroke-dashoffset 1s cubic-bezier(0.65, 0, 0.35, 1)",
+          }}
         />
+        <g opacity="0.6">
+          <circle cx="80" cy={80 - radius} r="3" fill={color}>
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              from="0 80 80"
+              to="360 80 80"
+              dur="3s"
+              repeatCount="indefinite"
+            />
+          </circle>
+          <circle cx="80" cy={80 - radius} r="3" fill={color}>
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              from="120 80 80"
+              to="480 80 80"
+              dur="3s"
+              repeatCount="indefinite"
+            />
+          </circle>
+          <circle cx="80" cy={80 - radius} r="3" fill={color}>
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              from="240 80 80"
+              to="600 80 80"
+              dur="3s"
+              repeatCount="indefinite"
+            />
+          </circle>
+        </g>
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-3xl font-bold text-gray-800">
+          <div
+            className="text-4xl font-bold"
+            style={{
+              fontFamily:
+                '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+              color,
+            }}
+          >
             {Math.round(percentage)}%
           </div>
-          <div className="text-xs text-gray-500">Complete</div>
+          <div className="text-xs text-gray-500 mt-1.5 font-medium tracking-wider uppercase">
+            Complete
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-const MessageBar = ({ message, type, onClose }) => {
+const MessageBar = ({ message, type, onClose, themeColor }) => {
   if (!message) return null;
-  const colors = {
-    success: "bg-green-500",
-    error: "bg-red-500",
-    info: "bg-blue-500",
-  };
   const icons = {
     success: CheckCircle,
     error: AlertTriangle,
@@ -195,189 +259,32 @@ const MessageBar = ({ message, type, onClose }) => {
 
   return (
     <div
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] p-4 rounded-xl shadow-2xl text-white flex items-center max-w-md w-full ${
-        colors[type] || "bg-gray-500"
-      } animate-slide-down`}
+      className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center max-w-sm w-full animate-slide-down border border-white border-opacity-20"
+      style={{
+        background: `linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 50%, ${themeColor}15 100%)`,
+        backdropFilter: "blur(40px) saturate(180%)",
+        WebkitBackdropFilter: "blur(40px) saturate(180%)",
+        boxShadow:
+          "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
+      }}
     >
-      <Icon className="w-5 h-5 mr-3" />
-      <span className="text-sm font-medium flex-grow">{message}</span>
+      <Icon className="w-4 h-4 mr-3 text-gray-800" />
+      <span
+        className="text-sm font-medium flex-grow text-gray-900"
+        style={{ letterSpacing: "-0.01em" }}
+      >
+        {message}
+      </span>
       <button
         onClick={onClose}
-        className="ml-4 p-1 rounded-full hover:bg-white hover:bg-opacity-20"
+        className="ml-4 p-1.5 rounded-full hover:bg-black hover:bg-opacity-10 transition-all"
       >
-        <X className="w-4 h-4" />
+        <X className="w-3.5 h-3.5 text-gray-700" />
       </button>
     </div>
   );
 };
 
-const ProfilePopup = ({
-  profile,
-  currentQuestion,
-  answer,
-  setAnswer,
-  selectedHobbies,
-  locationLoading,
-  getLocation,
-  handleClose,
-  handleSave,
-  saving,
-  isAnswerValid,
-  toggleHobby,
-}) => {
-  if (!currentQuestion) return null;
-  const Icon = currentQuestion.icon;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-scale-in">
-        <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-        >
-          <X className="w-6 h-6" />
-        </button>
-
-        <div className="flex justify-center mb-4">
-          <div className={`${profile.themeColor.value} p-4 rounded-full`}>
-            <Icon className="w-8 h-8 text-white" />
-          </div>
-        </div>
-
-        <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">
-          Quick Question!
-        </h2>
-        <p className="text-gray-600 text-center mb-6">
-          {currentQuestion.question}
-        </p>
-
-        <div className="mb-6">
-          {currentQuestion.type === "text" && (
-            <div>
-              <input
-                type="text"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder={currentQuestion.placeholder}
-                autoFocus
-                className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
-              />
-              {currentQuestion.hasAutoDetect && (
-                <button
-                  onClick={getLocation}
-                  disabled={locationLoading}
-                  className={`mt-2 w-full py-2 rounded-lg ${profile.themeColor.value} text-white font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center`}
-                >
-                  {locationLoading ? (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  ) : (
-                    <MapPin className="w-5 h-5 mr-2" />
-                  )}
-                  {locationLoading ? "Detecting..." : "Auto-Detect Location"}
-                </button>
-              )}
-            </div>
-          )}
-
-          {currentQuestion.type === "number" && (
-            <input
-              type="number"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              autoFocus
-              placeholder={currentQuestion.placeholder}
-              className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
-            />
-          )}
-
-          {currentQuestion.type === "select" && (
-            <select
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
-            >
-              <option value="">Select an option</option>
-              {currentQuestion.options.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {currentQuestion.type === "buttons" && (
-            <div className="flex gap-3">
-              {currentQuestion.options.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setAnswer(opt)}
-                  className={`flex-1 py-3 px-4 rounded-lg border-2 font-semibold transition-all ${
-                    answer === opt
-                      ? `${profile.themeColor.border} ${profile.themeColor.value} text-white`
-                      : "border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {currentQuestion.type === "multi-select" && (
-            <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-              {currentQuestion.options.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => toggleHobby(opt)}
-                  className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${
-                    selectedHobbies.includes(opt)
-                      ? `${profile.themeColor.border} ${profile.themeColor.value} text-white`
-                      : "border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={handleClose}
-            className="flex-1 py-3 rounded-lg border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50"
-          >
-            Skip
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!isAnswerValid || saving}
-            className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center ${
-              isAnswerValid && !saving
-                ? `${profile.themeColor.value} text-white hover:opacity-90`
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save"
-            )}
-          </button>
-        </div>
-
-        <p className="text-center text-xs text-gray-400 mt-4">
-          Helping us personalize your experience
-        </p>
-      </div>
-    </div>
-  );
-};
-
-// Main Component
 export default function ProfilePage() {
   const [userDetails, setUserDetails] = useState({
     userId: "",
@@ -399,32 +306,29 @@ export default function ProfilePage() {
     petType: "",
     paymentMode: "",
   });
+  const { updateColor } = useColor();
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState(null);
-  const [showPopup, setShowPopup] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [answer, setAnswer] = useState("");
-  const [selectedHobbies, setSelectedHobbies] = useState([]);
-  const [askedQuestions, setAskedQuestions] = useState([]);
 
+  // Auto-hide message after 4 seconds
   useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        setMessage(null);
-        setMessageType(null);
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
+    if (!message) return;
+    const timer = setTimeout(() => {
+      setMessage(null);
+      setMessageType(null);
+    }, 4000);
+    return () => clearTimeout(timer);
   }, [message]);
 
-  const showCustomMessage = (msg, type = "info") => {
+  const showCustomMessage = useCallback((msg, type = "info") => {
     setMessage(msg);
     setMessageType(type);
-  };
+  }, []);
 
   const calculateCompletion = useCallback(() => {
     const fields = [
@@ -448,160 +352,61 @@ export default function ProfilePage() {
       : Math.round((totalFilled / totalFields) * 100);
   }, [profile]);
 
-  const showNextQuestion = useCallback(() => {
-    if (showPopup) return;
-    const unanswered = profileQuestions.filter((q) => {
-      if (q.condition && !q.condition(profile)) return false;
-      const value = profile[q.field];
-      const isEmpty = Array.isArray(value)
-        ? value.length === 0
-        : !value || value.toString().trim() === "";
-      return isEmpty && !askedQuestions.includes(q.field);
-    });
-    if (unanswered.length > 0) {
-      const randomQuestion =
-        unanswered[Math.floor(Math.random() * unanswered.length)];
-      setCurrentQuestion(randomQuestion);
-      setSelectedHobbies(
-        randomQuestion.type === "multi-select" ? profile.hobbies || [] : []
-      );
-      setAnswer(
-        randomQuestion.type === "multi-select"
-          ? ""
-          : profile[randomQuestion.field] || ""
-      );
-      setShowPopup(true);
-    }
-  }, [profile, askedQuestions, showPopup]);
-
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  useEffect(() => {
-    if (loading || window.location.pathname.toLowerCase().includes("/profile"))
-      return;
-    const initialTimeout = setTimeout(showNextQuestion, POPUP_INITIAL_DELAY_MS);
-    const intervalTimer = setInterval(showNextQuestion, POPUP_INTERVAL_MS);
-    return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(intervalTimer);
-    };
-  }, [loading, showNextQuestion]);
-
-  const handlePopupClose = () => {
-    if (currentQuestion)
-      setAskedQuestions((prev) => [...prev, currentQuestion.field]);
-    setShowPopup(false);
-    setCurrentQuestion(null);
-    setAnswer("");
-    setSelectedHobbies([]);
-  };
-
-  const handlePopupSave = async () => {
-    if (!currentQuestion) return;
-    setSaving(true);
-    try {
-      let valueToSave =
-        currentQuestion.type === "multi-select" ? selectedHobbies : answer;
-      if (currentQuestion.type === "number") {
-        valueToSave = parseInt(valueToSave, 10);
-        if (isNaN(valueToSave) || valueToSave <= 0) valueToSave = "";
-      }
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: profile.userId,
-          [currentQuestion.field]: valueToSave,
-          themeColor: profile.themeColor,
-        }),
-      });
-      if (!res.ok)
-        throw new Error((await res.json()).error || "Failed to save");
-      setProfile((prev) => ({
-        ...prev,
-        [currentQuestion.field]: valueToSave,
-        ...(currentQuestion.field === "pets" && valueToSave === "No"
-          ? { petType: "" }
-          : {}),
-      }));
-      setAskedQuestions((prev) => [...prev, currentQuestion.field]);
-      showCustomMessage(`Saved your answer!`, "success");
-      setTimeout(handlePopupClose, 500);
-    } catch (error) {
-      showCustomMessage(`Error: ${error.message}`, "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const togglePopupHobby = (hobby) => {
-    setSelectedHobbies((prev) =>
-      prev.includes(hobby) ? prev.filter((h) => h !== hobby) : [...prev, hobby]
-    );
-  };
-
-  const isAnswerValid = () => {
-    if (!currentQuestion) return false;
-    if (currentQuestion.type === "multi-select")
-      return selectedHobbies.length > 0;
-    if (currentQuestion.type === "number") {
-      const num = parseInt(answer, 10);
-      return !isNaN(num) && num > 0;
-    }
-    return answer && answer.toString().trim() !== "";
-  };
-
-  const handleUpdate = (field, value) => {
+  const handleUpdate = useCallback((field, value) => {
     setProfile((prev) => {
       const newState = { ...prev, [field]: value };
       if (field === "pets" && value === "No") newState.petType = "";
-      setHasChanges(true);
       return newState;
     });
-  };
+    setHasChanges(true);
+  }, []);
 
-  const loadUserData = async () => {
-    try {
-      const userRes = await fetch("/api/users");
-      if (!userRes.ok) throw new Error("Failed to fetch user");
-      const userData = await userRes.json();
-      const userId =
-        userData.user.id ||
-        userData.user._id?.toString() ||
-        userData.user._id?.$oid;
-      setUserDetails({
-        userId,
-        email: userData.user.email || "No Email",
-        name: userData.user.name || userData.user.username || "User",
-      });
+  // Load user data on mount
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userRes = await fetch("/api/users");
+        if (!userRes.ok) throw new Error("Failed to fetch user");
+        const userData = await userRes.json();
+        const userId =
+          userData.user.id ||
+          userData.user._id?.toString() ||
+          userData.user._id?.$oid;
 
-      const profileRes = await fetch(`/api/profile?userId=${userId}`);
-      if (profileRes.ok) {
-        const profileData = await profileRes.json();
-        const themeColor =
-          themeColors.find(
-            (tc) => tc.name === profileData.data.themeColor?.name
-          ) || themeColors[0];
-        setProfile((prev) => ({
-          ...prev,
-          ...profileData.data,
+        setUserDetails({
           userId,
-          themeColor,
-          hobbies: profileData.data.hobbies || [],
-        }));
-      } else {
-        setProfile((prev) => ({ ...prev, userId }));
-      }
-    } catch (error) {
-      showCustomMessage(`Failed to load: ${error.message}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+          email: userData.user.email || "No Email",
+          name: userData.user.name || userData.user.username || "User",
+        });
 
-  const saveToDatabase = async () => {
+        const profileRes = await fetch(`/api/profile?userId=${userId}`);
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          const themeColor =
+            themeColors.find(
+              (tc) => tc.name === profileData.data.themeColor?.name
+            ) || themeColors[0];
+          setProfile((prev) => ({
+            ...prev,
+            ...profileData.data,
+            userId,
+            themeColor,
+            hobbies: profileData.data.hobbies || [],
+          }));
+        } else {
+          setProfile((prev) => ({ ...prev, userId }));
+        }
+      } catch (error) {
+        showCustomMessage(`Failed to load: ${error.message}`, "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [showCustomMessage]);
+
+  const saveToDatabase = useCallback(async () => {
     setSaving(true);
     try {
       const profileData = {
@@ -623,13 +428,17 @@ export default function ProfilePage() {
         petType: profile.pets === "Yes" ? profile.petType : "",
         paymentMode: profile.paymentMode || "",
       };
+
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profileData),
       });
+
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Failed to update");
+
+      updateColor(profile.themeColor.value);
       setHasChanges(false);
       showCustomMessage("Profile saved successfully!", "success");
     } catch (error) {
@@ -637,57 +446,65 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [userDetails.userId, profile, updateColor, showCustomMessage]);
 
-  const getLocation = () => {
-    setLocationLoading(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          try {
-            const response = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-            );
-            const data = await response.json();
-            const location = `${data.city}, ${data.principalSubdivision}, ${data.countryName}`;
-            showPopup
-              ? setAnswer(location)
-              : handleUpdate("location", location);
-            showCustomMessage("Location detected!", "info");
-          } catch {
-            const location = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-            showPopup
-              ? setAnswer(location)
-              : handleUpdate("location", location);
-            showCustomMessage("Using coordinates", "info");
-          } finally {
-            setLocationLoading(false);
-          }
-        },
-        () => {
-          setLocationLoading(false);
-          showCustomMessage("Unable to get location", "error");
-        }
-      );
-    } else {
-      setLocationLoading(false);
+  const getLocation = useCallback(() => {
+    if (!navigator.geolocation) {
       showCustomMessage("Geolocation not supported", "error");
+      return;
     }
-  };
 
-  const toggleHobby = (hobby) => {
-    const newHobbies = profile.hobbies.includes(hobby)
-      ? profile.hobbies.filter((h) => h !== hobby)
-      : [...profile.hobbies, hobby];
-    handleUpdate("hobbies", newHobbies);
-  };
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          const data = await response.json();
+          const location = `${data.city}, ${data.principalSubdivision}, ${data.countryName}`;
+          handleUpdate("location", location);
+          showCustomMessage("Location detected!", "info");
+        } catch {
+          const location = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          handleUpdate("location", location);
+          showCustomMessage("Using coordinates", "info");
+        } finally {
+          setLocationLoading(false);
+        }
+      },
+      () => {
+        setLocationLoading(false);
+        showCustomMessage("Unable to get location", "error");
+      }
+    );
+  }, [handleUpdate, showCustomMessage]);
+
+  const toggleHobby = useCallback((hobby) => {
+    setProfile((prev) => {
+      const newHobbies = prev.hobbies.includes(hobby)
+        ? prev.hobbies.filter((h) => h !== hobby)
+        : [...prev.hobbies, hobby];
+      return { ...prev, hobbies: newHobbies };
+    });
+    setHasChanges(true);
+  }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <div className="text-xl text-gray-600 ml-3">Loading profile...</div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader2 className="w-7 h-7 animate-spin text-gray-900" />
+        <div
+          className="text-lg text-gray-600 ml-3"
+          style={{
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+            letterSpacing: "-0.01em",
+          }}
+        >
+          Loading profile...
+        </div>
       </div>
     );
   }
@@ -700,79 +517,100 @@ export default function ProfilePage() {
         message={message}
         type={messageType}
         onClose={() => setMessage(null)}
+        themeColor={profile.themeColor.hex}
       />
-      {showPopup && (
-        <ProfilePopup
-          profile={profile}
-          currentQuestion={currentQuestion}
-          answer={answer}
-          setAnswer={setAnswer}
-          selectedHobbies={selectedHobbies}
-          locationLoading={locationLoading}
-          getLocation={getLocation}
-          handleClose={handlePopupClose}
-          handleSave={handlePopupSave}
-          saving={saving}
-          isAnswerValid={isAnswerValid()}
-          toggleHobby={togglePopupHobby}
-        />
-      )}
 
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              My Profile
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4">
+        <div className="max-w-3xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center mb-10 mt-10">
+            <h1
+              className="text-5xl font-semibold text-gray-900 mb-3"
+              style={{
+                fontFamily:
+                  '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+                letterSpacing: "-0.03em",
+              }}
+            >
+              Profile
             </h1>
-            <p className="text-gray-600">
-              Complete your profile for personalized recommendations
+            <p
+              className="text-gray-600 text-lg"
+              style={{ letterSpacing: "-0.01em" }}
+            >
+              Complete your profile for a personalized experience
             </p>
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg shadow-sm">
-                <User className="w-4 h-4 text-blue-500" />
-                <span className="font-medium">{userDetails.name}</span>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
+              <div className="flex items-center gap-2.5 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-200">
+                <User
+                  className="w-3.5 h-3.5"
+                  style={{ color: profile.themeColor.hex }}
+                />
+                <span
+                  className="font-medium text-gray-900"
+                  style={{ letterSpacing: "-0.01em" }}
+                >
+                  {userDetails.name}
+                </span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg shadow-sm">
-                <Mail className="w-4 h-4 text-blue-500" />
-                <span>{userDetails.email}</span>
+              <div className="flex items-center gap-2.5 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-200">
+                <Mail
+                  className="w-3.5 h-3.5"
+                  style={{ color: profile.themeColor.hex }}
+                />
+                <span
+                  className="text-gray-700"
+                  style={{ letterSpacing: "-0.01em" }}
+                >
+                  {userDetails.email}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-center mb-10">
+          {/* Completion Circle */}
+          <div className="flex justify-center mb-12">
             <CircularProgress
               percentage={completion}
-              color={profile.themeColor.value.replace("bg-", "text-")}
+              color={profile.themeColor.hex}
             />
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 space-y-6">
+          {/* Form Container */}
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 space-y-8">
+            {/* Theme Color Selector */}
             <div>
-              <label className="flex items-center text-sm font-semibold text-gray-700 mb-3">
-                <Palette className="w-5 h-5 mr-2" />
-                Profile Theme
+              <label
+                className="flex items-center text-sm font-medium text-gray-700 mb-4"
+                style={{ letterSpacing: "-0.01em" }}
+              >
+                <Palette className="w-4 h-4 mr-2.5" />
+                Color
               </label>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 {themeColors.map((color) => (
                   <button
                     key={color.name}
                     onClick={() => handleUpdate("themeColor", color)}
-                    className={`w-12 h-12 rounded-full ${
+                    className={`w-11 h-11 rounded-full ${
                       color.value
-                    } transition-all shadow-md ${
+                    } transition-all shadow-sm hover:shadow-md ${
                       profile.themeColor.name === color.name
-                        ? "ring-4 ring-offset-2 ring-gray-400 scale-110"
+                        ? "ring-2 ring-offset-2 ring-gray-900 scale-105"
                         : "hover:scale-105"
                     }`}
                     title={color.name}
+                    style={{
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    }}
                   />
                 ))}
               </div>
             </div>
-
+            {/* Form Fields - Add this after the Theme Color Selector */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <User className="w-4 h-4 mr-2" />
                   Age
                 </label>
@@ -781,12 +619,12 @@ export default function ProfilePage() {
                   value={profile.age}
                   onChange={(e) => handleUpdate("age", e.target.value)}
                   placeholder="Enter your age"
-                  className="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <Briefcase className="w-4 h-4 mr-2" />
                   Occupation
                 </label>
@@ -795,12 +633,12 @@ export default function ProfilePage() {
                   value={profile.occupation}
                   onChange={(e) => handleUpdate("occupation", e.target.value)}
                   placeholder="Your occupation"
-                  className="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <Heart className="w-4 h-4 mr-2" />
                   Favorite Brand
                 </label>
@@ -808,90 +646,71 @@ export default function ProfilePage() {
                   type="text"
                   value={profile.brand}
                   onChange={(e) => handleUpdate("brand", e.target.value)}
-                  placeholder="e.g., Nike, Apple"
-                  className="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                  placeholder="e.g., Apple, Nike"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <Car className="w-4 h-4 mr-2" />
                   Travel Mode
                 </label>
                 <select
                   value={profile.travelMode}
                   onChange={(e) => handleUpdate("travelMode", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
                 >
                   <option value="">Select mode</option>
-                  {[
-                    "Car",
-                    "Bike",
-                    "Public Transport",
-                    "Walking",
-                    "Multiple",
-                  ].map((mode) => (
-                    <option key={mode} value={mode}>
-                      {mode}
-                    </option>
-                  ))}
+                  <option value="Car">Car</option>
+                  <option value="Bike">Bike</option>
+                  <option value="Public Transport">Public Transport</option>
+                  <option value="Walking">Walking</option>
+                  <option value="Multiple">Multiple</option>
                 </select>
               </div>
 
               <div>
-                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Price Range
                 </label>
                 <select
                   value={profile.priceRange}
                   onChange={(e) => handleUpdate("priceRange", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
                 >
                   <option value="">Select range</option>
-                  {[
-                    "Under $50",
-                    "$50 - $100",
-                    "$100 - $250",
-                    "$250 - $500",
-                    "$500 - $1000",
-                    "Above $1000",
-                  ].map((range) => (
-                    <option key={range} value={range}>
-                      {range}
-                    </option>
-                  ))}
+                  <option value="Under $50">Under $50</option>
+                  <option value="$50 - $100">$50 - $100</option>
+                  <option value="$100 - $250">$100 - $250</option>
+                  <option value="$250 - $500">$250 - $500</option>
+                  <option value="$500 - $1000">$500 - $1000</option>
+                  <option value="Above $1000">Above $1000</option>
                 </select>
               </div>
 
               <div>
-                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <CreditCard className="w-4 h-4 mr-2" />
                   Payment Mode
                 </label>
                 <select
                   value={profile.paymentMode}
                   onChange={(e) => handleUpdate("paymentMode", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
                 >
                   <option value="">Select mode</option>
-                  {[
-                    "Cash",
-                    "Credit Card",
-                    "Debit Card",
-                    "UPI",
-                    "Digital Wallet",
-                  ].map((mode) => (
-                    <option key={mode} value={mode}>
-                      {mode}
-                    </option>
-                  ))}
+                  <option value="Cash">Cash</option>
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Debit Card">Debit Card</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Digital Wallet">Digital Wallet</option>
                 </select>
               </div>
             </div>
-
             <div>
-              <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-3">
                 <Home className="w-4 h-4 mr-2" />
                 Living Status
               </label>
@@ -900,21 +719,28 @@ export default function ProfilePage() {
                   <button
                     key={status}
                     onClick={() => handleUpdate("livingStatus", status)}
-                    className={`flex-1 py-2.5 rounded-lg border-2 font-semibold transition-all ${
+                    className={`flex-1 py-3 rounded-xl font-medium transition-all ${
                       profile.livingStatus === status
-                        ? `${profile.themeColor.border} ${profile.themeColor.value} text-white`
-                        : "border-gray-200 hover:bg-gray-50"
+                        ? "shadow-sm"
+                        : "bg-gray-100"
                     }`}
+                    style={
+                      profile.livingStatus === status
+                        ? {
+                            color: profile.themeColor.hex,
+                            backgroundColor: `${profile.themeColor.hex}20`,
+                          }
+                        : {}
+                    }
                   >
                     {status}
                   </button>
                 ))}
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                <label className="text-sm font-medium text-gray-700 mb-3 block">
                   Pets
                 </label>
                 <div className="flex gap-3">
@@ -922,11 +748,17 @@ export default function ProfilePage() {
                     <button
                       key={option}
                       onClick={() => handleUpdate("pets", option)}
-                      className={`flex-1 py-2.5 rounded-lg border-2 font-semibold transition-all ${
-                        profile.pets === option
-                          ? `${profile.themeColor.border} ${profile.themeColor.value} text-white`
-                          : "border-gray-200 hover:bg-gray-50"
+                      className={`flex-1 py-3 rounded-xl font-medium ${
+                        profile.pets === option ? "shadow-sm" : "bg-gray-100"
                       }`}
+                      style={
+                        profile.pets === option
+                          ? {
+                              color: profile.themeColor.hex,
+                              backgroundColor: `${profile.themeColor.hex}20`,
+                            }
+                          : {}
+                      }
                     >
                       {option}
                     </button>
@@ -936,40 +768,33 @@ export default function ProfilePage() {
 
               {profile.pets === "Yes" && (
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                  <label className="text-sm font-medium text-gray-700 mb-3 block">
                     Pet Type
                   </label>
                   <select
                     value={profile.petType}
                     onChange={(e) => handleUpdate("petType", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
                   >
                     <option value="">Select type</option>
-                    {[
-                      "Dog",
-                      "Cat",
-                      "Bird",
-                      "Fish",
-                      "Rabbit",
-                      "Hamster",
-                      "Reptile",
-                      "Other",
-                    ].map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
+                    <option value="Dog">Dog</option>
+                    <option value="Cat">Cat</option>
+                    <option value="Bird">Bird</option>
+                    <option value="Fish">Fish</option>
+                    <option value="Rabbit">Rabbit</option>
+                    <option value="Hamster">Hamster</option>
+                    <option value="Reptile">Reptile</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
               )}
             </div>
-
             <div>
-              <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-3">
                 <Heart className="w-4 h-4 mr-2" />
                 Hobbies
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {[
                   "Reading",
                   "Gaming",
@@ -983,20 +808,27 @@ export default function ProfilePage() {
                   <button
                     key={hobby}
                     onClick={() => toggleHobby(hobby)}
-                    className={`py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    className={`py-2.5 px-3 rounded-xl text-sm font-medium ${
                       profile.hobbies.includes(hobby)
-                        ? `${profile.themeColor.border} ${profile.themeColor.value} text-white`
-                        : "border-gray-200 hover:bg-gray-50"
+                        ? "shadow-sm"
+                        : "bg-gray-100"
                     }`}
+                    style={
+                      profile.hobbies.includes(hobby)
+                        ? {
+                            color: profile.themeColor.hex,
+                            backgroundColor: `${profile.themeColor.hex}20`,
+                          }
+                        : {}
+                    }
                   >
                     {hobby}
                   </button>
                 ))}
               </div>
             </div>
-
             <div>
-              <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-3">
                 <MapPin className="w-4 h-4 mr-2" />
                 Location
               </label>
@@ -1006,40 +838,63 @@ export default function ProfilePage() {
                   value={profile.location}
                   onChange={(e) => handleUpdate("location", e.target.value)}
                   placeholder="Enter your location"
-                  className="flex-1 px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                  className="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
                 />
                 <button
                   onClick={getLocation}
                   disabled={locationLoading}
-                  className={`px-6 py-2.5 rounded-lg ${profile.themeColor.value} text-white font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center whitespace-nowrap`}
+                  className="px-6 py-3 rounded-xl font-medium flex items-center justify-center"
+                  style={{
+                    color: profile.themeColor.hex,
+                    backgroundColor: `${profile.themeColor.hex}20`,
+                  }}
                 >
                   {locationLoading ? (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <MapPin className="w-5 h-5 mr-2" />
+                    <MapPin className="w-4 h-4 mr-2" />
                   )}
                   {locationLoading ? "Detecting..." : "Auto-Detect"}
                 </button>
               </div>
-            </div>
+            </div>{" "}
           </div>
 
-          <div className="mt-8 flex justify-center">
+          {/* Save Button */}
+          <div className="mt-10 flex justify-center">
             <button
               onClick={saveToDatabase}
               disabled={!hasChanges || saving}
-              className={`px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center shadow-lg ${
+              className={`px-12 py-4 rounded-full font-medium text-base transition-all flex items-center justify-center shadow-sm ${
                 hasChanges && !saving
-                  ? `${profile.themeColor.value} text-white hover:opacity-90 hover:shadow-xl transform hover:scale-105`
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  ? "transform hover:scale-105"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
+              style={{
+                letterSpacing: "-0.01em",
+                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                ...(hasChanges && !saving
+                  ? {
+                      color: profile.themeColor.hex,
+                      backgroundColor: `${profile.themeColor.hex}20`,
+                    }
+                  : {}),
+              }}
+              onMouseEnter={(e) => {
+                if (hasChanges && !saving)
+                  e.target.style.backgroundColor = `${profile.themeColor.hex}40`;
+              }}
+              onMouseLeave={(e) => {
+                if (hasChanges && !saving)
+                  e.target.style.backgroundColor = `${profile.themeColor.hex}20`;
+              }}
             >
-              {saving && <Loader2 className="w-5 h-5 mr-3 animate-spin" />}
+              {saving && <Loader2 className="w-4 h-4 mr-2.5 animate-spin" />}
               {saving
                 ? "Saving..."
                 : hasChanges
-                ? "Save Profile Changes"
-                : "No Changes to Save"}
+                ? "Save Changes"
+                : "No Changes"}
             </button>
           </div>
         </div>
@@ -1057,20 +912,11 @@ export default function ProfilePage() {
           }
         }
         .animate-slide-down {
-          animation: slide-down 0.3s ease-out;
+          animation: slide-down 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.9);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        .animate-scale-in {
-          animation: scale-in 0.3s ease-out;
+        * {
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
       `}</style>
     </>

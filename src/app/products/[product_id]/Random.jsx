@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Heart, Star } from "lucide-react";
 import Image from "next/image";
+import { motion } from "framer-motion"; // ✅ Added import
+
 const relatedProducts = [
   {
     id: 1,
@@ -29,54 +31,56 @@ const relatedProducts = [
 
 export function Random({ product, ...props }) {
   return (
-    <div {...props} className="space-y-6">
+    <motion.div
+      {...props}
+      className="space-y-6"
+      initial={{ opacity: 0, y: 20 }} // ✅ Fade + slide animation
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+    >
       {/* Recently Viewed */}
       <Card className="p-6">
-        <h3 className="mb-4">Recently Viewed</h3>
+        <h3 className="mb-4 font-semibold">Recently Viewed</h3>
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex gap-3">
-            <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
-              <Image
-                src={product.imgUrl}
-                alt={product.title}
-                className="w-full h-full object-cover"
-                width={200}
-                height={200}
-                unoptimized
-              />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Bluetooth Speaker</p>
-              <p className="text-sm text-muted-foreground">$89.99</p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
-              <Image
-                src={product.imgUrl}
-                alt={product.title}
-                className="w-full h-full object-cover"
-                width={200}
-                height={200}
-                unoptimized
-              />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Laptop Stand</p>
-              <p className="text-sm text-muted-foreground">$45.99</p>
-            </div>
-          </div>
+          {["Bluetooth Speaker", "Laptop Stand"].map((name, i) => (
+            <motion.div
+              key={i}
+              className="flex gap-3"
+              whileHover={{ scale: 1.03 }}
+            >
+              <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
+                <Image
+                  src={product.imgUrl}
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                  width={200}
+                  height={200}
+                  unoptimized
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {i === 0 ? "$89.99" : "$45.99"}
+                </p>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </Card>
 
       {/* Related Products */}
       <Card className="p-6">
-        <h3 className="mb-4">You Might Also Like</h3>
+        <h3 className="mb-4 font-semibold">You Might Also Like</h3>
         <div className="space-y-4">
-          {relatedProducts.map((product) => (
-            <div
+          {relatedProducts.map((product, index) => (
+            <motion.div
               key={product.id}
               className="flex gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow"
+              whileHover={{ scale: 1.02 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
             >
               <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0"></div>
               <div className="flex-1 space-y-2">
@@ -104,10 +108,10 @@ export function Random({ product, ...props }) {
                   Add
                 </Button>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </Card>
-    </div>
+    </motion.div>
   );
 }

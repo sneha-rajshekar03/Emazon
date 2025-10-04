@@ -1,54 +1,83 @@
 import React from "react";
-import { assets } from "../../../../assets/assets";
 import Image from "next/image";
+import { Phone, Mail } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer>
-      <div className="flex flex-col md:flex-row items-start justify-center px-6 md:px-16 lg:px-32 gap-10 py-14 border-b border-gray-500/30 text-gray-500">
-        <div className="w-4/5">
-          <Image className="w-28 md:w-32" src={assets.logo} alt="logo" />
-          <p className="mt-6 text-sm">
-            This is only a test prototype of dynamic e-commerce website with
-            Next.js, React.js, Tailwind CSS and MongoDB. All the products and
-            content are for demonstration purposes only. For more information, 
-            get in touch via the contact details provided. 
+    <footer className="mt-20">
+      {/* Top Section */}
+      <div
+        className="
+          flex flex-col md:flex-row items-start justify-evenly
+          px-8 md:px-16 lg:px-32 py-10 gap-12
+          border-t border-gray-200
+          text-gray-600
+          bg-white/80 backdrop-blur-md
+        "
+      >
+        {/* Logo + Description */}
+        <div className="flex flex-row items-center md:items-start gap-5 max-w-sm text-center md:text-left">
+          <Image
+            className="w-14 md:w-16 opacity-90 hover:opacity-100 transition"
+            src="/logo.svg"
+            alt="Emazon Logo"
+            width={70}
+            height={70}
+          />
+          <p className="text-xs md:text-sm leading-relaxed text-gray-600">
+            This is a prototype of a dynamic e-commerce platform built using
+            <span className="text-gray-800 font-medium">
+              {" "}
+              Next.js, React.js, Tailwind CSS,
+            </span>{" "}
+            and MongoDB. All products and content are for demonstration purposes
+            only.
           </p>
         </div>
 
-        <div className="w-1/2 flex items-center justify-start md:justify-center">
-          <div>
-            <h2 className="font-medium text-gray-900 mb-5">Company</h2>
-            <ul className="text-sm space-y-2">
-              <li>
-                <a className="hover:underline transition" href="#">Home</a>
-              </li>
-              <li>
-                <a className="hover:underline transition" href="#">About us</a>
-              </li>
-              <li>
-                <a className="hover:underline transition" href="#">Contact us</a>
-              </li>
-              <li>
-                <a className="hover:underline transition" href="#">Privacy policy</a>
-              </li>
-            </ul>
-          </div>
+        {/* Company Links */}
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+          <h2 className="font-semibold text-gray-900 mb-4 text-sm uppercase tracking-wide">
+            Company
+          </h2>
+          <ul className="text-xs md:text-sm space-y-2">
+            {["Home", "About us", "Contact us", "Privacy policy"].map(
+              (item) => (
+                <li key={item}>
+                  <a
+                    className="hover:text-gray-900 transition-colors duration-200"
+                    href="#"
+                  >
+                    {item}
+                  </a>
+                </li>
+              )
+            )}
+          </ul>
         </div>
 
-        <div className="w-1/2 flex items-start justify-start md:justify-center">
-          <div>
-            <h2 className="font-medium text-gray-900 mb-5">Get in touch</h2>
-            <div className="text-sm space-y-2">
-              <p>+91 7342 9232</p>
-              <p>contact@emazon</p>
+        {/* Contact Info */}
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+          <h2 className="font-semibold text-gray-900 mb-4 text-sm uppercase tracking-wide">
+            Get in touch
+          </h2>
+          <div className="text-gray-800 text-xs md:text-sm space-y-2">
+            <div className="flex items-center justify-center md:justify-start space-x-2">
+              <Phone className="w-4 h-4 text-gray-500" />
+              <p className="tracking-wide">+91 7342 9232</p>
+            </div>
+            <div className="flex items-center justify-center md:justify-start space-x-2">
+              <Mail className="w-4 h-4 text-gray-500" />
+              <p className="tracking-wide">contact@emazon</p>
             </div>
           </div>
         </div>
       </div>
-      <p className="py-4 text-center text-xs md:text-sm">
-        Copyright 2025 © sneharajashekar.com All Right Reserved.
-      </p>
+
+      {/* Bottom Copyright */}
+      <div className="py-4 text-center text-xs md:text-sm text-gray-500 border-t border-gray-200 bg-white">
+        © 2025 sneharajashekar.com — All Rights Reserved.
+      </div>
     </footer>
   );
 };

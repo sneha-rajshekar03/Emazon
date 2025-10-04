@@ -1,30 +1,36 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import { assets } from "../../../../assets/assets";
 import Image from "next/image";
+import { useColor } from "@app/context/ColorContext";
 
-const HeaderSlider = ({ color }) => {
+const HeaderSlider = () => {
+  const { hexColor } = useColor();
+
   const sliderData = [
     {
       id: 1,
-      title: "COMING SOON!!",
-      buttonText1: "Buy now",
-      buttonText2: "Find more",
-      imgSrc: null,
+      title: "Introducing the Future.",
+      subtitle: "Elegance. Precision. Performance.",
+      buttonText1: "Shop Now",
+      buttonText2: "Learn More",
+      imgSrc: assets.iphone, // example product image
     },
     {
       id: 2,
-      title: "HEROBANNER",
-      buttonText1: "Shop Now",
-      buttonText2: "Explore Deals",
-      imgSrc: null,
+      title: "AirPods Pro.",
+      subtitle: "Sound that feels alive.",
+      buttonText1: "Buy",
+      buttonText2: "Discover",
+      imgSrc: assets.airpods,
     },
     {
       id: 3,
-      title: "COMING SOON!!",
-      offer: "Exclusive Deal 40% Off",
+      title: "MacBook Air M3.",
+      subtitle: "Power. Redefined.",
       buttonText1: "Order Now",
-      buttonText2: "Learn More",
-      imgSrc: null,
+      buttonText2: "Explore",
+      imgSrc: assets.macbook,
     },
   ];
 
@@ -33,7 +39,7 @@ const HeaderSlider = ({ color }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % sliderData.length);
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [sliderData.length]);
 
@@ -42,76 +48,115 @@ const HeaderSlider = ({ color }) => {
   };
 
   return (
-    <div className="overflow-hidden relative w-full">
+    <div className="overflow-hidden relative w-full select-none">
+      {/* Slides */}
       <div
         className="flex transition-transform duration-700 ease-in-out"
         style={{
           transform: `translateX(-${currentSlide * 100}%)`,
         }}
       >
-        {sliderData.map((slide, index) => (
+        {sliderData.map((slide) => (
           <div
             key={slide.id}
-            className="flex flex-col-reverse md:flex-row items-center justify-between py-8 md:px-14 px-5 mt-6 rounded-xl min-w-full mb-4"
+            className="flex flex-col-reverse md:flex-row items-center justify-between py-14 md:px-20 px-6 min-w-full"
             style={{
               background: `linear-gradient(
-                to bottom right,
-                rgba(255, 255, 255, 0.9),
-                rgba(255, 255, 255, 0.85),
-                ${color || "rgba(240, 245, 255, 0.2)"}
+                160deg,
+                rgba(255, 255, 255, 0.85) 0%,
+                rgba(255, 255, 255, 0.7) 50%,
+                ${hexColor}10 100%
               )`,
+              backdropFilter: "blur(20px) saturate(160%)",
+              WebkitBackdropFilter: "blur(20px) saturate(160%)",
+              borderTop: "1px solid rgba(255,255,255,0.6)",
+              borderBottom: "1px solid rgba(255,255,255,0.4)",
             }}
           >
-            <div className="md:pl-8 mt-10 md:mt-0">
-              <p className="md:text-base text-orange-400 pb-1">{slide.offer}</p>
-              <h1 className="max-w-lg md:text-[40px] md:leading-[48px] text-2xl font-semibold text-gray-800">
+            {/* Text Section */}
+            <div className="flex flex-col justify-center md:pl-8 mt-8 md:mt-0 text-center md:text-left max-w-lg">
+              <h1 className="text-[2rem] sm:text-[3rem] font-semibold tracking-tight text-gray-900 leading-tight">
                 {slide.title}
               </h1>
-              <div className="flex items-center mt-4 md:mt-6">
+              <p className="text-gray-600 text-lg sm:text-xl mt-2">
+                {slide.subtitle}
+              </p>
+
+              <div className="flex items-center mt-6 gap-4 justify-center md:justify-start">
                 <button
-                  className="md:px-10 px-7 md:py-2.5 py-2 rounded-full text-black font-medium shadow"
-                  style={{ background: color || gray }}
+                  className="px-8 py-2.5 rounded-full text-white font-medium shadow-md transition-all hover:scale-[1.03]"
+                  style={{
+                    background: `linear-gradient(145deg, ${hexColor}, ${hexColor}cc)`,
+                    boxShadow: `0 5px 15px ${hexColor}40`,
+                  }}
                 >
                   {slide.buttonText1}
                 </button>
-                <button className="group flex items-center gap-2 px-6 py-2.5 font-medium text-gray-700">
+
+                <button className="group flex items-center gap-1.5 px-5 py-2.5 font-medium text-gray-800 hover:text-black transition-all">
                   {slide.buttonText2}
                   <Image
-                    className="group-hover:translate-x-1 transition"
+                    className="group-hover:translate-x-1 transition-transform"
                     src={assets.arrow_icon}
                     alt="arrow_icon"
+                    width={16}
+                    height={16}
                   />
                 </button>
               </div>
             </div>
-            <div className="flex items-center flex-1 justify-center">
-              <Image
-                className="md:w-72 w-48"
-                src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
-                alt={`Slide ${index + 1}`}
-                width={30}
-                height={30}
-              />
+
+            {/* Image Section */}
+            <div className="flex justify-center items-center flex-1">
+              <div className="relative w-[280px] sm:w-[360px] md:w-[420px] aspect-square">
+                <div
+                  className="absolute inset-0 rounded-3xl"
+                  style={{
+                    background: `radial-gradient(circle at bottom right, ${hexColor}30 0%, transparent 70%)`,
+                    filter: "blur(40px)",
+                  }}
+                />
+                {slide.imgSrc ? (
+                  <Image
+                    src={slide.imgSrc}
+                    alt={slide.title}
+                    fill
+                    className="object-contain z-10 relative"
+                    unoptimized
+                  />
+                ) : (
+                  <Image
+                    src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
+                    alt="placeholder"
+                    width={300}
+                    height={300}
+                    className="z-10"
+                  />
+                )}
+              </div>
             </div>
           </div>
         ))}
       </div>
 
       {/* Dots */}
-      <div className="flex items-center justify-center gap-2 mt-8">
+      <div className="flex items-center justify-center gap-3 mt-6 mb-4">
         {sliderData.map((_, index) => (
           <div
             key={index}
             onClick={() => handleSlideChange(index)}
-            className={`h-2 w-2 rounded-full cursor-pointer transition mb-4`}
+            className={`h-2.5 w-2.5 rounded-full cursor-pointer transition-all ${
+              currentSlide === index ? "scale-110" : "opacity-60"
+            }`}
             style={{
-              background:
+              backgroundColor:
+                currentSlide === index ? hexColor : "rgba(180, 180, 180, 0.5)",
+              boxShadow:
                 currentSlide === index
-                  ? color || "rgba(240, 245, 255, 0.5)"
-                  : "rgba(255, 255, 255, 0.6)",
-              border: `1px solid ${color || "rgba(240, 245, 255, 0.3)"}`,
+                  ? `0 0 10px ${hexColor}70`
+                  : "0 0 4px rgba(0,0,0,0.05)",
             }}
-          ></div>
+          />
         ))}
       </div>
     </div>

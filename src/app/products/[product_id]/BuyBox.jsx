@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useCart } from "@app/context/CartContent";
+import { useColor } from "@app/context/ColorContext";
 import { useSession } from "next-auth/react";
 import {
   ShoppingCart,
@@ -16,6 +17,7 @@ import { useRouter, usePathname } from "next/navigation";
 
 export function BuyBox({ product, ...props }) {
   const { addToCart, checkout } = useCart();
+  const { hexColor } = useColor();
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -31,6 +33,7 @@ export function BuyBox({ product, ...props }) {
     orderId: "",
     amount: 0,
   });
+  const [buyBoxPosition, setBuyBoxPosition] = useState({ top: 0, left: 0 });
 
   const paymentMethods = [
     {
@@ -64,10 +67,20 @@ export function BuyBox({ product, ...props }) {
     setTimeout(() => setAdded(false), 2000);
   };
 
-  const handleBuyNow = async () => {
+  const handleBuyNow = async (e) => {
     if (!session) {
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       return;
+    }
+
+    // Get the buy box position
+    const buyBoxElement = e.currentTarget.closest("[data-buybox]");
+    if (buyBoxElement) {
+      const rect = buyBoxElement.getBoundingClientRect();
+      setBuyBoxPosition({
+        top: rect.top + window.scrollY - 20,
+        left: rect.left + window.scrollX,
+      });
     }
 
     // Add product to cart temporarily
@@ -125,21 +138,35 @@ export function BuyBox({ product, ...props }) {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-lg p-6" {...props}>
-        <div className="mb-4">
-          <span className="text-3xl font-bold text-gray-900">
+      <div
+        data-buybox
+        className="rounded-2xl shadow-xl p-6 transition-all hover:shadow-2xl"
+        style={{
+          background: `linear-gradient(145deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.5) 100%)`,
+          backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          border: `1px solid ${hexColor}20`,
+          boxShadow: `0 8px 30px rgba(0,0,0,0.1), inset 0 0 20px ${hexColor}10`,
+        }}
+        {...props}
+      >
+        <div className="mb-6">
+          <span className="text-4xl font-bold text-gray-900">
             ${product.price?.toFixed(2)}
           </span>
         </div>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">
             Quantity
           </label>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+              className="w-11 h-11 rounded-xl flex items-center justify-center transition-all hover:opacity-90 active:scale-95 text-white font-semibold text-xl"
+              style={{
+                background: `linear-gradient(135deg, ${hexColor} 0%, ${hexColor}f0 100%)`,
+              }}
             >
               -
             </button>
@@ -150,11 +177,25 @@ export function BuyBox({ product, ...props }) {
               onChange={(e) =>
                 setQuantity(Math.max(1, parseInt(e.target.value) || 1))
               }
-              className="w-20 text-center border border-gray-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-20 text-center text-lg font-semibold border-2 rounded-xl py-2.5 focus:outline-none transition-all text-gray-900"
+              style={{
+                borderColor: `${hexColor}30`,
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = hexColor;
+                e.target.style.boxShadow = `0 0 0 3px ${hexColor}20`;
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = `${hexColor}30`;
+                e.target.style.boxShadow = "none";
+              }}
             />
             <button
               onClick={() => setQuantity(quantity + 1)}
-              className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+              className="w-11 h-11 rounded-xl flex items-center justify-center transition-all hover:opacity-90 active:scale-95 text-white font-semibold text-xl"
+              style={{
+                background: `linear-gradient(135deg, ${hexColor} 0%, ${hexColor}f0 100%)`,
+              }}
             >
               +
             </button>
@@ -164,11 +205,18 @@ export function BuyBox({ product, ...props }) {
         <button
           onClick={handleAddToCart}
           disabled={isProcessing}
-          className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
-            added
-              ? "bg-green-600 text-white"
-              : "bg-blue-600 text-white hover:bg-blue-700"
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+            added ? "" : "hover:opacity-90"
+          }`}
+          style={{
+            background: added
+              ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+              : `linear-gradient(135deg, ${hexColor} 0%, ${hexColor}f0 100%)`,
+            color: "white",
+            boxShadow: added
+              ? "0 4px 15px rgba(16, 185, 129, 0.3)"
+              : `0 4px 15px ${hexColor}30`,
+          }}
         >
           {added ? (
             <>
@@ -186,7 +234,11 @@ export function BuyBox({ product, ...props }) {
         <button
           onClick={handleBuyNow}
           disabled={isProcessing}
-          className="w-full mt-3 py-3 rounded-lg font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full mt-3 py-3.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
+            boxShadow: "0 4px 15px rgba(249, 115, 22, 0.3)",
+          }}
         >
           {isProcessing ? (
             <>
@@ -202,7 +254,7 @@ export function BuyBox({ product, ...props }) {
         </button>
 
         {session && (
-          <p className="text-xs text-gray-500 text-center mt-3">
+          <p className="text-xs text-gray-500 text-center mt-4">
             Buy Now will take you directly to checkout
           </p>
         )}
@@ -210,8 +262,27 @@ export function BuyBox({ product, ...props }) {
 
       {/* Payment Method Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div
+          className="fixed inset-0 flex p-4"
+          style={{
+            zIndex: 9999,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            backgroundColor: `${hexColor}40`,
+          }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
+            style={{
+              background: "rgba(255, 255, 255, 0.98)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              position: "absolute",
+              top: `${buyBoxPosition.top}px`,
+              left: "50%",
+              transform: "translateX(-50%)",
+            }}
+          >
             <button
               onClick={() => {
                 setShowPaymentModal(false);
@@ -234,19 +305,29 @@ export function BuyBox({ product, ...props }) {
                   <button
                     key={method.id}
                     onClick={() => setSelectedPayment(method.id)}
-                    className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                      selectedPayment === method.id
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
+                    className="w-full p-4 rounded-xl border-2 transition-all text-left"
+                    style={{
+                      borderColor:
+                        selectedPayment === method.id
+                          ? hexColor
+                          : `${hexColor}20`,
+                      background:
+                        selectedPayment === method.id
+                          ? `${hexColor}10`
+                          : "transparent",
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`p-2 rounded-lg ${
-                          selectedPayment === method.id
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
+                        className="p-2 rounded-lg"
+                        style={{
+                          background:
+                            selectedPayment === method.id
+                              ? hexColor
+                              : `${hexColor}15`,
+                          color:
+                            selectedPayment === method.id ? "white" : hexColor,
+                        }}
                       >
                         <Icon className="w-6 h-6" />
                       </div>
@@ -259,7 +340,10 @@ export function BuyBox({ product, ...props }) {
                         </div>
                       </div>
                       {selectedPayment === method.id && (
-                        <CheckCircle className="w-6 h-6 text-blue-600" />
+                        <CheckCircle
+                          className="w-6 h-6"
+                          style={{ color: hexColor }}
+                        />
                       )}
                     </div>
                   </button>
@@ -270,7 +354,11 @@ export function BuyBox({ product, ...props }) {
             <button
               onClick={processCheckout}
               disabled={!selectedPayment}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              className="w-full text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+              style={{
+                background: `linear-gradient(135deg, ${hexColor} 0%, ${hexColor}f5 100%)`,
+                boxShadow: `0 4px 15px ${hexColor}30`,
+              }}
             >
               Confirm Payment
             </button>
@@ -280,8 +368,27 @@ export function BuyBox({ product, ...props }) {
 
       {/* Success/Error Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div
+          className="fixed inset-0 flex p-4"
+          style={{
+            zIndex: 9999,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            backgroundColor: `${hexColor}40`,
+          }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl max-w-md w-full p-8 relative"
+            style={{
+              background: "rgba(255, 255, 255, 0.98)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              position: "absolute",
+              top: `${buyBoxPosition.top}px`,
+              left: "50%",
+              transform: "translateX(-50%)",
+            }}
+          >
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
@@ -292,13 +399,22 @@ export function BuyBox({ product, ...props }) {
             <div className="text-center">
               {modalContent.type === "success" ? (
                 <>
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle className="w-10 h-10 text-green-600" />
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                    style={{ background: `${hexColor}15` }}
+                  >
+                    <CheckCircle
+                      className="w-10 h-10"
+                      style={{ color: hexColor }}
+                    />
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">
                     {modalContent.message}
                   </h3>
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div
+                    className="rounded-lg p-4 mb-4"
+                    style={{ background: `${hexColor}08` }}
+                  >
                     <p className="text-sm text-gray-600 mb-1">Order ID</p>
                     <p className="text-lg font-mono font-semibold text-gray-900">
                       {modalContent.orderId}
@@ -306,7 +422,10 @@ export function BuyBox({ product, ...props }) {
                     <p className="text-sm text-gray-600 mt-3 mb-1">
                       Total Amount
                     </p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p
+                      className="text-2xl font-bold"
+                      style={{ color: hexColor }}
+                    >
                       ${modalContent.amount.toFixed(2)}
                     </p>
                   </div>

@@ -16,12 +16,14 @@ import { resetInteractions } from "@app/utils/interactionTracker";
 import { getInteractionScores } from "@app/utils/interactionTracker";
 import { usePreferences } from "@app/hooks/usePreferences";
 import ProfilePopupSystem from "@app/profile/page";
+import { useColor } from "@app/context/ColorContext";
+
 export default function AmazonProductPage() {
   const { product_id } = useParams();
   const [product, setProduct] = useState(null);
   const { data: session } = useSession();
   const pathname = usePathname();
-
+  const { themeColor } = useColor();
   // Elements that can be reordered (excluding ProductHeader)
   const reorderableElements = [
     "BuyBox",
@@ -317,18 +319,24 @@ export default function AmazonProductPage() {
     : ["/placeholder-image.jpg"];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Dynamic Layout Container */}
-
+    <div className="min-h-screen" style={{ background: themeColor }}>
+      {/* Dynamic Layout Container with glassmorphism */}
       <div
         className={`
-        max-w-7xl mx-auto p-4 bg-white gap-6 transition-all duration-500
+        max-w-7xl mx-auto p-4 gap-6 transition-all duration-500 rounded-3xl
         ${
           imageLayoutVertical
             ? "flex flex-col"
             : "grid grid-cols-1 md:grid-cols-12"
         }
       `}
+        style={{
+          background: "rgba(255, 255, 255, 0.7)",
+          backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          border: "1px solid rgba(255, 255, 255, 0.3)",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+        }}
       >
         {/* Image Section - Dynamic positioning */}
         <div
@@ -337,12 +345,20 @@ export default function AmazonProductPage() {
           ${imageLayoutVertical ? "w-full mb-6" : "md:col-span-5"}
         `}
         >
-          {/* Layout Change Indicator */}
+          {/* Layout Change Indicator with glassmorphism */}
           {imageLayoutVertical && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div
+              className="mt-10 mb-4 p-3 rounded-2xl" // Added mt-20 for spacing below sticky navbar
+              style={{
+                background: "rgba(219, 234, 254, 0.5)",
+                backdropFilter: "blur(10px) saturate(150%)",
+                WebkitBackdropFilter: "blur(10px) saturate(150%)",
+                border: "1px solid rgba(191, 219, 254, 0.4)",
+              }}
+            >
               <div className="flex items-center gap-2">
                 <svg
-                  className="w-5 h-5 text-blue-600"
+                  className="w-5 h-5 text-blue-600" // Also fixed the icon sizing (was h-3 mt-20)
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -358,7 +374,6 @@ export default function AmazonProductPage() {
               </p>
             </div>
           )}
-
           <div
             className={`
   transition-all duration-500
@@ -379,7 +394,7 @@ export default function AmazonProductPage() {
                   selectedImage={selectedImage}
                   setSelectedImage={setSelectedImage}
                   product={product}
-                  isVerticalLayout={true} // ← ADD THIS LINE TOO
+                  isVerticalLayout={true}
                 />
               </div>
             )}
@@ -432,7 +447,17 @@ export default function AmazonProductPage() {
         </div>
       </div>
 
-      <div className="p-4">
+      {/* Debug section with glassmorphism */}
+      <div
+        className="max-w-7xl mx-auto p-4 mt-6 rounded-3xl"
+        style={{
+          background: "rgba(255, 255, 255, 0.6)",
+          backdropFilter: "blur(15px) saturate(150%)",
+          WebkitBackdropFilter: "blur(15px) saturate(150%)",
+          border: "1px solid rgba(255, 255, 255, 0.3)",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
+        }}
+      >
         <h2 className="text-lg font-bold mb-2">
           Your Preferences{" "}
           {!session?.user?.id && (
@@ -442,7 +467,15 @@ export default function AmazonProductPage() {
           )}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+          <div
+            className="p-4 rounded-2xl"
+            style={{
+              background: "rgba(255, 255, 255, 0.5)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(255, 255, 255, 0.4)",
+            }}
+          >
             <h3 className="font-semibold mb-2">Current Layout Order:</h3>
             <ol className="list-decimal pl-5">
               <li className="flex justify-between">
@@ -450,7 +483,6 @@ export default function AmazonProductPage() {
                 <span className="text-gray-600">Fixed at top</span>
               </li>
               {elementOrder.map((element, idx) => {
-                // Case-insensitive preference lookup
                 const pref = preferences.find(
                   (p) => p.element.toLowerCase() === element.toLowerCase()
                 );
@@ -473,12 +505,20 @@ export default function AmazonProductPage() {
               * Layout updates when you visit a new product page
             </p>
           </div>
-          <div>
+          <div
+            className="p-4 rounded-2xl"
+            style={{
+              background: "rgba(255, 255, 255, 0.5)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(255, 255, 255, 0.4)",
+            }}
+          >
             <h3 className="font-semibold mb-2">Live Preference Scores:</h3>
             <ul className="list-disc pl-5">
               {preferences.length > 0 ? (
                 preferences
-                  .sort((a, b) => (b.score || 0) - (a.score || 0)) // Sort by score
+                  .sort((a, b) => (b.score || 0) - (a.score || 0))
                   .map((pref, idx) => (
                     <li key={idx} className="flex justify-between">
                       <span>{pref.element}</span>
@@ -499,8 +539,16 @@ export default function AmazonProductPage() {
           </div>
         </div>
 
-        {/* Enhanced Debug section */}
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+        {/* Enhanced Debug section with glassmorphism */}
+        <div
+          className="mt-4 p-3 rounded-2xl"
+          style={{
+            background: "rgba(254, 252, 232, 0.6)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            border: "1px solid rgba(252, 211, 77, 0.3)",
+          }}
+        >
           <h4 className="font-bold text-sm">Debug Info:</h4>
           <div className="text-xs mt-1">
             <strong>Current Layout:</strong>{" "}
@@ -555,7 +603,14 @@ export default function AmazonProductPage() {
 
           <div className="text-xs mt-1">
             <strong>Live Preferences:</strong>
-            <pre className="mt-1 bg-gray-100 p-2 rounded text-xs overflow-x-auto">
+            <pre
+              className="mt-1 p-2 rounded text-xs overflow-x-auto"
+              style={{
+                background: "rgba(243, 244, 246, 0.8)",
+                backdropFilter: "blur(5px)",
+                WebkitBackdropFilter: "blur(5px)",
+              }}
+            >
               {JSON.stringify(preferences.slice(0, 6), null, 2)}
             </pre>
           </div>
@@ -573,7 +628,15 @@ export default function AmazonProductPage() {
         </div>
 
         {!session?.user?.id && preferences.length > 0 && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div
+            className="mt-4 p-3 rounded-2xl"
+            style={{
+              background: "rgba(219, 234, 254, 0.5)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(191, 219, 254, 0.4)",
+            }}
+          >
             <p className="text-sm text-blue-700">
               Guest Mode: Your preferences are being customized for this
               session! Sign in to save your preferences permanently across page

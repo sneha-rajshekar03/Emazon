@@ -78,13 +78,30 @@ export default function Home() {
 
   // Fetch logged-in user including color
   useEffect(() => {
+    // inside your Home component useEffect
     async function fetchUser() {
       try {
         const res = await fetch("/api/userColor");
-        const data = await res.json();
-        setUserColor(data.user?.color || "#ffffff");
+        if (!res.ok) throw new Error("Failed to fetch user color");
+        const body = await res.json();
+
+        // normalize — accept either:
+        // - "bg-sky-300" (string)
+        // - { color: "bg-sky-300" } or { value: "bg-sky-300" }
+        const colorFromApi =
+          typeof body === "string"
+            ? body
+            : body?.color ||
+              body?.value ||
+              body?.themeColor?.value ||
+              body?.themeColor ||
+              null;
+
+        setUserColor(colorFromApi || "#ffffff"); // store a string
+        console.log("🖌 user color (normalized):", colorFromApi);
       } catch (err) {
         console.error("Error fetching user color:", err);
+        setUserColor("#ffffff");
       }
     }
     fetchUser();

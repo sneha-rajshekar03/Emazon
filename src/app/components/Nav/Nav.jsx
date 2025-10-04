@@ -10,11 +10,12 @@ import { Language } from "./Language";
 import { Account } from "./Account";
 import CartButton from "./CartIcon";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { usePreferences } from "@app/hooks/usePreferences";
+import { useColor } from "@app/context/ColorContext";
 import { ChevronDown, User, ShoppingBag, LogOut } from "lucide-react";
 
-const ProfileImageWithProgress = ({ imageUrl, completion = 0 }) => {
+const ProfileImageWithProgress = ({ imageUrl, completion = 0, hexColor }) => {
   const radius = 16;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (completion / 100) * circumference;
@@ -26,25 +27,27 @@ const ProfileImageWithProgress = ({ imageUrl, completion = 0 }) => {
           cx="18.5"
           cy="18.5"
           r={radius}
-          stroke="currentColor"
+          stroke="rgba(255,255,255,0.25)"
           strokeWidth="2"
           fill="none"
-          className="text-gray-200"
         />
         <circle
           cx="18.5"
           cy="18.5"
           r={radius}
-          stroke="currentColor"
+          stroke={hexColor || "#007AFF"}
           strokeWidth="2"
           fill="none"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className="text-blue-500"
           strokeLinecap="round"
+          style={{
+            filter: `drop-shadow(0 0 5px ${hexColor || "#007AFF"}40)`,
+            transition: "all 0.3s ease",
+          }}
         />
       </svg>
-      <div className="absolute inset-[3px]">
+      <div className="absolute inset-[3px] rounded-full overflow-hidden">
         <Image
           src={imageUrl}
           alt="Profile Image"
@@ -57,27 +60,31 @@ const ProfileImageWithProgress = ({ imageUrl, completion = 0 }) => {
   );
 };
 
-export const Nav = ({ color }) => {
+export const Nav = () => {
   const { data: session } = useSession();
   const pathname = usePathname();
   const hideOnLogin = pathname === "/login";
   const { signOutWithSave } = usePreferences();
+  const { hexColor } = useColor();
+
   const [profileCompletion, setProfileCompletion] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  const themeColor = hexColor || "#D0D3D7"; // Apple’s subtle gray tone
+
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Profile completion
   useEffect(() => {
     if (session?.user) {
       fetch(`/api/profile?userId=${session.user.id}`)
@@ -96,13 +103,13 @@ export const Nav = ({ color }) => {
               profile.pets,
               profile.paymentMode,
             ];
-            const filledFields = fields.filter((f) => f && f !== "").length;
+            const filled = fields.filter((f) => f && f !== "").length;
             const hobbiesScore = profile.hobbies?.length > 0 ? 1 : 0;
             const petTypeScore =
               profile.pets === "Yes" && profile.petType ? 1 : 0;
             const totalFields =
               fields.length + 1 + (profile.pets === "Yes" ? 1 : 0);
-            const totalFilled = filledFields + hobbiesScore + petTypeScore;
+            const totalFilled = filled + hobbiesScore + petTypeScore;
             const completion = Math.round((totalFilled / totalFields) * 100);
             setProfileCompletion(completion);
           }
@@ -114,7 +121,16 @@ export const Nav = ({ color }) => {
   }, [session]);
 
   return (
-    <nav className="bg-background text-foreground p-2 flex items-center shadow-sm">
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 px-6 py-2 flex items-center justify-between transition-all duration-500"
+      style={{
+        background: `linear-gradient(135deg, ${themeColor}20 0%, rgba(255,255,255,0.85) 100%)`,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: `1px solid ${themeColor}30`,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+      }}
+    >
       {/* Logo */}
       <div className="flex-shrink-0">
         <Logo />
@@ -122,82 +138,141 @@ export const Nav = ({ color }) => {
 
       {!hideOnLogin && (
         <>
-          {/* Search bar */}
-          <div className="flex-1 mx-4">
+          {/* Search Bar */}
+          <div className="flex-1 mx-6">
             <SearchBar />
           </div>
 
-          {/* Right-side icons */}
-          <div className="flex items-center gap-4">
-            {/* Language selector (desktop only) */}
+          {/* Right icons */}
+          <div className="flex items-center gap-5">
             <div className="hidden md:flex">
               <Language />
             </div>
 
-            {/* Account / Profile / Cart */}
             {session?.user ? (
-              <div className="flex items-center gap-2">
-                {/* Profile Dropdown */}
+              <div className="flex items-center gap-4">
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 hover:opacity-80 transition"
+                    className="flex items-center gap-2 hover:opacity-90 transition"
                   >
                     <ProfileImageWithProgress
                       imageUrl={session.user.image}
                       completion={profileCompletion}
+                      hexColor={themeColor}
                     />
                     <ChevronDown
-                      className={`w-4 h-4 transition-transform ${
+                      className={`w-4 h-4 transition-transform duration-300 ${
                         dropdownOpen ? "rotate-180" : ""
                       }`}
+                      style={{ color: themeColor }} // 👈 theme-colored arrow
                     />
                   </button>
 
-                  {/* Dropdown Menu */}
                   {dropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                      {/* User Info */}
-                      <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="text-sm font-semibold text-gray-800">
+                    <div
+                      className="absolute right-0 mt-3 w-60 rounded-2xl overflow-hidden z-50 shadow-2xl animate-fadeIn"
+                      style={{
+                        background: `linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,245,245,0.96))`,
+                        backdropFilter: "blur(20px)",
+                        WebkitBackdropFilter: "blur(20px)",
+                        border: `1px solid ${themeColor}40`,
+                        boxShadow: `0 4px 25px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)`,
+                        transition: "all 0.3s ease",
+                      }}
+                    >
+                      {/* --- Profile Header --- */}
+                      <div
+                        className="px-5 pb-2 border-b mb-2 mt-2"
+                        style={{ borderColor: `${themeColor}30` }}
+                      >
+                        <p className="text-sm font-medium text-gray-800">
                           {session.user.name || session.user.email}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
                           {session.user.email}
                         </p>
+
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${profileCompletion}%`,
+                                background: hexColor || "#007AFF",
+                              }}
+                            />
+                          </div>
+                          <span
+                            className="text-xs font-medium"
+                            style={{ color: hexColor || "#007AFF" }}
+                          >
+                            {profileCompletion}%
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Menu Items */}
-                      <Link
-                        href="/profile"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition text-gray-700"
-                      >
-                        <User className="w-4 h-4" />
-                        <span className="text-sm">My Profile</span>
-                      </Link>
+                      {/* --- Links --- */}
+                      <div className="flex flex-col gap-1 px-2 pb-2">
+                        <Link
+                          href="/profile"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg transition-all duration-200"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = `${themeColor}15`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor =
+                              "transparent";
+                          }}
+                        >
+                          <User
+                            className="w-4 h-4"
+                            style={{ color: themeColor }}
+                          />
+                          <span className="text-sm font-medium">
+                            My Profile
+                          </span>
+                        </Link>
 
-                      <Link
-                        href="/purchase-history"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition text-gray-700"
-                      >
-                        <ShoppingBag className="w-4 h-4" />
-                        <span className="text-sm">Purchase History</span>
-                      </Link>
+                        <Link
+                          href="/purchase-history"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg transition-all duration-200"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = `${themeColor}15`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor =
+                              "transparent";
+                          }}
+                        >
+                          <ShoppingBag
+                            className="w-4 h-4"
+                            style={{ color: themeColor }}
+                          />
+                          <span className="text-sm font-medium">
+                            Purchase History
+                          </span>
+                        </Link>
+                      </div>
 
-                      <div className="border-t border-gray-100 my-1"></div>
-
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false);
-                          signOutWithSave();
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition text-red-600"
+                      {/* --- Sign Out --- */}
+                      <div
+                        className="border-t"
+                        style={{ borderColor: `${themeColor}25` }}
                       >
-                        <LogOut className="w-4 h-4" />
-                        <span className="text-sm">Sign Out</span>
-                      </button>
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            signOutWithSave();
+                          }}
+                          className="w-full flex items-center gap-3 px-5 py-3 text-red-600 text-left transition-all duration-200 hover:bg-red-100"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span className="text-sm font-medium">Sign Out</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

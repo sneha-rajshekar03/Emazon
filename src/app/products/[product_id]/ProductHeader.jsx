@@ -3,6 +3,7 @@
 import { Star, Heart, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 
 export function ProductHeader({ product, ...props }) {
   const discount = product.originalPrice
@@ -12,80 +13,103 @@ export function ProductHeader({ product, ...props }) {
     : 0;
 
   return (
-    <div {...props} className="space-y-4">
-      {/* Brand */}
+    <motion.div
+      {...props}
+      className="space-y-5"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+    >
+      {/* Brand + Actions */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground uppercase tracking-wide">
-          {product.brand || "BRAND"}
+        <span className="text-sm tracking-wider uppercase text-gray-500/90">
+          {product.brand || "Brand"}
         </span>
         <div className="flex gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Heart className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-full hover:bg-gray-100 transition"
+          >
+            <Heart className="h-4 w-4 text-gray-600 hover:text-red-500 transition" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Share2 className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-full hover:bg-gray-100 transition"
+          >
+            <Share2 className="h-4 w-4 text-gray-600 hover:text-gray-900 transition" />
           </Button>
         </div>
       </div>
 
       {/* Product Name */}
-      <h1 className="text-3xl font-bold">{product.name}</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 leading-snug tracking-tight">
+        {product.title || "Premium Wireless Headphones"}
+      </h1>
 
-      {/* Product Title / Subtitle */}
+      {/* Subtitle */}
       {product.title && (
-        <p className="text-muted-foreground text-base">{product.title}</p>
+        <p className="text-gray-500 text-base tracking-wide">{product.title}</p>
       )}
 
-      {/* Rating and Reviews */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1">
+      {/* Rating */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center">
           {Array.from({ length: 5 }).map((_, i) => (
             <Star
               key={i}
               className={`h-4 w-4 ${
                 i < Math.floor(product.rating)
-                  ? "fill-orange-400 text-orange-400"
+                  ? "fill-yellow-400 text-yellow-400"
                   : "text-gray-300"
               }`}
             />
           ))}
-          <span className="text-sm ml-1">{product.rating}</span>
         </div>
-        <span className="text-sm text-muted-foreground">reviews</span>
+        <span className="text-sm text-gray-700 font-medium">
+          {product.rating?.toFixed(1) || "4.8"}
+        </span>
+        <span className="text-sm text-gray-400">
+          ({product.reviewCount || 256} reviews)
+        </span>
       </div>
 
       {/* Price */}
-      <div className="flex items-center gap-3">
-        <span className="text-3xl font-semibold">
-          ${product.price.toFixed(2)}
+      <div className="flex items-end gap-3">
+        <span className="text-4xl font-semibold text-gray-900">
+          ${product.price?.toFixed(2) || "249.99"}
         </span>
         {product.originalPrice && (
           <>
-            <span className="text-lg text-muted-foreground line-through">
+            <span className="text-lg text-gray-400 line-through">
               ${product.originalPrice.toFixed(2)}
             </span>
-            <Badge variant="destructive" className="text-xs">
+            <Badge
+              variant="secondary"
+              className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-1 rounded-full"
+            >
               {discount}% OFF
             </Badge>
           </>
         )}
       </div>
 
-      {/* Stock Status */}
-      <div className="flex items-center gap-2">
+      {/* Stock */}
+      <div className="flex items-center gap-2 mt-2">
         <div
-          className={`h-2 w-2 rounded-full ${
+          className={`h-2.5 w-2.5 rounded-full ${
             product.inStock ? "bg-green-500" : "bg-red-500"
           }`}
         />
         <span
-          className={`text-sm ${
+          className={`text-sm font-medium ${
             product.inStock ? "text-green-600" : "text-red-600"
           }`}
         >
           {product.inStock ? "In Stock" : "Out of Stock"}
         </span>
       </div>
-    </div>
+    </motion.div>
   );
 }

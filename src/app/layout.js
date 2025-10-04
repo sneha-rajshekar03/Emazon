@@ -7,6 +7,7 @@ import { useSystemTheme } from "./hooks/useSystemTheme";
 import ThemeProvider from "./components/ThemeProvider";
 import { CartProvider } from "./context/CartContent";
 import ProfilePopupManager from "./components/ProfilePopupManager/ProfilePopupManager";
+import { ColorProvider } from "./context/ColorContext";
 export const metadata = {
   title: "Online Shopping website",
   description: "E-commerce Website",
@@ -18,13 +19,15 @@ export default async function Rootlayout({ children }) {
     <html lang="en">
       <body>
         <Provider session={session}>
-          <ThemeProvider>
-            <CartProvider>
-              <Nav />
-              {children}
-              <ProfilePopupManager />
-            </CartProvider>
-          </ThemeProvider>
+          <ColorProvider>
+            <ThemeProvider>
+              <CartProvider>
+                <Nav />
+                {children}
+                <ProfilePopupManager />
+              </CartProvider>
+            </ThemeProvider>
+          </ColorProvider>
         </Provider>
       </body>
     </html>

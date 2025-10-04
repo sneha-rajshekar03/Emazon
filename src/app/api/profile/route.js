@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDB } from "@app/utils/database";
 import Profile from "@app/models/Profile";
-import User from "@app/models/User";
+import User from "@app/models/user";
 
 // GET - Fetch profile by userId
 export async function GET(request) {

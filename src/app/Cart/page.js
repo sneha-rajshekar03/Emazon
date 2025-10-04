@@ -1,5 +1,6 @@
 "use client";
 import { useCart } from "@app/context/CartContent";
+import { useColor } from "@app/context/ColorContext";
 import {
   Trash2,
   Plus,
@@ -29,6 +30,7 @@ export default function CartPage() {
   } = useCart();
   const { data: session } = useSession();
   const router = useRouter();
+  const { hexColor } = useColor();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalContent, setModalContent] = useState({
@@ -151,21 +153,25 @@ export default function CartPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center pt-20">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your cart...</p>
+          <div
+            className="animate-spin rounded-full h-12 w-12 border-4 border-t-transparent mx-auto mb-4"
+            style={{ borderColor: `${hexColor}30`, borderTopColor: hexColor }}
+          />
+          <p className="text-gray-600 font-medium">Loading your cart...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
+    <div className="min-h-screen py-8 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold mb-6"
+          className="flex items-center gap-2 font-semibold mb-6 transition-colors hover:opacity-80"
+          style={{ color: hexColor }}
         >
           <ArrowLeft className="w-5 h-5" />
           Continue Shopping
@@ -173,7 +179,7 @@ export default function CartPage() {
 
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <ShoppingBag className="w-8 h-8" />
+            <ShoppingBag className="w-8 h-8" style={{ color: hexColor }} />
             Shopping Cart
           </h1>
           <p className="text-gray-600 mt-2">{cart.length} items in your cart</p>
@@ -183,26 +189,45 @@ export default function CartPage() {
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {cart.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-                <ShoppingBag className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+              <div
+                className="rounded-2xl p-12 text-center"
+                style={{
+                  background: `linear-gradient(145deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.4) 50%, ${hexColor}15 100%)`,
+                  backdropFilter: "blur(15px) saturate(150%)",
+                  WebkitBackdropFilter: "blur(15px) saturate(150%)",
+                  border: `1px solid ${hexColor}20`,
+                  boxShadow: `0 8px 30px rgba(0,0,0,0.08), inset 0 0 20px ${hexColor}10`,
+                }}
+              >
+                <ShoppingBag
+                  className="w-16 h-16 mx-auto mb-4 opacity-50"
+                  style={{ color: hexColor }}
+                />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   Your cart is empty
                 </h3>
                 <p className="text-gray-600 mb-6">
                   Start shopping to add items!
                 </p>
-                <div className="flex flex-row justify-center gap-5">
+                <div className="flex flex-row justify-center gap-4">
                   <Link
                     href="/"
-                    className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                    className="inline-block text-white px-6 py-3 rounded-lg transition-all hover:scale-105 hover:shadow-lg active:scale-95 font-semibold"
+                    style={{
+                      background: hexColor,
+                    }}
                   >
                     Browse Products
                   </Link>
                   <Link
                     href="/purchase-history"
-                    className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold "
+                    className="inline-block px-6 py-3 rounded-lg transition-colors font-semibold"
+                    style={{
+                      background: `linear-gradient(135deg, ${hexColor}20 0%, ${hexColor}30 100%)`,
+                      color: hexColor,
+                    }}
                   >
-                    previous history{" "}
+                    Purchase History
                   </Link>
                 </div>
               </div>
@@ -210,7 +235,14 @@ export default function CartPage() {
               cart.map((item) => (
                 <div
                   key={item.product_id}
-                  className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 hover:shadow-md transition-shadow"
+                  className="rounded-2xl p-4 sm:p-6 transition-all hover:shadow-lg"
+                  style={{
+                    background: `linear-gradient(145deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.4) 50%, ${hexColor}10 100%)`,
+                    backdropFilter: "blur(15px) saturate(150%)",
+                    WebkitBackdropFilter: "blur(15px) saturate(150%)",
+                    border: `1px solid ${hexColor}20`,
+                    boxShadow: `0 4px 20px rgba(0,0,0,0.06), inset 0 0 15px ${hexColor}08`,
+                  }}
                 >
                   <div className="flex gap-4">
                     <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
@@ -258,9 +290,10 @@ export default function CartPage() {
                             onClick={() =>
                               updateQuantity(item.product_id, item.quantity - 1)
                             }
-                            className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                            className="w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-white hover:opacity-90 transition-all"
+                            style={{ background: hexColor }}
                           >
-                            <Minus className="w-4 h-4" />
+                            <Minus className="w-4 h-4 text-white" />
                           </button>
                           <span className="w-12 text-center font-semibold text-lg">
                             {item.quantity}
@@ -269,9 +302,10 @@ export default function CartPage() {
                             onClick={() =>
                               updateQuantity(item.product_id, item.quantity + 1)
                             }
-                            className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                            className="w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-white hover:opacity-90 transition-all"
+                            style={{ background: hexColor }}
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-4 h-4 text-white" />
                           </button>
                         </div>
                         <span className="text-sm text-gray-500">
@@ -287,7 +321,16 @@ export default function CartPage() {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-8">
+            <div
+              className="rounded-2xl p-6 sticky top-24"
+              style={{
+                background: `linear-gradient(145deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.5) 100%)`,
+                backdropFilter: "blur(20px) saturate(180%)",
+                WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                border: `1px solid ${hexColor}20`,
+                boxShadow: `0 8px 30px rgba(0,0,0,0.1), inset 0 0 20px ${hexColor}10`,
+              }}
+            >
               <h2 className="text-xl font-bold text-gray-900 mb-6">
                 Order Summary
               </h2>
@@ -308,21 +351,36 @@ export default function CartPage() {
                   </span>
                 </div>
                 {subtotal > 0 && subtotal < 100 && (
-                  <p className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
+                  <p
+                    className="text-sm p-3 rounded-lg"
+                    style={{
+                      background: `${hexColor}10`,
+                      color: hexColor,
+                    }}
+                  >
                     Add ${(100 - subtotal).toFixed(2)} more for free shipping!
                   </p>
                 )}
-                <div className="border-t pt-3 mt-3">
+                <div
+                  className="border-t pt-3 mt-3"
+                  style={{ borderColor: `${hexColor}20` }}
+                >
                   <div className="flex justify-between text-lg font-bold text-gray-900">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span style={{ color: hexColor }}>${total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
               {!session?.user?.id && (
-                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
+                <div
+                  className="mb-4 p-3 rounded-lg"
+                  style={{
+                    background: "rgba(254, 240, 138, 0.2)",
+                    border: "1px solid rgba(252, 211, 77, 0.3)",
+                  }}
+                >
+                  <p className="text-sm text-amber-800">
                     Please log in to checkout
                   </p>
                 </div>
@@ -331,7 +389,16 @@ export default function CartPage() {
               <button
                 onClick={handleCheckout}
                 disabled={cart.length === 0 || isCheckingOut}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl mb-3"
+                className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center transition-all mb-3 ${
+                  cart.length === 0 || isCheckingOut
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "text-white hover:opacity-90"
+                }`}
+                style={
+                  cart.length === 0 || isCheckingOut
+                    ? {}
+                    : { background: hexColor }
+                }
               >
                 {isCheckingOut ? (
                   <span className="flex items-center justify-center gap-2">
@@ -345,7 +412,11 @@ export default function CartPage() {
 
               <Link
                 href="/"
-                className="block w-full text-center text-blue-600 font-semibold py-3 hover:bg-blue-50 rounded-xl transition-colors"
+                className="block w-full text-center font-semibold py-3 rounded-xl transition-colors"
+                style={{
+                  color: hexColor,
+                  background: `${hexColor}10`,
+                }}
               >
                 Continue Shopping
               </Link>
@@ -353,11 +424,24 @@ export default function CartPage() {
           </div>
         </div>
       </div>
-
       {/* Payment Method Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{
+            background: `linear-gradient(135deg, ${hexColor}40 0%, ${hexColor}20 100%)`,
+            backdropFilter: "blur(12px) saturate(150%)",
+            WebkitBackdropFilter: "blur(12px) saturate(150%)",
+          }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
+            style={{
+              background: "rgba(255, 255, 255, 0.98)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            }}
+          >
             <button
               onClick={() => setShowPaymentModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
@@ -379,19 +463,29 @@ export default function CartPage() {
                   <button
                     key={method.id}
                     onClick={() => setSelectedPayment(method.id)}
-                    className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                      selectedPayment === method.id
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
+                    className="w-full p-4 rounded-xl border-2 transition-all text-left"
+                    style={{
+                      borderColor:
+                        selectedPayment === method.id
+                          ? hexColor
+                          : `${hexColor}20`,
+                      background:
+                        selectedPayment === method.id
+                          ? `${hexColor}10`
+                          : "transparent",
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`p-2 rounded-lg ${
-                          selectedPayment === method.id
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
+                        className="p-2 rounded-lg"
+                        style={{
+                          background:
+                            selectedPayment === method.id
+                              ? hexColor
+                              : `${hexColor}15`,
+                          color:
+                            selectedPayment === method.id ? "white" : hexColor,
+                        }}
                       >
                         <Icon className="w-6 h-6" />
                       </div>
@@ -404,7 +498,10 @@ export default function CartPage() {
                         </div>
                       </div>
                       {selectedPayment === method.id && (
-                        <CheckCircle className="w-6 h-6 text-blue-600" />
+                        <CheckCircle
+                          className="w-6 h-6"
+                          style={{ color: hexColor }}
+                        />
                       )}
                     </div>
                   </button>
@@ -415,18 +512,36 @@ export default function CartPage() {
             <button
               onClick={processCheckout}
               disabled={!selectedPayment}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center transition-all ${
+                !selectedPayment
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "text-white hover:opacity-90"
+              }`}
+              style={!selectedPayment ? {} : { background: hexColor }}
             >
               Confirm Payment
             </button>
           </div>
         </div>
       )}
-
       {/* Success/Error Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{
+            background: `linear-gradient(135deg, ${hexColor}40 0%, ${hexColor}20 100%)`,
+            backdropFilter: "blur(12px) saturate(150%)",
+            WebkitBackdropFilter: "blur(12px) saturate(150%)",
+          }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl max-w-md w-full p-8 relative"
+            style={{
+              background: "rgba(255, 255, 255, 0.98)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            }}
+          >
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
@@ -437,13 +552,22 @@ export default function CartPage() {
             <div className="text-center">
               {modalContent.type === "success" ? (
                 <>
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle className="w-10 h-10 text-green-600" />
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                    style={{ background: `${hexColor}15` }}
+                  >
+                    <CheckCircle
+                      className="w-10 h-10"
+                      style={{ color: hexColor }}
+                    />
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">
                     {modalContent.message}
                   </h3>
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div
+                    className="rounded-lg p-4 mb-4"
+                    style={{ background: `${hexColor}08` }}
+                  >
                     <p className="text-sm text-gray-600 mb-1">Order ID</p>
                     <p className="text-lg font-mono font-semibold text-gray-900">
                       {modalContent.orderId}
@@ -451,7 +575,10 @@ export default function CartPage() {
                     <p className="text-sm text-gray-600 mt-3 mb-1">
                       Total Amount
                     </p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p
+                      className="text-2xl font-bold"
+                      style={{ color: hexColor }}
+                    >
                       ${modalContent.amount.toFixed(2)}
                     </p>
                   </div>
@@ -480,7 +607,7 @@ export default function CartPage() {
             </div>
           </div>
         </div>
-      )}
+      )}{" "}
     </div>
   );
 }

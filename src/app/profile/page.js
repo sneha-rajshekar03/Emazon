@@ -619,24 +619,44 @@ export default function ProfilePage() {
                   value={profile.age}
                   onChange={(e) => handleUpdate("age", e.target.value)}
                   placeholder="Enter your age"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all"
+                  style={{
+                    "--theme-color": profile.themeColor.hex,
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = profile.themeColor.hex;
+                    e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "";
+                    e.target.style.boxShadow = "";
+                  }}
                 />
               </div>
-
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <Briefcase className="w-4 h-4 mr-2" />
                   Occupation
                 </label>
                 <input
-                  type="text"
-                  value={profile.occupation}
-                  onChange={(e) => handleUpdate("occupation", e.target.value)}
-                  placeholder="Your occupation"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
-                />
+                  type="number"
+                  value={profile.age}
+                  onChange={(e) => handleUpdate("age", e.target.value)}
+                  placeholder="Enter your age"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all"
+                  style={{
+                    "--theme-color": profile.themeColor.hex,
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = profile.themeColor.hex;
+                    e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "";
+                    e.target.style.boxShadow = "";
+                  }}
+                />{" "}
               </div>
-
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <Heart className="w-4 h-4 mr-2" />
@@ -647,10 +667,20 @@ export default function ProfilePage() {
                   value={profile.brand}
                   onChange={(e) => handleUpdate("brand", e.target.value)}
                   placeholder="e.g., Apple, Nike"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
-                />
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all"
+                  style={{
+                    "--theme-color": profile.themeColor.hex,
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = profile.themeColor.hex;
+                    e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "";
+                    e.target.style.boxShadow = "";
+                  }}
+                />{" "}
               </div>
-
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <Car className="w-4 h-4 mr-2" />
@@ -659,7 +689,26 @@ export default function ProfilePage() {
                 <select
                   value={profile.travelMode}
                   onChange={(e) => handleUpdate("travelMode", e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all cursor-pointer"
+                  style={{
+                    "--theme-color": profile.themeColor.hex,
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = profile.themeColor.hex;
+                    e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "";
+                    e.target.style.boxShadow = "";
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.borderColor = profile.themeColor.hex;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (document.activeElement !== e.target) {
+                      e.target.style.borderColor = "";
+                    }
+                  }}
                 >
                   <option value="">Select mode</option>
                   <option value="Car">Car</option>
@@ -669,7 +718,6 @@ export default function ProfilePage() {
                   <option value="Multiple">Multiple</option>
                 </select>
               </div>
-
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <DollarSign className="w-4 h-4 mr-2" />
@@ -678,7 +726,18 @@ export default function ProfilePage() {
                 <select
                   value={profile.priceRange}
                   onChange={(e) => handleUpdate("priceRange", e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all cursor-pointer"
+                  style={{
+                    "--theme-color": profile.themeColor.hex,
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = profile.themeColor.hex;
+                    e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "";
+                    e.target.style.boxShadow = "";
+                  }}
                 >
                   <option value="">Select range</option>
                   <option value="Under $50">Under $50</option>
@@ -689,7 +748,6 @@ export default function ProfilePage() {
                   <option value="Above $1000">Above $1000</option>
                 </select>
               </div>
-
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
                   <CreditCard className="w-4 h-4 mr-2" />
@@ -698,7 +756,18 @@ export default function ProfilePage() {
                 <select
                   value={profile.paymentMode}
                   onChange={(e) => handleUpdate("paymentMode", e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all cursor-pointer"
+                  style={{
+                    "--theme-color": profile.themeColor.hex,
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = profile.themeColor.hex;
+                    e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "";
+                    e.target.style.boxShadow = "";
+                  }}
                 >
                   <option value="">Select mode</option>
                   <option value="Cash">Cash</option>
@@ -707,7 +776,7 @@ export default function ProfilePage() {
                   <option value="UPI">UPI</option>
                   <option value="Digital Wallet">Digital Wallet</option>
                 </select>
-              </div>
+              </div>{" "}
             </div>
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-3">
@@ -774,7 +843,18 @@ export default function ProfilePage() {
                   <select
                     value={profile.petType}
                     onChange={(e) => handleUpdate("petType", e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all cursor-pointer"
+                    style={{
+                      "--theme-color": profile.themeColor.hex,
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = profile.themeColor.hex;
+                      e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "";
+                      e.target.style.boxShadow = "";
+                    }}
                   >
                     <option value="">Select type</option>
                     <option value="Dog">Dog</option>

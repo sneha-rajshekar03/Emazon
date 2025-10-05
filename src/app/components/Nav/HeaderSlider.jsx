@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useColor } from "@app/context/ColorContext";
 
 const HeaderSlider = () => {
-  const { hexColor } = useColor();
+  const { hexColor, isDarkMode } = useColor();
 
   const sliderData = [
     {
@@ -14,7 +14,7 @@ const HeaderSlider = () => {
       subtitle: "Elegance. Precision. Performance.",
       buttonText1: "Shop Now",
       buttonText2: "Learn More",
-      imgSrc: assets.iphone, // example product image
+      imgSrc: assets.iphone,
     },
     {
       id: 2,
@@ -61,24 +61,43 @@ const HeaderSlider = () => {
             key={slide.id}
             className="flex flex-col-reverse md:flex-row items-center justify-between py-14 md:px-20 px-6 min-w-full"
             style={{
-              background: `linear-gradient(
-                160deg,
-                rgba(255, 255, 255, 0.85) 0%,
-                rgba(255, 255, 255, 0.7) 50%,
-                ${hexColor}10 100%
-              )`,
+              background: isDarkMode
+                ? `linear-gradient(
+                    160deg,
+                    rgba(35, 35, 35, 0.85) 0%,
+                    rgba(30, 30, 30, 0.7) 50%,
+                    ${hexColor}15 100%
+                  )`
+                : `linear-gradient(
+                    160deg,
+                    rgba(255, 255, 255, 0.85) 0%,
+                    rgba(255, 255, 255, 0.7) 50%,
+                    ${hexColor}10 100%
+                  )`,
               backdropFilter: "blur(20px) saturate(160%)",
               WebkitBackdropFilter: "blur(20px) saturate(160%)",
-              borderTop: "1px solid rgba(255,255,255,0.6)",
-              borderBottom: "1px solid rgba(255,255,255,0.4)",
+              borderTop: isDarkMode
+                ? "1px solid rgba(255,255,255,0.1)"
+                : "1px solid rgba(255,255,255,0.6)",
+              borderBottom: isDarkMode
+                ? "1px solid rgba(255,255,255,0.05)"
+                : "1px solid rgba(255,255,255,0.4)",
             }}
           >
             {/* Text Section */}
             <div className="flex flex-col justify-center md:pl-8 mt-8 md:mt-0 text-center md:text-left max-w-lg">
-              <h1 className="text-[2rem] sm:text-[3rem] font-semibold tracking-tight text-gray-900 leading-tight">
+              <h1
+                className={`text-[2rem] sm:text-[3rem] font-semibold tracking-tight leading-tight ${
+                  isDarkMode ? "text-gray-100" : "text-gray-900"
+                }`}
+              >
                 {slide.title}
               </h1>
-              <p className="text-gray-600 text-lg sm:text-xl mt-2">
+              <p
+                className={`text-lg sm:text-xl mt-2 ${
+                  isDarkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
                 {slide.subtitle}
               </p>
 
@@ -93,7 +112,13 @@ const HeaderSlider = () => {
                   {slide.buttonText1}
                 </button>
 
-                <button className="group flex items-center gap-1.5 px-5 py-2.5 font-medium text-gray-800 hover:text-black transition-all">
+                <button
+                  className={`group flex items-center gap-1.5 px-5 py-2.5 font-medium transition-all ${
+                    isDarkMode
+                      ? "text-gray-300 hover:text-white"
+                      : "text-gray-800 hover:text-black"
+                  }`}
+                >
                   {slide.buttonText2}
                   <Image
                     className="group-hover:translate-x-1 transition-transform"
@@ -150,7 +175,11 @@ const HeaderSlider = () => {
             }`}
             style={{
               backgroundColor:
-                currentSlide === index ? hexColor : "rgba(180, 180, 180, 0.5)",
+                currentSlide === index
+                  ? hexColor
+                  : isDarkMode
+                  ? "rgba(150, 150, 150, 0.5)"
+                  : "rgba(180, 180, 180, 0.5)",
               boxShadow:
                 currentSlide === index
                   ? `0 0 10px ${hexColor}70`

@@ -65,13 +65,13 @@ export const Nav = () => {
   const pathname = usePathname();
   const hideOnLogin = pathname === "/login";
   const { signOutWithSave } = usePreferences();
-  const { hexColor } = useColor();
+  const { hexColor, isDarkMode } = useColor();
 
   const [profileCompletion, setProfileCompletion] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const themeColor = hexColor || "#D0D3D7"; // Apple’s subtle gray tone
+  const themeColor = hexColor || (isDarkMode ? "#A0A0A0" : "#D0D3D7");
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -124,11 +124,17 @@ export const Nav = () => {
     <nav
       className="fixed top-0 left-0 right-0 z-50 px-6 py-2 flex items-center justify-between transition-all duration-500"
       style={{
-        background: `linear-gradient(135deg, ${themeColor}20 0%, rgba(255,255,255,0.85) 100%)`,
+        background: isDarkMode
+          ? `linear-gradient(135deg, ${themeColor}15 0%, rgba(32,32,32,0.9) 100%)`
+          : `linear-gradient(135deg, ${themeColor}20 0%, rgba(255,255,255,0.85) 100%)`,
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderBottom: `1px solid ${themeColor}30`,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+        borderBottom: isDarkMode
+          ? `1px solid ${themeColor}20`
+          : `1px solid ${themeColor}30`,
+        boxShadow: isDarkMode
+          ? "0 1px 3px rgba(0,0,0,0.3)"
+          : "0 1px 3px rgba(0,0,0,0.05)",
       }}
     >
       {/* Logo */}
@@ -165,7 +171,7 @@ export const Nav = () => {
                       className={`w-4 h-4 transition-transform duration-300 ${
                         dropdownOpen ? "rotate-180" : ""
                       }`}
-                      style={{ color: themeColor }} // 👈 theme-colored arrow
+                      style={{ color: themeColor }}
                     />
                   </button>
 
@@ -173,11 +179,15 @@ export const Nav = () => {
                     <div
                       className="absolute right-0 mt-3 w-60 rounded-2xl overflow-hidden z-50 shadow-2xl animate-fadeIn"
                       style={{
-                        background: `linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,245,245,0.96))`,
+                        background: isDarkMode
+                          ? `linear-gradient(180deg, rgba(45,45,45,0.98), rgba(35,35,35,0.96))`
+                          : `linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,245,245,0.96))`,
                         backdropFilter: "blur(20px)",
                         WebkitBackdropFilter: "blur(20px)",
                         border: `1px solid ${themeColor}40`,
-                        boxShadow: `0 4px 25px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)`,
+                        boxShadow: isDarkMode
+                          ? `0 4px 25px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`
+                          : `0 4px 25px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)`,
                         transition: "all 0.3s ease",
                       }}
                     >
@@ -186,15 +196,30 @@ export const Nav = () => {
                         className="px-5 pb-2 border-b mb-2 mt-2"
                         style={{ borderColor: `${themeColor}30` }}
                       >
-                        <p className="text-sm font-medium text-gray-800">
+                        <p
+                          className={`text-sm font-medium ${
+                            isDarkMode ? "text-gray-100" : "text-gray-800"
+                          }`}
+                        >
                           {session.user.name || session.user.email}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p
+                          className={`text-xs truncate ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
                           {session.user.email}
                         </p>
 
                         <div className="mt-2 flex items-center gap-2">
-                          <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="flex-1 h-1 rounded-full overflow-hidden"
+                            style={{
+                              backgroundColor: isDarkMode
+                                ? "rgba(255,255,255,0.15)"
+                                : "rgba(0,0,0,0.1)",
+                            }}
+                          >
                             <div
                               className="h-full rounded-full transition-all duration-500"
                               style={{
@@ -217,7 +242,9 @@ export const Nav = () => {
                         <Link
                           href="/profile"
                           onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg transition-all duration-200"
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                            isDarkMode ? "text-gray-200" : "text-gray-700"
+                          }`}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = `${themeColor}15`;
                           }}
@@ -238,7 +265,9 @@ export const Nav = () => {
                         <Link
                           href="/purchase-history"
                           onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg transition-all duration-200"
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                            isDarkMode ? "text-gray-200" : "text-gray-700"
+                          }`}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = `${themeColor}15`;
                           }}
@@ -267,7 +296,11 @@ export const Nav = () => {
                             setDropdownOpen(false);
                             signOutWithSave();
                           }}
-                          className="w-full flex items-center gap-3 px-5 py-3 text-red-600 text-left transition-all duration-200 hover:bg-red-100"
+                          className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-all duration-200 ${
+                            isDarkMode
+                              ? "text-red-400 hover:bg-red-900/20"
+                              : "text-red-600 hover:bg-red-100"
+                          }`}
                         >
                           <LogOut className="w-4 h-4" />
                           <span className="text-sm font-medium">Sign Out</span>

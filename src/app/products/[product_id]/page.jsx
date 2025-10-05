@@ -23,7 +23,8 @@ export default function AmazonProductPage() {
   const [product, setProduct] = useState(null);
   const { data: session } = useSession();
   const pathname = usePathname();
-  const { themeColor } = useColor();
+  const { themeColor, isDarkMode } = useColor();
+
   // Elements that can be reordered (excluding ProductHeader)
   const reorderableElements = [
     "BuyBox",
@@ -311,15 +312,32 @@ export default function AmazonProductPage() {
     }
   }, [product_id]);
 
-  if (error) return <p className="p-8 text-lg text-red-500">Error: {error}</p>;
-  if (!product) return <p className="p-8">Loading...</p>;
+  if (error)
+    return (
+      <p
+        className={`p-8 text-lg ${
+          isDarkMode ? "text-red-400" : "text-red-500"
+        }`}
+      >
+        Error: {error}
+      </p>
+    );
+  if (!product)
+    return (
+      <p className={`p-8 ${isDarkMode ? "text-gray-300" : "text-gray-900"}`}>
+        Loading...
+      </p>
+    );
 
   const images = product.imgUrl
     ? [product.imgUrl, product.imgUrl, product.imgUrl]
     : ["/placeholder-image.jpg"];
 
   return (
-    <div className="min-h-screen" style={{ background: themeColor }}>
+    <div
+      className="min-h-screen transition-colors duration-500"
+      style={{ background: isDarkMode ? "#000000" : themeColor }}
+    >
       {/* Dynamic Layout Container with glassmorphism */}
       <div
         className={`
@@ -331,11 +349,17 @@ export default function AmazonProductPage() {
         }
       `}
         style={{
-          background: "rgba(255, 255, 255, 0.7)",
+          background: isDarkMode
+            ? "rgba(31, 41, 55, 0.7)"
+            : "rgba(255, 255, 255, 0.7)",
           backdropFilter: "blur(20px) saturate(180%)",
           WebkitBackdropFilter: "blur(20px) saturate(180%)",
-          border: "1px solid rgba(255, 255, 255, 0.3)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+          border: isDarkMode
+            ? "1px solid rgba(75, 85, 99, 0.3)"
+            : "1px solid rgba(255, 255, 255, 0.3)",
+          boxShadow: isDarkMode
+            ? "0 8px 32px rgba(0, 0, 0, 0.3)"
+            : "0 8px 32px rgba(0, 0, 0, 0.1)",
         }}
       >
         {/* Image Section - Dynamic positioning */}
@@ -348,27 +372,41 @@ export default function AmazonProductPage() {
           {/* Layout Change Indicator with glassmorphism */}
           {imageLayoutVertical && (
             <div
-              className="mt-10 mb-4 p-3 rounded-2xl" // Added mt-20 for spacing below sticky navbar
+              className="mt-10 mb-4 p-3 rounded-2xl"
               style={{
-                background: "rgba(219, 234, 254, 0.5)",
+                background: isDarkMode
+                  ? "rgba(30, 58, 138, 0.5)"
+                  : "rgba(219, 234, 254, 0.5)",
                 backdropFilter: "blur(10px) saturate(150%)",
                 WebkitBackdropFilter: "blur(10px) saturate(150%)",
-                border: "1px solid rgba(191, 219, 254, 0.4)",
+                border: isDarkMode
+                  ? "1px solid rgba(59, 130, 246, 0.4)"
+                  : "1px solid rgba(191, 219, 254, 0.4)",
               }}
             >
               <div className="flex items-center gap-2">
                 <svg
-                  className="w-5 h-5 text-blue-600" // Also fixed the icon sizing (was h-3 mt-20)
+                  className={`w-5 h-5 ${
+                    isDarkMode ? "text-blue-400" : "text-blue-600"
+                  }`}
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
                   <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
                 </svg>
-                <span className="text-sm font-medium text-blue-900">
+                <span
+                  className={`text-sm font-medium ${
+                    isDarkMode ? "text-blue-300" : "text-blue-900"
+                  }`}
+                >
                   Image-Focused Layout Active
                 </span>
               </div>
-              <p className="text-xs text-blue-700 mt-1">
+              <p
+                className={`text-xs mt-1 ${
+                  isDarkMode ? "text-blue-400" : "text-blue-700"
+                }`}
+              >
                 Layout changed to image-focused mode: main image moved to
                 full-width with thumbnails below
               </p>
@@ -379,14 +417,11 @@ export default function AmazonProductPage() {
   transition-all duration-500
   ${
     imageLayoutVertical
-      ? "flex flex-col gap-4 items-center" // Column layout when image-focused
-      : "sticky top-4 flex flex-row gap-4 items-start" // Default: row with thumbnails on left
+      ? "flex flex-col gap-4 items-center"
+      : "sticky top-4 flex flex-row gap-4 items-start"
   }
 `}
           >
-            {/* Default layout: Thumbnails on LEFT side in vertical column */}
-
-            {/* Image-focused layout: Thumbnails UNDER main image horizontally */}
             {imageLayoutVertical && (
               <div className="w-full">
                 <Thumbnails
@@ -418,7 +453,6 @@ export default function AmazonProductPage() {
               />
             </div>
 
-            {/* Image-focused layout: Thumbnails UNDER main image horizontally */}
             {imageLayoutVertical && (
               <div className="w-full">
                 <Thumbnails
@@ -451,17 +485,31 @@ export default function AmazonProductPage() {
       <div
         className="max-w-7xl mx-auto p-4 mt-6 rounded-3xl"
         style={{
-          background: "rgba(255, 255, 255, 0.6)",
+          background: isDarkMode
+            ? "rgba(31, 41, 55, 0.6)"
+            : "rgba(255, 255, 255, 0.6)",
           backdropFilter: "blur(15px) saturate(150%)",
           WebkitBackdropFilter: "blur(15px) saturate(150%)",
-          border: "1px solid rgba(255, 255, 255, 0.3)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
+          border: isDarkMode
+            ? "1px solid rgba(75, 85, 99, 0.3)"
+            : "1px solid rgba(255, 255, 255, 0.3)",
+          boxShadow: isDarkMode
+            ? "0 8px 32px rgba(0, 0, 0, 0.3)"
+            : "0 8px 32px rgba(0, 0, 0, 0.08)",
         }}
       >
-        <h2 className="text-lg font-bold mb-2">
+        <h2
+          className={`text-lg font-bold mb-2 ${
+            isDarkMode ? "text-gray-100" : "text-gray-900"
+          }`}
+        >
           Your Preferences{" "}
           {!session?.user?.id && (
-            <span className="text-sm text-gray-500">
+            <span
+              className={`text-sm ${
+                isDarkMode ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
               (Guest - resets on page reload)
             </span>
           )}
@@ -470,17 +518,35 @@ export default function AmazonProductPage() {
           <div
             className="p-4 rounded-2xl"
             style={{
-              background: "rgba(255, 255, 255, 0.5)",
+              background: isDarkMode
+                ? "rgba(55, 65, 81, 0.5)"
+                : "rgba(255, 255, 255, 0.5)",
               backdropFilter: "blur(10px)",
               WebkitBackdropFilter: "blur(10px)",
-              border: "1px solid rgba(255, 255, 255, 0.4)",
+              border: isDarkMode
+                ? "1px solid rgba(75, 85, 99, 0.4)"
+                : "1px solid rgba(255, 255, 255, 0.4)",
             }}
           >
-            <h3 className="font-semibold mb-2">Current Layout Order:</h3>
+            <h3
+              className={`font-semibold mb-2 ${
+                isDarkMode ? "text-gray-100" : "text-gray-900"
+              }`}
+            >
+              Current Layout Order:
+            </h3>
             <ol className="list-decimal pl-5">
               <li className="flex justify-between">
-                <span>ProductHeader</span>
-                <span className="text-gray-600">Fixed at top</span>
+                <span
+                  className={isDarkMode ? "text-gray-300" : "text-gray-900"}
+                >
+                  ProductHeader
+                </span>
+                <span
+                  className={isDarkMode ? "text-gray-500" : "text-gray-600"}
+                >
+                  Fixed at top
+                </span>
               </li>
               {elementOrder.map((element, idx) => {
                 const pref = preferences.find(
@@ -490,50 +556,92 @@ export default function AmazonProductPage() {
 
                 return (
                   <li key={idx + 1} className="flex justify-between">
-                    <span>{element}</span>
-                    <span className="text-gray-600">
+                    <span
+                      className={isDarkMode ? "text-gray-300" : "text-gray-900"}
+                    >
+                      {element}
+                    </span>
+                    <span
+                      className={isDarkMode ? "text-gray-500" : "text-gray-600"}
+                    >
                       Score: {score}
                       {idx === 0 && score > 0 && (
-                        <span className="text-green-600 ml-1">(Highest)</span>
+                        <span
+                          className={`ml-1 ${
+                            isDarkMode ? "text-green-400" : "text-green-600"
+                          }`}
+                        >
+                          (Highest)
+                        </span>
                       )}
                     </span>
                   </li>
                 );
               })}
             </ol>
-            <p className="text-xs text-gray-500 mt-2">
+            <p
+              className={`text-xs mt-2 ${
+                isDarkMode ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
               * Layout updates when you visit a new product page
             </p>
           </div>
           <div
             className="p-4 rounded-2xl"
             style={{
-              background: "rgba(255, 255, 255, 0.5)",
+              background: isDarkMode
+                ? "rgba(55, 65, 81, 0.5)"
+                : "rgba(255, 255, 255, 0.5)",
               backdropFilter: "blur(10px)",
               WebkitBackdropFilter: "blur(10px)",
-              border: "1px solid rgba(255, 255, 255, 0.4)",
+              border: isDarkMode
+                ? "1px solid rgba(75, 85, 99, 0.4)"
+                : "1px solid rgba(255, 255, 255, 0.4)",
             }}
           >
-            <h3 className="font-semibold mb-2">Live Preference Scores:</h3>
+            <h3
+              className={`font-semibold mb-2 ${
+                isDarkMode ? "text-gray-100" : "text-gray-900"
+              }`}
+            >
+              Live Preference Scores:
+            </h3>
             <ul className="list-disc pl-5">
               {preferences.length > 0 ? (
                 preferences
                   .sort((a, b) => (b.score || 0) - (a.score || 0))
                   .map((pref, idx) => (
                     <li key={idx} className="flex justify-between">
-                      <span>{pref.element}</span>
-                      <span className="text-gray-600">{pref.score || 0}</span>
+                      <span
+                        className={
+                          isDarkMode ? "text-gray-300" : "text-gray-900"
+                        }
+                      >
+                        {pref.element}
+                      </span>
+                      <span
+                        className={
+                          isDarkMode ? "text-gray-500" : "text-gray-600"
+                        }
+                      >
+                        {pref.score || 0}
+                      </span>
                     </li>
                   ))
               ) : (
-                <li className="text-gray-500">
+                <li className={isDarkMode ? "text-gray-400" : "text-gray-500"}>
                   {session?.user?.id
                     ? "No preferences yet. Interact with elements to build your preferences!"
                     : "No preferences yet. Interact with elements to customize this session!"}
                 </li>
               )}
             </ul>
-            <p className="text-xs text-gray-500 mt-2">
+            <p
+              className={`text-xs mt-2 ${
+                isDarkMode ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
               * Scores update in real-time as you interact
             </p>
           </div>
@@ -543,25 +651,47 @@ export default function AmazonProductPage() {
         <div
           className="mt-4 p-3 rounded-2xl"
           style={{
-            background: "rgba(254, 252, 232, 0.6)",
+            background: isDarkMode
+              ? "rgba(113, 63, 18, 0.6)"
+              : "rgba(254, 252, 232, 0.6)",
             backdropFilter: "blur(10px)",
             WebkitBackdropFilter: "blur(10px)",
-            border: "1px solid rgba(252, 211, 77, 0.3)",
+            border: isDarkMode
+              ? "1px solid rgba(180, 83, 9, 0.3)"
+              : "1px solid rgba(252, 211, 77, 0.3)",
           }}
         >
-          <h4 className="font-bold text-sm">Debug Info:</h4>
-          <div className="text-xs mt-1">
+          <h4
+            className={`font-bold text-sm ${
+              isDarkMode ? "text-yellow-400" : "text-yellow-900"
+            }`}
+          >
+            Debug Info:
+          </h4>
+          <div
+            className={`text-xs mt-1 ${
+              isDarkMode ? "text-yellow-300" : "text-yellow-800"
+            }`}
+          >
             <strong>Current Layout:</strong>{" "}
             {imageLayoutVertical
               ? "Vertical (Image-focused)"
               : "Horizontal (Default)"}
           </div>
-          <div className="text-xs mt-1">
+          <div
+            className={`text-xs mt-1 ${
+              isDarkMode ? "text-yellow-300" : "text-yellow-800"
+            }`}
+          >
             <strong>Current Element Order:</strong> {elementOrder.join(" → ")}
           </div>
 
           {/* Image interaction scores */}
-          <div className="text-xs mt-1">
+          <div
+            className={`text-xs mt-1 ${
+              isDarkMode ? "text-yellow-300" : "text-yellow-800"
+            }`}
+          >
             <strong>Main Image Interaction Score:</strong>
             {(() => {
               const mainImagePref = preferences.find(
@@ -601,12 +731,18 @@ export default function AmazonProductPage() {
             })()}
           </div>
 
-          <div className="text-xs mt-1">
+          <div
+            className={`text-xs mt-1 ${
+              isDarkMode ? "text-yellow-300" : "text-yellow-800"
+            }`}
+          >
             <strong>Live Preferences:</strong>
             <pre
               className="mt-1 p-2 rounded text-xs overflow-x-auto"
               style={{
-                background: "rgba(243, 244, 246, 0.8)",
+                background: isDarkMode
+                  ? "rgba(55, 65, 81, 0.8)"
+                  : "rgba(243, 244, 246, 0.8)",
                 backdropFilter: "blur(5px)",
                 WebkitBackdropFilter: "blur(5px)",
               }}
@@ -614,7 +750,11 @@ export default function AmazonProductPage() {
               {JSON.stringify(preferences.slice(0, 6), null, 2)}
             </pre>
           </div>
-          <div className="text-xs mt-2">
+          <div
+            className={`text-xs mt-2 ${
+              isDarkMode ? "text-yellow-300" : "text-yellow-800"
+            }`}
+          >
             <strong>Next Page Would Show Order:</strong>
             <div className="ml-2">
               {preferences.length > 0
@@ -631,13 +771,21 @@ export default function AmazonProductPage() {
           <div
             className="mt-4 p-3 rounded-2xl"
             style={{
-              background: "rgba(219, 234, 254, 0.5)",
+              background: isDarkMode
+                ? "rgba(30, 58, 138, 0.5)"
+                : "rgba(219, 234, 254, 0.5)",
               backdropFilter: "blur(10px)",
               WebkitBackdropFilter: "blur(10px)",
-              border: "1px solid rgba(191, 219, 254, 0.4)",
+              border: isDarkMode
+                ? "1px solid rgba(59, 130, 246, 0.4)"
+                : "1px solid rgba(191, 219, 254, 0.4)",
             }}
           >
-            <p className="text-sm text-blue-700">
+            <p
+              className={`text-sm ${
+                isDarkMode ? "text-blue-300" : "text-blue-700"
+              }`}
+            >
               Guest Mode: Your preferences are being customized for this
               session! Sign in to save your preferences permanently across page
               reloads.

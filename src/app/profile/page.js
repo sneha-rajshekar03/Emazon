@@ -141,11 +141,10 @@ const themeColors = [
   },
 ];
 
-const CircularProgress = ({ percentage, color }) => {
+const CircularProgress = ({ percentage, color, isDarkMode }) => {
   const radius = 58;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percentage / 100) * circumference;
-
   return (
     <div className="relative w-40 h-40">
       <svg className="w-40 h-40 transform -rotate-90">
@@ -174,7 +173,7 @@ const CircularProgress = ({ percentage, color }) => {
           cx="80"
           cy="80"
           r={radius}
-          stroke="#f1f5f9"
+          stroke={isDarkMode ? "#333" : "#f1f5f9"}
           strokeWidth="12"
           fill="none"
           opacity="0.3"
@@ -234,12 +233,15 @@ const CircularProgress = ({ percentage, color }) => {
             style={{
               fontFamily:
                 '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
-              color,
+              color: isDarkMode ? "#ffffff" : color,
             }}
           >
             {Math.round(percentage)}%
           </div>
-          <div className="text-xs text-gray-500 mt-1.5 font-medium tracking-wider uppercase">
+          <div
+            className="text-xs mt-1.5 font-medium tracking-wider uppercase"
+            style={{ color: isDarkMode ? "#9ca3af" : "#6b7280" }}
+          >
             Complete
           </div>
         </div>
@@ -248,7 +250,7 @@ const CircularProgress = ({ percentage, color }) => {
   );
 };
 
-const MessageBar = ({ message, type, onClose, themeColor }) => {
+const MessageBar = ({ message, type, onClose, themeColor, isDarkMode }) => {
   if (!message) return null;
   const icons = {
     success: CheckCircle,
@@ -256,36 +258,46 @@ const MessageBar = ({ message, type, onClose, themeColor }) => {
     info: AlertTriangle,
   };
   const Icon = icons[type] || AlertTriangle;
-
   return (
     <div
       className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center max-w-sm w-full animate-slide-down border border-white border-opacity-20"
       style={{
-        background: `linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 50%, ${themeColor}15 100%)`,
+        background: isDarkMode
+          ? "linear-gradient(135deg, rgba(45, 45, 45, 0.6) 0%, rgba(30, 30, 30, 0.5) 100%)"
+          : `linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 50%, ${themeColor}15 100%)`,
         backdropFilter: "blur(40px) saturate(180%)",
         WebkitBackdropFilter: "blur(40px) saturate(180%)",
-        boxShadow:
-          "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
+        boxShadow: isDarkMode
+          ? "0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+          : "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
       }}
     >
-      <Icon className="w-4 h-4 mr-3 text-gray-800" />
+      <Icon
+        className="w-4 h-4 mr-3"
+        style={{ color: isDarkMode ? "#ffffff" : "#374151" }}
+      />
       <span
-        className="text-sm font-medium flex-grow text-gray-900"
-        style={{ letterSpacing: "-0.01em" }}
+        className="text-sm font-medium flex-grow"
+        style={{
+          letterSpacing: "-0.01em",
+          color: isDarkMode ? "#ffffff" : "#111827",
+        }}
       >
         {message}
       </span>
       <button
         onClick={onClose}
         className="ml-4 p-1.5 rounded-full hover:bg-black hover:bg-opacity-10 transition-all"
+        style={{ color: isDarkMode ? "#9ca3af" : "#6b7280" }}
       >
-        <X className="w-3.5 h-3.5 text-gray-700" />
+        <X className="w-3.5 h-3.5" />
       </button>
     </div>
   );
 };
 
 export default function ProfilePage() {
+  const { updateColor, hexColor, isDarkMode } = useColor();
   const [userDetails, setUserDetails] = useState({
     userId: "",
     email: "",
@@ -306,8 +318,6 @@ export default function ProfilePage() {
     petType: "",
     paymentMode: "",
   });
-  const { updateColor } = useColor();
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -315,7 +325,6 @@ export default function ProfilePage() {
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState(null);
 
-  // Auto-hide message after 4 seconds
   useEffect(() => {
     if (!message) return;
     const timer = setTimeout(() => {
@@ -361,7 +370,6 @@ export default function ProfilePage() {
     setHasChanges(true);
   }, []);
 
-  // Load user data on mount
   useEffect(() => {
     const loadUserData = async () => {
       try {
@@ -372,13 +380,11 @@ export default function ProfilePage() {
           userData.user.id ||
           userData.user._id?.toString() ||
           userData.user._id?.$oid;
-
         setUserDetails({
           userId,
           email: userData.user.email || "No Email",
           name: userData.user.name || userData.user.username || "User",
         });
-
         const profileRes = await fetch(`/api/profile?userId=${userId}`);
         if (profileRes.ok) {
           const profileData = await profileRes.json();
@@ -402,7 +408,6 @@ export default function ProfilePage() {
         setLoading(false);
       }
     };
-
     loadUserData();
   }, [showCustomMessage]);
 
@@ -428,16 +433,13 @@ export default function ProfilePage() {
         petType: profile.pets === "Yes" ? profile.petType : "",
         paymentMode: profile.paymentMode || "",
       };
-
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profileData),
       });
-
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Failed to update");
-
       updateColor(profile.themeColor.value);
       setHasChanges(false);
       showCustomMessage("Profile saved successfully!", "success");
@@ -453,7 +455,6 @@ export default function ProfilePage() {
       showCustomMessage("Geolocation not supported", "error");
       return;
     }
-
     setLocationLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -493,14 +494,21 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="w-7 h-7 animate-spin text-gray-900" />
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: isDarkMode ? "#1a1a1a" : "#ffffff" }}
+      >
+        <Loader2
+          className="w-7 h-7 animate-spin"
+          style={{ color: isDarkMode ? "#ffffff" : "#3b82f6" }}
+        />
         <div
-          className="text-lg text-gray-600 ml-3"
+          className="text-lg ml-3"
           style={{
             fontFamily:
               '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
             letterSpacing: "-0.01em",
+            color: isDarkMode ? "#9ca3af" : "#6b7280",
           }}
         >
           Loading profile...
@@ -518,71 +526,107 @@ export default function ProfilePage() {
         type={messageType}
         onClose={() => setMessage(null)}
         themeColor={profile.themeColor.hex}
+        isDarkMode={isDarkMode}
       />
-
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4">
+      <div
+        className="min-h-screen py-12 px-4"
+        style={{
+          background: isDarkMode
+            ? "linear-gradient(to bottom, #1a1a1a, #0a0a0a)"
+            : "linear-gradient(to bottom, #f9fafb, #ffffff)",
+        }}
+      >
         <div className="max-w-3xl mx-auto">
-          {/* Header Section */}
           <div className="text-center mb-10 mt-10">
             <h1
-              className="text-5xl font-semibold text-gray-900 mb-3"
+              className="text-5xl font-semibold mb-3"
               style={{
                 fontFamily:
                   '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
                 letterSpacing: "-0.03em",
+                color: isDarkMode ? "#ffffff" : "#111827",
               }}
             >
               Profile
             </h1>
             <p
-              className="text-gray-600 text-lg"
-              style={{ letterSpacing: "-0.01em" }}
+              className="text-lg"
+              style={{
+                letterSpacing: "-0.01em",
+                color: isDarkMode ? "#9ca3af" : "#6b7280",
+              }}
             >
               Complete your profile for a personalized experience
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
-              <div className="flex items-center gap-2.5 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-200">
+              <div
+                className="flex items-center gap-2.5 px-4 py-2 rounded-full shadow-sm border"
+                style={{
+                  background: isDarkMode ? "#2d2d2d" : "#ffffff",
+                  borderColor: isDarkMode ? "#444" : "#e5e7eb",
+                }}
+              >
                 <User
                   className="w-3.5 h-3.5"
                   style={{ color: profile.themeColor.hex }}
                 />
                 <span
-                  className="font-medium text-gray-900"
-                  style={{ letterSpacing: "-0.01em" }}
+                  className="font-medium"
+                  style={{
+                    letterSpacing: "-0.01em",
+                    color: isDarkMode ? "#ffffff" : "#111827",
+                  }}
                 >
                   {userDetails.name}
                 </span>
               </div>
-              <div className="flex items-center gap-2.5 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-200">
+              <div
+                className="flex items-center gap-2.5 px-4 py-2 rounded-full shadow-sm border"
+                style={{
+                  background: isDarkMode ? "#2d2d2d" : "#ffffff",
+                  borderColor: isDarkMode ? "#444" : "#e5e7eb",
+                }}
+              >
                 <Mail
                   className="w-3.5 h-3.5"
                   style={{ color: profile.themeColor.hex }}
                 />
                 <span
-                  className="text-gray-700"
-                  style={{ letterSpacing: "-0.01em" }}
+                  className=""
+                  style={{
+                    letterSpacing: "-0.01em",
+                    color: isDarkMode ? "#9ca3af" : "#374151",
+                  }}
                 >
                   {userDetails.email}
                 </span>
               </div>
             </div>
           </div>
-
-          {/* Completion Circle */}
           <div className="flex justify-center mb-12">
             <CircularProgress
               percentage={completion}
               color={profile.themeColor.hex}
+              isDarkMode={isDarkMode}
             />
           </div>
-
-          {/* Form Container */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 space-y-8">
-            {/* Theme Color Selector */}
+          <div
+            className="rounded-3xl shadow-sm border p-8 space-y-8"
+            style={{
+              background: isDarkMode ? "#2d2d2d" : "#ffffff",
+              borderColor: isDarkMode ? "#444" : "#e5e7eb",
+              boxShadow: isDarkMode
+                ? "0 4px 20px rgba(0, 0, 0, 0.3)"
+                : "0 4px 20px rgba(0, 0, 0, 0.05)",
+            }}
+          >
             <div>
               <label
-                className="flex items-center text-sm font-medium text-gray-700 mb-4"
-                style={{ letterSpacing: "-0.01em" }}
+                className="flex items-center text-sm font-medium mb-4"
+                style={{
+                  color: isDarkMode ? "#9ca3af" : "#374151",
+                  letterSpacing: "-0.01em",
+                }}
               >
                 <Palette className="w-4 h-4 mr-2.5" />
                 Color
@@ -607,10 +651,12 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
-            {/* Form Fields - Add this after the Theme Color Selector */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
+                <label
+                  className="flex items-center text-sm font-medium mb-2.5"
+                  style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+                >
                   <User className="w-4 h-4 mr-2" />
                   Age
                 </label>
@@ -619,46 +665,60 @@ export default function ProfilePage() {
                   value={profile.age}
                   onChange={(e) => handleUpdate("age", e.target.value)}
                   placeholder="Enter your age"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all"
+                  className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all"
                   style={{
-                    "--theme-color": profile.themeColor.hex,
+                    background: isDarkMode ? "#3d3d3d" : "#ffffff",
+                    borderColor: isDarkMode ? "#555" : "#d1d5db",
+                    color: isDarkMode ? "#ffffff" : "#111827",
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = profile.themeColor.hex;
                     e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "";
+                    e.target.style.borderColor = isDarkMode
+                      ? "#555"
+                      : "#d1d5db";
                     e.target.style.boxShadow = "";
                   }}
                 />
               </div>
               <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
+                <label
+                  className="flex items-center text-sm font-medium mb-2.5"
+                  style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+                >
                   <Briefcase className="w-4 h-4 mr-2" />
                   Occupation
                 </label>
                 <input
-                  type="number"
-                  value={profile.age}
-                  onChange={(e) => handleUpdate("age", e.target.value)}
-                  placeholder="Enter your age"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all"
+                  type="text"
+                  value={profile.occupation}
+                  onChange={(e) => handleUpdate("occupation", e.target.value)}
+                  placeholder="Enter your occupation"
+                  className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all"
                   style={{
-                    "--theme-color": profile.themeColor.hex,
+                    background: isDarkMode ? "#3d3d3d" : "#ffffff",
+                    borderColor: isDarkMode ? "#555" : "#d1d5db",
+                    color: isDarkMode ? "#ffffff" : "#111827",
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = profile.themeColor.hex;
                     e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "";
+                    e.target.style.borderColor = isDarkMode
+                      ? "#555"
+                      : "#d1d5db";
                     e.target.style.boxShadow = "";
                   }}
-                />{" "}
+                />
               </div>
               <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
+                <label
+                  className="flex items-center text-sm font-medium mb-2.5"
+                  style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+                >
                   <Heart className="w-4 h-4 mr-2" />
                   Favorite Brand
                 </label>
@@ -667,38 +727,49 @@ export default function ProfilePage() {
                   value={profile.brand}
                   onChange={(e) => handleUpdate("brand", e.target.value)}
                   placeholder="e.g., Apple, Nike"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all"
+                  className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all"
                   style={{
-                    "--theme-color": profile.themeColor.hex,
+                    background: isDarkMode ? "#3d3d3d" : "#ffffff",
+                    borderColor: isDarkMode ? "#555" : "#d1d5db",
+                    color: isDarkMode ? "#ffffff" : "#111827",
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = profile.themeColor.hex;
                     e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "";
+                    e.target.style.borderColor = isDarkMode
+                      ? "#555"
+                      : "#d1d5db";
                     e.target.style.boxShadow = "";
                   }}
-                />{" "}
+                />
               </div>
               <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
+                <label
+                  className="flex items-center text-sm font-medium mb-2.5"
+                  style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+                >
                   <Car className="w-4 h-4 mr-2" />
                   Travel Mode
                 </label>
                 <select
                   value={profile.travelMode}
                   onChange={(e) => handleUpdate("travelMode", e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all cursor-pointer"
+                  className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all cursor-pointer"
                   style={{
-                    "--theme-color": profile.themeColor.hex,
+                    background: isDarkMode ? "#3d3d3d" : "#ffffff",
+                    borderColor: isDarkMode ? "#555" : "#d1d5db",
+                    color: isDarkMode ? "#ffffff" : "#111827",
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = profile.themeColor.hex;
                     e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "";
+                    e.target.style.borderColor = isDarkMode
+                      ? "#555"
+                      : "#d1d5db";
                     e.target.style.boxShadow = "";
                   }}
                   onMouseEnter={(e) => {
@@ -706,7 +777,9 @@ export default function ProfilePage() {
                   }}
                   onMouseLeave={(e) => {
                     if (document.activeElement !== e.target) {
-                      e.target.style.borderColor = "";
+                      e.target.style.borderColor = isDarkMode
+                        ? "#555"
+                        : "#d1d5db";
                     }
                   }}
                 >
@@ -719,23 +792,30 @@ export default function ProfilePage() {
                 </select>
               </div>
               <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
+                <label
+                  className="flex items-center text-sm font-medium mb-2.5"
+                  style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+                >
                   <DollarSign className="w-4 h-4 mr-2" />
                   Price Range
                 </label>
                 <select
                   value={profile.priceRange}
                   onChange={(e) => handleUpdate("priceRange", e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all cursor-pointer"
+                  className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all cursor-pointer"
                   style={{
-                    "--theme-color": profile.themeColor.hex,
+                    background: isDarkMode ? "#3d3d3d" : "#ffffff",
+                    borderColor: isDarkMode ? "#555" : "#d1d5db",
+                    color: isDarkMode ? "#ffffff" : "#111827",
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = profile.themeColor.hex;
                     e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "";
+                    e.target.style.borderColor = isDarkMode
+                      ? "#555"
+                      : "#d1d5db";
                     e.target.style.boxShadow = "";
                   }}
                 >
@@ -749,23 +829,30 @@ export default function ProfilePage() {
                 </select>
               </div>
               <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2.5">
+                <label
+                  className="flex items-center text-sm font-medium mb-2.5"
+                  style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+                >
                   <CreditCard className="w-4 h-4 mr-2" />
                   Payment Mode
                 </label>
                 <select
                   value={profile.paymentMode}
                   onChange={(e) => handleUpdate("paymentMode", e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all cursor-pointer"
+                  className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all cursor-pointer"
                   style={{
-                    "--theme-color": profile.themeColor.hex,
+                    background: isDarkMode ? "#3d3d3d" : "#ffffff",
+                    borderColor: isDarkMode ? "#555" : "#d1d5db",
+                    color: isDarkMode ? "#ffffff" : "#111827",
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = profile.themeColor.hex;
                     e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "";
+                    e.target.style.borderColor = isDarkMode
+                      ? "#555"
+                      : "#d1d5db";
                     e.target.style.boxShadow = "";
                   }}
                 >
@@ -776,10 +863,13 @@ export default function ProfilePage() {
                   <option value="UPI">UPI</option>
                   <option value="Digital Wallet">Digital Wallet</option>
                 </select>
-              </div>{" "}
+              </div>
             </div>
             <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-3">
+              <label
+                className="flex items-center text-sm font-medium mb-3"
+                style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+              >
                 <Home className="w-4 h-4 mr-2" />
                 Living Status
               </label>
@@ -788,18 +878,23 @@ export default function ProfilePage() {
                   <button
                     key={status}
                     onClick={() => handleUpdate("livingStatus", status)}
-                    className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-                      profile.livingStatus === status
-                        ? "shadow-sm"
-                        : "bg-gray-100"
-                    }`}
+                    className={`flex-1 py-3 rounded-xl font-medium transition-all`}
                     style={
                       profile.livingStatus === status
                         ? {
                             color: profile.themeColor.hex,
                             backgroundColor: `${profile.themeColor.hex}20`,
+                            border: isDarkMode
+                              ? "1px solid rgba(255, 255, 255, 0.1)"
+                              : "1px solid rgba(255, 255, 255, 0.6)",
                           }
-                        : {}
+                        : {
+                            background: isDarkMode ? "#3d3d3d" : "#f3f4f6",
+                            color: isDarkMode ? "#ffffff" : "#111827",
+                            border: isDarkMode
+                              ? "1px solid #555"
+                              : "1px solid #d1d5db",
+                          }
                     }
                   >
                     {status}
@@ -809,7 +904,10 @@ export default function ProfilePage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-3 block">
+                <label
+                  className="text-sm font-medium mb-3 block"
+                  style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+                >
                   Pets
                 </label>
                 <div className="flex gap-3">
@@ -817,16 +915,23 @@ export default function ProfilePage() {
                     <button
                       key={option}
                       onClick={() => handleUpdate("pets", option)}
-                      className={`flex-1 py-3 rounded-xl font-medium ${
-                        profile.pets === option ? "shadow-sm" : "bg-gray-100"
-                      }`}
+                      className={`flex-1 py-3 rounded-xl font-medium`}
                       style={
                         profile.pets === option
                           ? {
                               color: profile.themeColor.hex,
                               backgroundColor: `${profile.themeColor.hex}20`,
+                              border: isDarkMode
+                                ? "1px solid rgba(255, 255, 255, 0.1)"
+                                : "1px solid rgba(255, 255, 255, 0.6)",
                             }
-                          : {}
+                          : {
+                              background: isDarkMode ? "#3d3d3d" : "#f3f4f6",
+                              color: isDarkMode ? "#ffffff" : "#111827",
+                              border: isDarkMode
+                                ? "1px solid #555"
+                                : "1px solid #d1d5db",
+                            }
                       }
                     >
                       {option}
@@ -834,25 +939,31 @@ export default function ProfilePage() {
                   ))}
                 </div>
               </div>
-
               {profile.pets === "Yes" && (
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-3 block">
+                  <label
+                    className="text-sm font-medium mb-3 block"
+                    style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+                  >
                     Pet Type
                   </label>
                   <select
                     value={profile.petType}
                     onChange={(e) => handleUpdate("petType", e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none transition-all cursor-pointer"
+                    className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all cursor-pointer"
                     style={{
-                      "--theme-color": profile.themeColor.hex,
+                      background: isDarkMode ? "#3d3d3d" : "#ffffff",
+                      borderColor: isDarkMode ? "#555" : "#d1d5db",
+                      color: isDarkMode ? "#ffffff" : "#111827",
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = profile.themeColor.hex;
                       e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = "";
+                      e.target.style.borderColor = isDarkMode
+                        ? "#555"
+                        : "#d1d5db";
                       e.target.style.boxShadow = "";
                     }}
                   >
@@ -870,7 +981,10 @@ export default function ProfilePage() {
               )}
             </div>
             <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-3">
+              <label
+                className="flex items-center text-sm font-medium mb-3"
+                style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+              >
                 <Heart className="w-4 h-4 mr-2" />
                 Hobbies
               </label>
@@ -888,18 +1002,23 @@ export default function ProfilePage() {
                   <button
                     key={hobby}
                     onClick={() => toggleHobby(hobby)}
-                    className={`py-2.5 px-3 rounded-xl text-sm font-medium ${
-                      profile.hobbies.includes(hobby)
-                        ? "shadow-sm"
-                        : "bg-gray-100"
-                    }`}
+                    className={`py-2.5 px-3 rounded-xl text-sm font-medium`}
                     style={
                       profile.hobbies.includes(hobby)
                         ? {
                             color: profile.themeColor.hex,
                             backgroundColor: `${profile.themeColor.hex}20`,
+                            border: isDarkMode
+                              ? "1px solid rgba(255, 255, 255, 0.1)"
+                              : "1px solid rgba(255, 255, 255, 0.6)",
                           }
-                        : {}
+                        : {
+                            background: isDarkMode ? "#3d3d3d" : "#f3f4f6",
+                            color: isDarkMode ? "#ffffff" : "#111827",
+                            border: isDarkMode
+                              ? "1px solid #555"
+                              : "1px solid #d1d5db",
+                          }
                     }
                   >
                     {hobby}
@@ -908,7 +1027,10 @@ export default function ProfilePage() {
               </div>
             </div>
             <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-3">
+              <label
+                className="flex items-center text-sm font-medium mb-3"
+                style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+              >
                 <MapPin className="w-4 h-4 mr-2" />
                 Location
               </label>
@@ -918,7 +1040,12 @@ export default function ProfilePage() {
                   value={profile.location}
                   onChange={(e) => handleUpdate("location", e.target.value)}
                   placeholder="Enter your location"
-                  className="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
+                  className="flex-1 px-4 py-3 rounded-xl border focus:outline-none"
+                  style={{
+                    background: isDarkMode ? "#3d3d3d" : "#ffffff",
+                    borderColor: isDarkMode ? "#555" : "#d1d5db",
+                    color: isDarkMode ? "#ffffff" : "#111827",
+                  }}
                 />
                 <button
                   onClick={getLocation}
@@ -937,19 +1064,13 @@ export default function ProfilePage() {
                   {locationLoading ? "Detecting..." : "Auto-Detect"}
                 </button>
               </div>
-            </div>{" "}
+            </div>
           </div>
-
-          {/* Save Button */}
           <div className="mt-10 flex justify-center">
             <button
               onClick={saveToDatabase}
               disabled={!hasChanges || saving}
-              className={`px-12 py-4 rounded-full font-medium text-base transition-all flex items-center justify-center shadow-sm ${
-                hasChanges && !saving
-                  ? "transform hover:scale-105"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
+              className={`px-12 py-4 rounded-full font-medium text-base transition-all flex items-center justify-center shadow-sm`}
               style={{
                 letterSpacing: "-0.01em",
                 transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -957,8 +1078,17 @@ export default function ProfilePage() {
                   ? {
                       color: profile.themeColor.hex,
                       backgroundColor: `${profile.themeColor.hex}20`,
+                      border: isDarkMode
+                        ? "1px solid rgba(255, 255, 255, 0.1)"
+                        : "1px solid rgba(255, 255, 255, 0.6)",
                     }
-                  : {}),
+                  : {
+                      background: isDarkMode ? "#3d3d3d" : "#e5e7eb",
+                      color: isDarkMode ? "#6b7280" : "#9ca3af",
+                      border: isDarkMode
+                        ? "1px solid #555"
+                        : "1px solid #d1d5db",
+                    }),
               }}
               onMouseEnter={(e) => {
                 if (hasChanges && !saving)
@@ -969,17 +1099,20 @@ export default function ProfilePage() {
                   e.target.style.backgroundColor = `${profile.themeColor.hex}20`;
               }}
             >
-              {saving && <Loader2 className="w-4 h-4 mr-2.5 animate-spin" />}
-              {saving
-                ? "Saving..."
-                : hasChanges
-                ? "Save Changes"
-                : "No Changes"}
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2.5 animate-spin" />
+                  Saving...
+                </>
+              ) : hasChanges ? (
+                "Save Changes"
+              ) : (
+                "No Changes"
+              )}
             </button>
           </div>
         </div>
       </div>
-
       <style jsx>{`
         @keyframes slide-down {
           from {

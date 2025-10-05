@@ -2,6 +2,7 @@
 
 import { ZoomIn } from "lucide-react";
 import Image from "next/image";
+import { useColor } from "@app/context/ColorContext";
 
 export function MainImage({
   product,
@@ -10,16 +11,24 @@ export function MainImage({
   isZoomed,
   onZoomToggle,
 }) {
+  const { isDarkMode } = useColor();
+
   return (
     <div className="relative group mt-20">
-      {" "}
-      {/* Added margin-top */}
       {/* Main Image Container */}
       <div
-        className={`relative rounded-2xl overflow-hidden shadow-sm  border border-gray-200 bg-gradient-to-br from-gray-100 to-white transition-all duration-500 ease-out ${
+        className={`relative rounded-2xl overflow-hidden shadow-sm transition-all duration-500 ease-out ${
           isZoomed ? "cursor-zoom-out scale-[1.02]" : "cursor-zoom-in"
         }`}
         onClick={onZoomToggle}
+        style={{
+          border: isDarkMode
+            ? "1px solid rgba(255,255,255,0.1)"
+            : "1px solid rgb(229, 231, 235)",
+          background: isDarkMode
+            ? "linear-gradient(to bottom right, rgb(40, 40, 40), rgb(30, 30, 30))"
+            : "linear-gradient(to bottom right, rgb(243, 244, 246), rgb(255, 255, 255))",
+        }}
       >
         <Image
           src={images[selectedImage]}
@@ -34,15 +43,32 @@ export function MainImage({
           }`}
         />
 
-        {/* Zoom Icon (Apple-like hover) */}
+        {/* Zoom Icon */}
         {!isZoomed && (
-          <div className="absolute top-4 right-4 bg-white/70 backdrop-blur-md text-gray-800 p-2 rounded-full opacity-0 group-hover:opacity-100 shadow-md transition-all duration-300">
+          <div
+            className="absolute top-4 right-4 backdrop-blur-md p-2 rounded-full opacity-0 group-hover:opacity-100 shadow-md transition-all duration-300"
+            style={{
+              background: isDarkMode
+                ? "rgba(60, 60, 60, 0.7)"
+                : "rgba(255, 255, 255, 0.7)",
+              color: isDarkMode ? "rgb(229, 231, 235)" : "rgb(31, 41, 55)",
+            }}
+          >
             <ZoomIn className="h-4 w-4" />
           </div>
         )}
       </div>
+
       {/* Image Counter */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-sm text-gray-800 px-3 py-1 rounded-full text-sm font-medium shadow-sm">
+      <div
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-medium shadow-sm"
+        style={{
+          background: isDarkMode
+            ? "rgba(60, 60, 60, 0.8)"
+            : "rgba(255, 255, 255, 0.8)",
+          color: isDarkMode ? "rgb(229, 231, 235)" : "rgb(31, 41, 55)",
+        }}
+      >
         {selectedImage + 1} / {images.length}
       </div>
     </div>

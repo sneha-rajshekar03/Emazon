@@ -15,7 +15,7 @@ export const Language = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const { hexColor } = useColor();
+  const { hexColor, isDarkMode } = useColor();
 
   // Languages based on location
   const locationLanguages = {
@@ -61,16 +61,27 @@ export const Language = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Trigger Button - Apple Style */}
+      {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100"
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${
+          isDarkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"
+        }`}
         style={{
           background: isOpen ? `${hexColor}10` : "transparent",
         }}
       >
-        <Globe className="w-4 h-4 text-gray-600" strokeWidth={2} />
-        <span className="text-sm font-medium text-gray-700">
+        <Globe
+          className={`w-4 h-4 ${
+            isDarkMode ? "text-gray-400" : "text-gray-600"
+          }`}
+          strokeWidth={2}
+        />
+        <span
+          className={`text-sm font-medium ${
+            isDarkMode ? "text-gray-300" : "text-gray-700"
+          }`}
+        >
           {currentLang.code.toUpperCase()}
         </span>
       </button>
@@ -80,11 +91,15 @@ export const Language = () => {
         <div
           className="absolute right-0 mt-2 w-60 rounded-xl border shadow-lg overflow-hidden z-50"
           style={{
-            background: "rgba(255, 255, 255, 0.95)",
+            background: isDarkMode
+              ? "rgba(45, 45, 45, 0.95)"
+              : "rgba(255, 255, 255, 0.95)",
             backdropFilter: "blur(20px) saturate(180%)",
             WebkitBackdropFilter: "blur(20px) saturate(180%)",
             borderColor: `${hexColor}15`,
-            boxShadow: `0 4px 20px rgba(0, 0, 0, 0.1), 0 0 0 0.5px ${hexColor}10`,
+            boxShadow: isDarkMode
+              ? `0 4px 20px rgba(0, 0, 0, 0.5), 0 0 0 0.5px ${hexColor}10`
+              : `0 4px 20px rgba(0, 0, 0, 0.1), 0 0 0 0.5px ${hexColor}10`,
           }}
         >
           {/* Header */}
@@ -95,7 +110,11 @@ export const Language = () => {
             }}
           >
             <div className="flex justify-between items-center">
-              <span className="text-xs font-medium text-gray-500">
+              <span
+                className={`text-xs font-medium ${
+                  isDarkMode ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
                 {status === "authenticated"
                   ? "Suggested for you"
                   : "Select Language"}
@@ -150,10 +169,20 @@ export const Language = () => {
                 }}
               >
                 <div>
-                  <div className="text-sm font-medium text-gray-800">
+                  <div
+                    className={`text-sm font-medium ${
+                      isDarkMode ? "text-gray-100" : "text-gray-800"
+                    }`}
+                  >
                     {lang.name}
                   </div>
-                  <div className="text-xs text-gray-500">{lang.native}</div>
+                  <div
+                    className={`text-xs ${
+                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
+                    {lang.native}
+                  </div>
                 </div>
                 {selectedLang === lang.code && (
                   <svg

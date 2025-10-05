@@ -15,8 +15,8 @@ import {
   MapPin,
 } from "lucide-react";
 
-const POPUP_INTERVAL_MS = 90000;
-const POPUP_INITIAL_DELAY_MS = 50000;
+const POPUP_INTERVAL_MS = 4000;
+const POPUP_INITIAL_DELAY_MS = 2000;
 
 const iconMap = {
   User,

@@ -20,63 +20,48 @@ export const ProfilePopup = ({
   const [isVisible, setIsVisible] = useState(false);
   const [timeLeft, setTimeLeft] = useState(7);
   const [isPaused, setIsPaused] = useState(false);
-  const { hexColor } = useColor();
+  const { hexColor, isDarkMode } = useColor();
   const countdownRef = useRef(null);
+  const popupRef = useRef(null);
 
+  // Show popup and reset timer
   useEffect(() => {
     if (!currentQuestion) return;
-
     const showTimer = setTimeout(() => setIsVisible(true), 100);
-
-    // Reset timer
     setTimeLeft(7);
     setIsPaused(false);
-
     return () => {
       clearTimeout(showTimer);
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
   }, [currentQuestion]);
 
-  // Separate effect for countdown
+  // Handle countdown logic
   useEffect(() => {
-    if (!currentQuestion) return;
+    if (!currentQuestion || isPaused) return;
 
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-    }
+    if (countdownRef.current) clearInterval(countdownRef.current);
 
-    if (!isPaused) {
-      countdownRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 0.1) {
-            clearInterval(countdownRef.current);
-            handleClose();
-            return 0;
-          }
-          return prev - 0.1;
-        });
-      }, 100);
-    }
+    countdownRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 0.1) {
+          clearInterval(countdownRef.current);
+          return 0;
+        }
+        return prev - 0.1;
+      });
+    }, 100);
 
     return () => {
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-      }
+      if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [isPaused, currentQuestion, handleClose]);
+  }, [currentQuestion, isPaused]);
 
-  const handleMouseEnter = () => {
-    setIsPaused(true);
-  };
-
-  const handleMouseLeave = () => {
-    setIsPaused(false);
-  };
+  const handleMouseEnter = () => setIsPaused(true);
+  const handleMouseLeave = () => setIsPaused(false);
 
   const detectLocation = async () => {
     if (!navigator.geolocation) return alert("Geolocation not supported");
-
     setLocationLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -105,18 +90,26 @@ export const ProfilePopup = ({
   };
 
   if (!currentQuestion) return null;
+
   const Icon = currentQuestion.icon;
   const progress = (timeLeft / 7) * 100;
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
       <div
-        className={`w-[380px] p-5 bg-white rounded-3xl shadow-2xl transition-all duration-500 ${
+        ref={popupRef}
+        className={`w-[380px] p-5 rounded-3xl shadow-2xl transition-all duration-500 ${
           isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
         }`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        style={{ border: `1px solid ${hexColor}30` }}
+        style={{
+          border: `1px solid ${hexColor}30`,
+          background: isDarkMode ? "#2D2D2D" : "#FFFFFF",
+          boxShadow: isDarkMode
+            ? "0 10px 25px rgba(0, 0, 0, 0.3)"
+            : "0 10px 25px rgba(0, 0, 0, 0.1)",
+        }}
       >
         {/* Timer Progress Bar */}
         <div className="absolute top-0 left-1/2 w-[95%] h-1 -translate-x-1/2 rounded-t-4xl overflow-hidden">
@@ -124,11 +117,10 @@ export const ProfilePopup = ({
             className="h-full transition-all duration-100 ease-linear"
             style={{
               width: `${progress}%`,
-              background: hexColor,
+              background: isPaused ? "#9CA3AF" : hexColor,
             }}
           />
         </div>
-
         <button
           onClick={handleClose}
           className="absolute top-4 right-4"
@@ -136,19 +128,31 @@ export const ProfilePopup = ({
         >
           <X className="w-5 h-5" />
         </button>
-
         <div className="flex items-center gap-3 mb-4">
           <div className="p-3 rounded-xl" style={{ background: hexColor }}>
             <Icon className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Quick Question</h3>
-            <p className="text-sm text-gray-500">Help us personalize</p>
+            <h3
+              className="text-lg font-semibold"
+              style={{ color: isDarkMode ? "#FFFFFF" : "#111827" }}
+            >
+              Quick Question
+            </h3>
+            <p
+              className="text-sm"
+              style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
+            >
+              Help us personalize
+            </p>
           </div>
         </div>
-
-        <p className="text-sm mb-4">{currentQuestion.question}</p>
-
+        <p
+          className="text-sm mb-4"
+          style={{ color: isDarkMode ? "#D1D5DB" : "#374151" }}
+        >
+          {currentQuestion.question}
+        </p>
         <div className="mb-4">
           {currentQuestion.type === "text" && (
             <div className="space-y-2">
@@ -156,44 +160,73 @@ export const ProfilePopup = ({
                 type="text"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
+                onFocus={() => setIsPaused(true)}
+                onBlur={() => setIsPaused(false)}
                 placeholder={currentQuestion.placeholder}
-                className="w-full px-3 py-2 text-sm rounded-lg border"
+                className="w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{
+                  background: isDarkMode ? "#3D3D3D" : "#FFFFFF",
+                  borderColor: isDarkMode ? "#555" : "#D1D5DB",
+                  color: isDarkMode ? "#FFFFFF" : "#111827",
+                }}
               />
               {currentQuestion.hasAutoDetect && (
                 <button
                   onClick={detectLocation}
                   disabled={locationLoading}
-                  className="w-full px-3 py-2 text-sm rounded-lg text-white"
-                  style={{ background: locationLoading ? "#9CA3AF" : hexColor }}
+                  onMouseEnter={handleMouseEnter}
+                  onMouseLeave={handleMouseLeave}
+                  className="w-full px-3 py-2 text-sm rounded-lg text-white flex items-center justify-center"
+                  style={{
+                    background: locationLoading
+                      ? isDarkMode
+                        ? "#555"
+                        : "#9CA3AF"
+                      : hexColor,
+                  }}
                 >
                   {locationLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin inline" />
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : (
-                    <MapPin className="w-4 h-4 inline" />
+                    <MapPin className="w-4 h-4 mr-2" />
                   )}
-                  <span className="ml-2">
+                  <span>
                     {locationLoading ? "Detecting..." : "Auto-Detect"}
                   </span>
                 </button>
               )}
             </div>
           )}
-
           {currentQuestion.type === "number" && (
             <input
               type="number"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
+              onFocus={() => setIsPaused(true)}
+              onBlur={() => setIsPaused(false)}
+              onWheel={(e) => e.target.blur()}
               placeholder={currentQuestion.placeholder}
-              className="w-full px-3 py-2 text-sm rounded-lg border"
+              className="w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-2"
+              style={{
+                background: isDarkMode ? "#3D3D3D" : "#FFFFFF",
+                borderColor: isDarkMode ? "#555" : "#D1D5DB",
+                color: isDarkMode ? "#FFFFFF" : "#111827",
+                MozAppearance: "textfield",
+              }}
             />
           )}
-
           {currentQuestion.type === "select" && (
             <select
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border"
+              onFocus={() => setIsPaused(true)}
+              onBlur={() => setIsPaused(false)}
+              className="w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-2"
+              style={{
+                background: isDarkMode ? "#3D3D3D" : "#FFFFFF",
+                borderColor: isDarkMode ? "#555" : "#D1D5DB",
+                color: isDarkMode ? "#FFFFFF" : "#111827",
+              }}
             >
               <option value="">Select an option</option>
               {currentQuestion.options?.map((opt) => (
@@ -203,14 +236,15 @@ export const ProfilePopup = ({
               ))}
             </select>
           )}
-
           {currentQuestion.type === "buttons" && (
             <div className="flex gap-2">
               {currentQuestion.options?.map((opt) => (
                 <button
                   key={opt}
                   onClick={() => setAnswer(opt)}
-                  className="flex-1 py-2 px-3 text-sm rounded-lg border-2"
+                  onMouseEnter={handleMouseEnter}
+                  onMouseLeave={handleMouseLeave}
+                  className="flex-1 py-2 px-3 text-sm rounded-lg border-2 transition-all"
                   style={
                     answer === opt
                       ? {
@@ -218,7 +252,11 @@ export const ProfilePopup = ({
                           background: hexColor,
                           color: "white",
                         }
-                      : { borderColor: `${hexColor}40`, color: hexColor }
+                      : {
+                          borderColor: `${hexColor}40`,
+                          color: hexColor,
+                          background: isDarkMode ? "#3D3D3D" : "#FFFFFF",
+                        }
                   }
                 >
                   {opt}
@@ -226,14 +264,15 @@ export const ProfilePopup = ({
               ))}
             </div>
           )}
-
           {currentQuestion.type === "multi-select" && (
             <div className="grid grid-cols-2 gap-2">
               {currentQuestion.options?.map((opt) => (
                 <button
                   key={opt}
                   onClick={() => toggleHobby(opt)}
-                  className="py-2 px-2 text-xs rounded-lg border-2"
+                  onMouseEnter={handleMouseEnter}
+                  onMouseLeave={handleMouseLeave}
+                  className="py-2 px-2 text-xs rounded-lg border-2 transition-all"
                   style={
                     selectedHobbies?.includes(opt)
                       ? {
@@ -241,7 +280,11 @@ export const ProfilePopup = ({
                           background: hexColor,
                           color: "white",
                         }
-                      : { borderColor: `${hexColor}40`, color: hexColor }
+                      : {
+                          borderColor: `${hexColor}40`,
+                          color: hexColor,
+                          background: isDarkMode ? "#3D3D3D" : "#FFFFFF",
+                        }
                   }
                 >
                   {opt}
@@ -250,23 +293,29 @@ export const ProfilePopup = ({
             </div>
           )}
         </div>
-
         <div className="flex gap-2">
           <button
             onClick={handleClose}
-            className="flex-1 py-2 px-3 text-sm rounded-lg border-2"
-            style={{ borderColor: `${hexColor}40`, color: hexColor }}
+            className="flex-1 py-2 px-3 text-sm rounded-lg border-2 transition-all"
+            style={{
+              borderColor: `${hexColor}40`,
+              color: hexColor,
+              background: isDarkMode ? "#3D3D3D" : "#FFFFFF",
+            }}
           >
             Skip
           </button>
           <button
             onClick={handleSave}
             disabled={!isAnswerValid || saving}
-            className="flex-1 py-2 px-3 text-sm rounded-lg flex items-center justify-center"
+            className="flex-1 py-2 px-3 text-sm rounded-lg flex items-center justify-center transition-all"
             style={
               isAnswerValid && !saving
                 ? { background: hexColor, color: "white" }
-                : { background: "#D1D5DB", color: "#6B7280" }
+                : {
+                    background: isDarkMode ? "#555" : "#D1D5DB",
+                    color: isDarkMode ? "#9CA3AF" : "#6B7280",
+                  }
             }
           >
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}

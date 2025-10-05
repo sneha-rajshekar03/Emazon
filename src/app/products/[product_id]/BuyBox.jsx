@@ -14,10 +14,11 @@ import {
   Banknote,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import { Card } from "@/components/ui/card";
 
 export function BuyBox({ product, ...props }) {
   const { addToCart, checkout } = useCart();
-  const { hexColor } = useColor();
+  const { hexColor, isDarkMode } = useColor();
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -73,7 +74,6 @@ export function BuyBox({ product, ...props }) {
       return;
     }
 
-    // Get the buy box position
     const buyBoxElement = e.currentTarget.closest("[data-buybox]");
     if (buyBoxElement) {
       const rect = buyBoxElement.getBoundingClientRect();
@@ -83,13 +83,8 @@ export function BuyBox({ product, ...props }) {
       });
     }
 
-    // Add product to cart temporarily
     addToCart(product, quantity);
-
-    // Small delay to ensure cart is updated
     await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Show payment modal
     setShowPaymentModal(true);
   };
 
@@ -119,7 +114,6 @@ export function BuyBox({ product, ...props }) {
       setShowModal(true);
       setSelectedPayment("");
 
-      // Redirect to home or purchase history after 3 seconds
       setTimeout(() => {
         router.push("/purchase-history");
       }, 3000);
@@ -138,26 +132,37 @@ export function BuyBox({ product, ...props }) {
 
   return (
     <>
-      <div
+      <Card
         data-buybox
-        className="rounded-2xl shadow-xl p-6 transition-all hover:shadow-2xl"
-        style={{
-          background: `linear-gradient(145deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.5) 100%)`,
-          backdropFilter: "blur(20px) saturate(180%)",
-          WebkitBackdropFilter: "blur(20px) saturate(180%)",
-          border: `1px solid ${hexColor}20`,
-          boxShadow: `0 8px 30px rgba(0,0,0,0.1), inset 0 0 20px ${hexColor}10`,
-        }}
         {...props}
+        className={`
+          p-6 rounded-3xl 
+          backdrop-blur-xl 
+          border 
+          transition-all duration-500
+          ${
+            isDarkMode
+              ? "bg-gray-900/70 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border-gray-800/50 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
+              : "bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.05)] border-gray-100/50 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)]"
+          }
+        `}
       >
         <div className="mb-6">
-          <span className="text-4xl font-bold text-gray-900">
+          <span
+            className={`text-4xl font-bold ${
+              isDarkMode ? "text-gray-100" : "text-gray-900"
+            }`}
+          >
             ${product.price?.toFixed(2)}
           </span>
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-3">
+          <label
+            className={`block text-sm font-semibold mb-3 ${
+              isDarkMode ? "text-gray-300" : "text-gray-700"
+            }`}
+          >
             Quantity
           </label>
           <div className="flex items-center gap-3">
@@ -177,7 +182,11 @@ export function BuyBox({ product, ...props }) {
               onChange={(e) =>
                 setQuantity(Math.max(1, parseInt(e.target.value) || 1))
               }
-              className="w-20 text-center text-lg font-semibold border-2 rounded-xl py-2.5 focus:outline-none transition-all text-gray-900"
+              className={`w-20 text-center text-lg font-semibold border-2 rounded-xl py-2.5 focus:outline-none transition-all ${
+                isDarkMode
+                  ? "text-gray-100 bg-gray-800/50"
+                  : "text-gray-900 bg-white"
+              }`}
               style={{
                 borderColor: `${hexColor}30`,
               }}
@@ -254,11 +263,15 @@ export function BuyBox({ product, ...props }) {
         </button>
 
         {session && (
-          <p className="text-xs text-gray-500 text-center mt-4">
+          <p
+            className={`text-xs text-center mt-4 ${
+              isDarkMode ? "text-gray-400" : "text-gray-500"
+            }`}
+          >
             Buy Now will take you directly to checkout
           </p>
         )}
-      </div>
+      </Card>
 
       {/* Payment Method Modal */}
       {showPaymentModal && (
@@ -268,15 +281,24 @@ export function BuyBox({ product, ...props }) {
             zIndex: 9999,
             backdropFilter: "blur(10px)",
             WebkitBackdropFilter: "blur(10px)",
-            backgroundColor: `${hexColor}40`,
+            backgroundColor: isDarkMode
+              ? "rgba(0, 0, 0, 0.7)"
+              : `${hexColor}40`,
           }}
         >
-          <div
-            className="rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
+          <Card
+            className={`
+              rounded-3xl max-w-md w-full p-6 relative
+              backdrop-blur-xl 
+              border 
+              transition-all duration-500
+              ${
+                isDarkMode
+                  ? "bg-gray-900/70 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border-gray-800/50"
+                  : "bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.05)] border-gray-100/50"
+              }
+            `}
             style={{
-              background: "rgba(255, 255, 255, 0.98)",
-              backdropFilter: "blur(20px) saturate(180%)",
-              WebkitBackdropFilter: "blur(20px) saturate(180%)",
               position: "absolute",
               top: `${buyBoxPosition.top}px`,
               left: "50%",
@@ -288,15 +310,29 @@ export function BuyBox({ product, ...props }) {
                 setShowPaymentModal(false);
                 setSelectedPayment("");
               }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              className={`absolute top-4 right-4 transition-colors ${
+                isDarkMode
+                  ? "text-gray-500 hover:text-gray-300"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
             >
               <X className="w-6 h-6" />
             </button>
 
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            <h3
+              className={`text-2xl font-bold mb-2 ${
+                isDarkMode ? "text-gray-100" : "text-gray-900"
+              }`}
+            >
               Select Payment Method
             </h3>
-            <p className="text-gray-600 mb-6">Choose how you'd like to pay</p>
+            <p
+              className={`mb-6 ${
+                isDarkMode ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
+              Choose how you'd like to pay
+            </p>
 
             <div className="space-y-3 mb-6">
               {paymentMethods.map((method) => {
@@ -332,10 +368,18 @@ export function BuyBox({ product, ...props }) {
                         <Icon className="w-6 h-6" />
                       </div>
                       <div className="flex-1">
-                        <div className="font-semibold text-gray-900">
+                        <div
+                          className={`font-semibold ${
+                            isDarkMode ? "text-gray-100" : "text-gray-900"
+                          }`}
+                        >
                           {method.name}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div
+                          className={`text-sm ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
                           {method.description}
                         </div>
                       </div>
@@ -362,7 +406,7 @@ export function BuyBox({ product, ...props }) {
             >
               Confirm Payment
             </button>
-          </div>
+          </Card>
         </div>
       )}
 
@@ -374,15 +418,24 @@ export function BuyBox({ product, ...props }) {
             zIndex: 9999,
             backdropFilter: "blur(10px)",
             WebkitBackdropFilter: "blur(10px)",
-            backgroundColor: `${hexColor}40`,
+            backgroundColor: isDarkMode
+              ? "rgba(0, 0, 0, 0.7)"
+              : `${hexColor}40`,
           }}
         >
-          <div
-            className="rounded-2xl shadow-2xl max-w-md w-full p-8 relative"
+          <Card
+            className={`
+              rounded-3xl max-w-md w-full p-8 relative
+              backdrop-blur-xl 
+              border 
+              transition-all duration-500
+              ${
+                isDarkMode
+                  ? "bg-gray-900/70 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border-gray-800/50"
+                  : "bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.05)] border-gray-100/50"
+              }
+            `}
             style={{
-              background: "rgba(255, 255, 255, 0.98)",
-              backdropFilter: "blur(20px) saturate(180%)",
-              WebkitBackdropFilter: "blur(20px) saturate(180%)",
               position: "absolute",
               top: `${buyBoxPosition.top}px`,
               left: "50%",
@@ -391,7 +444,11 @@ export function BuyBox({ product, ...props }) {
           >
             <button
               onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              className={`absolute top-4 right-4 transition-colors ${
+                isDarkMode
+                  ? "text-gray-500 hover:text-gray-300"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
             >
               <X className="w-6 h-6" />
             </button>
@@ -408,18 +465,36 @@ export function BuyBox({ product, ...props }) {
                       style={{ color: hexColor }}
                     />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h3
+                    className={`text-2xl font-bold mb-2 ${
+                      isDarkMode ? "text-gray-100" : "text-gray-900"
+                    }`}
+                  >
                     {modalContent.message}
                   </h3>
                   <div
                     className="rounded-lg p-4 mb-4"
                     style={{ background: `${hexColor}08` }}
                   >
-                    <p className="text-sm text-gray-600 mb-1">Order ID</p>
-                    <p className="text-lg font-mono font-semibold text-gray-900">
+                    <p
+                      className={`text-sm mb-1 ${
+                        isDarkMode ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
+                      Order ID
+                    </p>
+                    <p
+                      className={`text-lg font-mono font-semibold ${
+                        isDarkMode ? "text-gray-100" : "text-gray-900"
+                      }`}
+                    >
                       {modalContent.orderId}
                     </p>
-                    <p className="text-sm text-gray-600 mt-3 mb-1">
+                    <p
+                      className={`text-sm mt-3 mb-1 ${
+                        isDarkMode ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
                       Total Amount
                     </p>
                     <p
@@ -429,29 +504,55 @@ export function BuyBox({ product, ...props }) {
                       ${modalContent.amount.toFixed(2)}
                     </p>
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p
+                    className={`text-sm ${
+                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
                     Redirecting to purchase history...
                   </p>
                 </>
               ) : (
                 <>
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <X className="w-10 h-10 text-red-600" />
+                  <div
+                    className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                      isDarkMode ? "bg-red-900/30" : "bg-red-100"
+                    }`}
+                  >
+                    <X
+                      className={`w-10 h-10 ${
+                        isDarkMode ? "text-red-400" : "text-red-600"
+                      }`}
+                    />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h3
+                    className={`text-2xl font-bold mb-2 ${
+                      isDarkMode ? "text-gray-100" : "text-gray-900"
+                    }`}
+                  >
                     Oops!
                   </h3>
-                  <p className="text-gray-600 mb-6">{modalContent.message}</p>
+                  <p
+                    className={`mb-6 ${
+                      isDarkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    {modalContent.message}
+                  </p>
                   <button
                     onClick={() => setShowModal(false)}
-                    className="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors"
+                    className={`w-full py-3 rounded-xl font-semibold transition-colors ${
+                      isDarkMode
+                        ? "bg-gray-700 text-white hover:bg-gray-600"
+                        : "bg-gray-900 text-white hover:bg-gray-800"
+                    }`}
                   >
                     Close
                   </button>
                 </>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </>

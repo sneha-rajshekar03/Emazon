@@ -13,7 +13,7 @@ export const SearchBar = () => {
   const [showRecent, setShowRecent] = useState(false);
   const router = useRouter();
   const searchRef = useRef(null);
-  const { hexColor } = useColor();
+  const { hexColor, isDarkMode } = useColor();
 
   // Fetch recent searches
   useEffect(() => {
@@ -144,15 +144,28 @@ export const SearchBar = () => {
             onFocus={() => setShowRecent(true)}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm transition-all outline-none"
             style={{
-              background: "rgba(255, 255, 255, 0.9)",
-              border: `1px solid ${showRecent ? hexColor : "rgba(0,0,0,0.1)"}`,
+              background: isDarkMode
+                ? "rgba(45, 45, 45, 0.9)"
+                : "rgba(255, 255, 255, 0.9)",
+              color: isDarkMode ? "#e5e5e5" : "#1a1a1a",
+              border: `1px solid ${
+                showRecent
+                  ? hexColor
+                  : isDarkMode
+                  ? "rgba(255,255,255,0.1)"
+                  : "rgba(0,0,0,0.1)"
+              }`,
               boxShadow: showRecent
                 ? `0 0 0 3px ${hexColor}15`
+                : isDarkMode
+                ? "0 1px 2px rgba(0,0,0,0.3)"
                 : "0 1px 2px rgba(0,0,0,0.05)",
             }}
           />
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+            className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
+              isDarkMode ? "text-gray-500" : "text-gray-400"
+            }`}
             strokeWidth={2}
           />
         </div>
@@ -173,11 +186,15 @@ export const SearchBar = () => {
         <div
           className="absolute left-0 right-0 mt-2 rounded-xl shadow-lg z-20 max-h-80 overflow-hidden"
           style={{
-            background: "rgba(255, 255, 255, 0.98)",
+            background: isDarkMode
+              ? "rgba(45, 45, 45, 0.98)"
+              : "rgba(255, 255, 255, 0.98)",
             backdropFilter: "blur(20px) saturate(180%)",
             WebkitBackdropFilter: "blur(20px) saturate(180%)",
             border: `1px solid ${hexColor}20`,
-            boxShadow: `0 8px 30px rgba(0, 0, 0, 0.12), 0 0 0 0.5px ${hexColor}15`,
+            boxShadow: isDarkMode
+              ? `0 8px 30px rgba(0, 0, 0, 0.5), 0 0 0 0.5px ${hexColor}15`
+              : `0 8px 30px rgba(0, 0, 0, 0.12), 0 0 0 0.5px ${hexColor}15`,
           }}
         >
           <div
@@ -186,7 +203,11 @@ export const SearchBar = () => {
               borderColor: `${hexColor}10`,
             }}
           >
-            <span className="text-xs font-medium text-gray-500">
+            <span
+              className={`text-xs font-medium ${
+                isDarkMode ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
               Recent Searches
             </span>
           </div>
@@ -210,13 +231,26 @@ export const SearchBar = () => {
                 }}
               >
                 <div className="flex items-center gap-3 flex-1">
-                  <Clock className="w-4 h-4 text-gray-400" strokeWidth={2} />
+                  <Clock
+                    className={`w-4 h-4 ${
+                      isDarkMode ? "text-gray-500" : "text-gray-400"
+                    }`}
+                    strokeWidth={2}
+                  />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800">
+                    <p
+                      className={`text-sm font-medium ${
+                        isDarkMode ? "text-gray-100" : "text-gray-800"
+                      }`}
+                    >
                       {search.query}
                     </p>
                     {search.category && (
-                      <p className="text-xs text-gray-500">
+                      <p
+                        className={`text-xs ${
+                          isDarkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
                         in {search.category}
                       </p>
                     )}
@@ -224,10 +258,17 @@ export const SearchBar = () => {
                 </div>
                 <button
                   onClick={(e) => handleDeleteRecent(search._id, e)}
-                  className="p-1.5 hover:bg-gray-200 rounded-md transition-colors"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"
+                  }`}
                   aria-label="Remove search"
                 >
-                  <X className="w-3.5 h-3.5 text-gray-400" strokeWidth={2} />
+                  <X
+                    className={`w-3.5 h-3.5 ${
+                      isDarkMode ? "text-gray-500" : "text-gray-400"
+                    }`}
+                    strokeWidth={2}
+                  />
                 </button>
               </div>
             ))}
@@ -240,9 +281,13 @@ export const SearchBar = () => {
         <div
           className="absolute left-0 right-0 mt-2 text-sm p-3 rounded-lg shadow-lg z-30"
           style={{
-            background: "rgba(254, 226, 226, 0.95)",
-            color: "#991b1b",
-            border: "1px solid rgba(254, 202, 202, 0.5)",
+            background: isDarkMode
+              ? "rgba(127, 29, 29, 0.95)"
+              : "rgba(254, 226, 226, 0.95)",
+            color: isDarkMode ? "#fca5a5" : "#991b1b",
+            border: isDarkMode
+              ? "1px solid rgba(185, 28, 28, 0.5)"
+              : "1px solid rgba(254, 202, 202, 0.5)",
             backdropFilter: "blur(10px)",
           }}
         >

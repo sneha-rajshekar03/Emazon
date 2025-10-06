@@ -46,6 +46,7 @@ export const ProfilePopup = ({
       setTimeLeft((prev) => {
         if (prev <= 0.1) {
           clearInterval(countdownRef.current);
+          handleClose();
           return 0;
         }
         return prev - 0.1;
@@ -55,7 +56,7 @@ export const ProfilePopup = ({
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [currentQuestion, isPaused]);
+  }, [currentQuestion, isPaused, handleClose]);
 
   const handleMouseEnter = () => setIsPaused(true);
   const handleMouseLeave = () => setIsPaused(false);

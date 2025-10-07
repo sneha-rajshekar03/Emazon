@@ -14,7 +14,7 @@ const HeaderSlider = () => {
       subtitle: "Elegance. Precision. Performance.",
       buttonText1: "Shop Now",
       buttonText2: "Learn More",
-      imgSrc: assets.iphone,
+      imgSrc: assets.bose_headphone_image,
     },
     {
       id: 2,
@@ -22,7 +22,7 @@ const HeaderSlider = () => {
       subtitle: "Sound that feels alive.",
       buttonText1: "Buy",
       buttonText2: "Discover",
-      imgSrc: assets.airpods,
+      imgSrc: assets.airpods_image,
     },
     {
       id: 3,
@@ -30,7 +30,7 @@ const HeaderSlider = () => {
       subtitle: "Power. Redefined.",
       buttonText1: "Order Now",
       buttonText2: "Explore",
-      imgSrc: assets.macbook,
+      imgSrc: assets.playstation_image,
     },
   ];
 

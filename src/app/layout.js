@@ -11,7 +11,18 @@ import { ColorProvider } from "./context/ColorContext";
 export const metadata = {
   title: "Online Shopping website",
   description: "E-commerce Website",
-  icons: { icon: "/favicon.png" },
+  icons: {
+    icon: [
+      {
+        url: "/logo.svg",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favoo.png",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+  },
 };
 export default async function Rootlayout({ children }) {
   const session = await getServerSession(authOptions);

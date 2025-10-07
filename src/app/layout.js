@@ -18,7 +18,7 @@ export const metadata = {
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/favoo.png",
+        url: "/fav.jpeg",
         media: "(prefers-color-scheme: dark)",
       },
     ],

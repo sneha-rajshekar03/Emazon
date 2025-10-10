@@ -20,42 +20,61 @@ export async function POST(req) {
     console.log("🛒 [CHECKOUT API] Connecting to DB...");
     await connectToDB();
 
-    // Parse request body to get payment method
+    // Parse request body to get all checkout data
     const body = await req.json();
-    const paymentMethod = body.payment_method;
-    console.log("🛒 [CHECKOUT API] Payment method received:", paymentMethod);
+    const { transaction_id, payment_method, device_type, items } = body;
 
-    console.log("🛒 [CHECKOUT API] Fetching cart...");
-    // Get user's cart
-    const cart = await Cart.findOne({ user_id: session.user.id });
+    console.log("🛒 [CHECKOUT API] Transaction ID:", transaction_id);
+    console.log("🛒 [CHECKOUT API] Payment method:", payment_method);
+    console.log("🛒 [CHECKOUT API] Device type:", device_type);
+    console.log("🛒 [CHECKOUT API] Items from request:", items?.length);
 
-    if (!cart || cart.items.length === 0) {
-      console.log("❌ [CHECKOUT API] Cart is empty");
+    // Validate required fields
+    if (!transaction_id) {
+      console.log("❌ [CHECKOUT API] Missing transaction_id");
+      return NextResponse.json(
+        { error: "Transaction ID is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!device_type) {
+      console.log("❌ [CHECKOUT API] Missing device_type");
+      return NextResponse.json(
+        { error: "Device type is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!items || items.length === 0) {
+      console.log("❌ [CHECKOUT API] No items provided");
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
-    console.log("🛒 [CHECKOUT API] Cart items:", cart.items.length);
-
-    // Calculate total
-    const totalAmount = cart.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
+    // Calculate total from the items sent in request
+    const totalAmount = items.reduce(
+      (sum, item) => sum + item.unit_price * item.quantity,
       0
     );
     console.log("🛒 [CHECKOUT API] Total amount:", totalAmount);
 
     console.log("🛒 [CHECKOUT API] Creating purchase record...");
-    // Create purchase history entry with payment method
+    // Create purchase history entry with all required fields
     const purchase = await PurchaseHistory.create({
+      transaction_id,
       user_id: session.user.id,
-      items: cart.items,
+      transaction_date: new Date(),
+      items, // Items already formatted with unit_price from frontend
       total_amount: totalAmount,
-      payment_method: paymentMethod || "cod", // Default to COD if not provided
+      payment_method: payment_method || "cod",
+      device_type,
+      status: "completed",
     });
+
     console.log("✅ [CHECKOUT API] Purchase created:", purchase._id);
-    console.log(
-      "✅ [CHECKOUT API] Payment method saved:",
-      purchase.payment_method
-    );
+    console.log("✅ [CHECKOUT API] Transaction ID:", purchase.transaction_id);
+    console.log("✅ [CHECKOUT API] Payment method:", purchase.payment_method);
+    console.log("✅ [CHECKOUT API] Device type:", purchase.device_type);
 
     console.log("🛒 [CHECKOUT API] Clearing cart...");
     // Clear the cart after successful checkout
@@ -65,8 +84,10 @@ export async function POST(req) {
     return NextResponse.json({
       success: true,
       purchase_id: purchase._id,
+      transaction_id: purchase.transaction_id,
       total_amount: totalAmount,
       payment_method: purchase.payment_method,
+      device_type: purchase.device_type,
     });
   } catch (error) {
     console.error("❌ [CHECKOUT API] Error during checkout:", error);

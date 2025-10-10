@@ -300,15 +300,50 @@ export function CartProvider({ children }) {
       throw new Error("Cart is empty");
     }
 
+    // Detect device type
+    const getDeviceType = () => {
+      const ua = navigator.userAgent;
+      if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+        return "Tablet";
+      }
+      if (
+        /Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(
+          ua
+        )
+      ) {
+        return "Mobile";
+      }
+      return "Desktop";
+    };
+
+    const deviceType = getDeviceType();
+    console.log("📱 [CART CONTEXT] Device type detected:", deviceType);
+
+    // Generate transaction ID
+    const transactionId = `TXN-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)
+      .toUpperCase()}`;
+    console.log("🆔 [CART CONTEXT] Transaction ID generated:", transactionId);
+
+    // Map cart items to match schema (price -> unit_price)
+    const formattedItems = cart.map((item) => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: item.price, // Map price to unit_price
+    }));
+
     try {
       console.log("🛒 [CART CONTEXT] Sending checkout request...");
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          transaction_id: transactionId,
           user_id: session.user.id,
-          items: cart,
-          payment_method: paymentMethod, // Add this
+          items: formattedItems, // Use formatted items
+          payment_method: paymentMethod,
+          device_type: deviceType,
         }),
       });
 
@@ -342,7 +377,6 @@ export function CartProvider({ children }) {
       throw error;
     }
   };
-
   return (
     <CartContext.Provider
       value={{

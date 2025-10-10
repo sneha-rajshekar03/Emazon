@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { X, MapPin, Loader2 } from "lucide-react";
 import { useColor } from "@app/context/ColorContext";
 
@@ -23,6 +23,12 @@ export const ProfilePopup = ({
   const { hexColor, isDarkMode } = useColor();
   const countdownRef = useRef(null);
   const popupRef = useRef(null);
+  const handleCloseRef = useRef(handleClose);
+
+  // Keep handleClose ref updated
+  useEffect(() => {
+    handleCloseRef.current = handleClose;
+  }, [handleClose]);
 
   // Show popup and reset timer
   useEffect(() => {
@@ -36,7 +42,7 @@ export const ProfilePopup = ({
     };
   }, [currentQuestion]);
 
-  // Handle countdown logic
+  // Handle countdown logic - FIXED: removed handleClose from dependencies
   useEffect(() => {
     if (!currentQuestion || isPaused) return;
 
@@ -46,7 +52,7 @@ export const ProfilePopup = ({
       setTimeLeft((prev) => {
         if (prev <= 0.1) {
           clearInterval(countdownRef.current);
-          handleClose();
+          handleCloseRef.current(); // Use ref instead of direct call
           return 0;
         }
         return prev - 0.1;
@@ -56,12 +62,12 @@ export const ProfilePopup = ({
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [currentQuestion, isPaused, handleClose]);
+  }, [currentQuestion, isPaused]); // Removed handleClose
 
-  const handleMouseEnter = () => setIsPaused(true);
-  const handleMouseLeave = () => setIsPaused(false);
+  const handleMouseEnter = useCallback(() => setIsPaused(true), []);
+  const handleMouseLeave = useCallback(() => setIsPaused(false), []);
 
-  const detectLocation = async () => {
+  const detectLocation = useCallback(async () => {
     if (!navigator.geolocation) return alert("Geolocation not supported");
     setLocationLoading(true);
     navigator.geolocation.getCurrentPosition(
@@ -88,7 +94,7 @@ export const ProfilePopup = ({
         alert("Unable to get location");
       }
     );
-  };
+  }, [setAnswer, setLocationLoading]);
 
   if (!currentQuestion) return null;
 

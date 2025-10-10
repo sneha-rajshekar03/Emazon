@@ -308,6 +308,7 @@ export default function ProfilePage() {
     themeColor: themeColors[0],
     age: "",
     brand: "",
+    gender: "",
     priceRange: "",
     occupation: "",
     travelMode: "",
@@ -428,6 +429,7 @@ export default function ProfilePage() {
         travelMode: profile.travelMode || "",
         livingStatus: profile.livingStatus || "",
         hobbies: profile.hobbies || [],
+        gender: profile.gender || "",
         location: profile.location || "",
         pets: profile.pets || "",
         petType: profile.pets === "Yes" ? profile.petType : "",
@@ -498,20 +500,22 @@ export default function ProfilePage() {
         className="min-h-screen flex items-center justify-center"
         style={{ background: isDarkMode ? "#1a1a1a" : "#ffffff" }}
       >
-        <Loader2
-          className="w-7 h-7 animate-spin"
-          style={{ color: isDarkMode ? "#ffffff" : "#3b82f6" }}
-        />
-        <div
-          className="text-lg ml-3"
-          style={{
-            fontFamily:
-              '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
-            letterSpacing: "-0.01em",
-            color: isDarkMode ? "#9ca3af" : "#6b7280",
-          }}
-        >
-          Loading profile...
+        <div className="flex flex-col items-center gap-4">
+          <Loader2
+            className="w-10 h-10 animate-spin"
+            style={{ color: hexColor }}
+          />
+          <div
+            className="text-base font-medium"
+            style={{
+              fontFamily:
+                '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+              letterSpacing: "-0.01em",
+              color: isDarkMode ? "#d1d5db" : "#4b5563",
+            }}
+          >
+            Loading profile...
+          </div>
         </div>
       </div>
     );
@@ -651,6 +655,46 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
+            <div>
+              <label
+                className="flex items-center text-sm font-medium mb-2.5"
+                style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
+              >
+                <User className="w-4 h-4 mr-2" />
+                Gender
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {["Male", "Female", "Other", "Prefer not to say"].map(
+                  (option) => (
+                    <button
+                      key={option}
+                      onClick={() => handleUpdate("gender", option)}
+                      className="py-2.5 px-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
+                      style={
+                        profile.gender === option
+                          ? {
+                              color: profile.themeColor.hex,
+                              backgroundColor: `${profile.themeColor.hex}20`,
+                              border: isDarkMode
+                                ? "1px solid rgba(255, 255, 255, 0.1)"
+                                : "1px solid rgba(255, 255, 255, 0.6)",
+                            }
+                          : {
+                              background: isDarkMode ? "#3d3d3d" : "#f3f4f6",
+                              color: isDarkMode ? "#ffffff" : "#111827",
+                              border: isDarkMode
+                                ? "1px solid #555"
+                                : "1px solid #d1d5db",
+                            }
+                      }
+                    >
+                      {option}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label
@@ -684,18 +728,12 @@ export default function ProfilePage() {
                 />
               </div>
               <div>
-                <label
-                  className="flex items-center text-sm font-medium mb-2.5"
-                  style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
-                >
-                  <Briefcase className="w-4 h-4 mr-2" />
+                <label className="block text-sm font-medium mb-2">
                   Occupation
                 </label>
-                <input
-                  type="text"
+                <select
                   value={profile.occupation}
                   onChange={(e) => handleUpdate("occupation", e.target.value)}
-                  placeholder="Enter your occupation"
                   className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all"
                   style={{
                     background: isDarkMode ? "#3d3d3d" : "#ffffff",
@@ -712,7 +750,21 @@ export default function ProfilePage() {
                       : "#d1d5db";
                     e.target.style.boxShadow = "";
                   }}
-                />
+                >
+                  <option value="">Select your occupation</option>
+                  <option value="Healthcare">Healthcare</option>
+                  <option value="Business">Business</option>
+                  <option value="Technical/IT">Technical/IT</option>
+                  <option value="Education">Education</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Legal">Legal</option>
+                  <option value="Creative/Arts">Creative/Arts</option>
+                  <option value="Sales/Marketing">Sales/Marketing</option>
+                  <option value="Government">Government</option>
+                  <option value="Student">Student</option>
+                  <option value="Retired">Retired</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
               <div>
                 <label

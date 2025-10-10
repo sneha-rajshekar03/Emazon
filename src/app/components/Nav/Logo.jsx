@@ -26,7 +26,7 @@ export const Logo = () => {
   };
 
   const lang = useSelectedLanguage();
-  const { isDarkMode } = useColor();
+  const { hexColor, isDarkMode } = useColor();
   const brandName = brandTranslations[lang] || "Emzon";
 
   // Use dark logo when dark mode is enabled
@@ -36,13 +36,12 @@ export const Logo = () => {
     <div>
       <Link href="/" className="flex flex-row items-center gap-2">
         <div
-          className={`w-10 h-10 rounded-full border-2 overflow-hidden flex items-center justify-center ${
-            isDarkMode ? "border-white" : "border-black"
-          }`}
+          className="w-10 h-10 rounded-full border overflow-hidden flex items-center justify-center"
+          style={{ borderColor: hexColor }}
         >
           <Image
             src={logoSrc}
-            alt="Amazon Logo"
+            alt="Emzon Logo"
             width={40}
             height={40}
             className="object-cover w-full h-full"

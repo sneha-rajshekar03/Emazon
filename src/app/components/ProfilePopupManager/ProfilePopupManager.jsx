@@ -38,6 +38,13 @@ const profileQuestions = [
     icon: "User",
   },
   {
+    field: "gender",
+    question: "What's your gender?",
+    type: "buttons",
+    options: ["Male", "Female", "Other", "Prefer not to say"],
+    icon: "User",
+  },
+  {
     field: "brand",
     question: "What's your favorite brand?",
     type: "text",

@@ -51,19 +51,6 @@ export default function PurchaseHistoryPage() {
     }
   };
 
-  const formatPaymentMethod = (method) => {
-    const paymentMethods = {
-      upi: "UPI",
-      card: "Card",
-      cod: "Cash on Delivery",
-    };
-    return paymentMethods[method] || "Not Specified";
-  };
-
-  const getPaymentIcon = (method) => {
-    return <CreditCard className="w-3.5 h-3.5" strokeWidth={2} />;
-  };
-
   if (loading) {
     return (
       <div
@@ -153,7 +140,7 @@ export default function PurchaseHistoryPage() {
           <div className="space-y-6">
             {purchases.map((purchase) => (
               <div
-                key={purchase._id}
+                key={purchase.transaction_id || purchase._id}
                 className="rounded-2xl p-6 transition-all hover:shadow-lg"
                 style={{
                   background: isDarkMode
@@ -182,15 +169,16 @@ export default function PurchaseHistoryPage() {
                           isDarkMode ? "text-gray-100" : "text-gray-800"
                         }`}
                       >
-                        Order #{purchase._id.slice(-8)}
+                        Transaction #
+                        {purchase.transaction_id || purchase._id.slice(-8)}
                       </h3>
                     </div>
                     <p
-                      className={`text-sm mb-3 ${
+                      className={`text-sm mb-2 ${
                         isDarkMode ? "text-gray-400" : "text-gray-600"
                       }`}
                     >
-                      {new Date(purchase.purchase_date).toLocaleDateString(
+                      {new Date(purchase.transaction_date).toLocaleDateString(
                         "en-US",
                         {
                           year: "numeric",
@@ -201,18 +189,51 @@ export default function PurchaseHistoryPage() {
                         }
                       )}
                     </p>
-                    {purchase.payment_method && (
-                      <div
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
-                        style={{
-                          background: `${hexColor}15`,
-                          color: hexColor,
-                        }}
-                      >
-                        {getPaymentIcon(purchase.payment_method)}
-                        {formatPaymentMethod(purchase.payment_method)}
-                      </div>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {purchase.payment_method && (
+                        <div
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+                          style={{
+                            background: `${hexColor}15`,
+                            color: hexColor,
+                          }}
+                        >
+                          <CreditCard className="w-3.5 h-3.5" strokeWidth={2} />
+                          {purchase.payment_method}
+                        </div>
+                      )}
+                      {purchase.device_type && (
+                        <div
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+                          style={{
+                            background: isDarkMode
+                              ? "rgba(75, 85, 99, 0.5)"
+                              : "rgba(156, 163, 175, 0.2)",
+                            color: isDarkMode ? "#d1d5db" : "#4b5563",
+                          }}
+                        >
+                          {purchase.device_type}
+                        </div>
+                      )}
+                      {purchase.status && (
+                        <div
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+                          style={{
+                            background:
+                              purchase.status === "completed"
+                                ? "#10b98120"
+                                : `${hexColor}15`,
+                            color:
+                              purchase.status === "completed"
+                                ? "#10b981"
+                                : hexColor,
+                          }}
+                        >
+                          {purchase.status.charAt(0).toUpperCase() +
+                            purchase.status.slice(1)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="text-left md:text-right">
                     <p
@@ -237,12 +258,12 @@ export default function PurchaseHistoryPage() {
                       isDarkMode ? "text-gray-300" : "text-gray-700"
                     }`}
                   >
-                    Items:
+                    Items ({purchase.items.length}):
                   </h4>
                   {purchase.items.map((item, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-4 p-4 rounded-xl transition-colors"
+                      className="flex items-center justify-between gap-4 p-4 rounded-xl transition-colors"
                       style={{
                         background: isDarkMode
                           ? "rgba(55, 65, 81, 0.5)"
@@ -250,27 +271,20 @@ export default function PurchaseHistoryPage() {
                         border: `1px solid ${hexColor}10`,
                       }}
                     >
-                      {item.image && (
-                        <img
-                          src={item.image}
-                          alt={item.title || item.name}
-                          className="w-20 h-20 object-cover rounded-lg"
-                        />
-                      )}
                       <div className="flex-1">
                         <p
                           className={`font-medium mb-1 ${
                             isDarkMode ? "text-gray-100" : "text-gray-800"
                           }`}
                         >
-                          {item.title || item.name}
+                          Product ID: {item.product_id}
                         </p>
                         <p
                           className={`text-sm ${
                             isDarkMode ? "text-gray-400" : "text-gray-600"
                           }`}
                         >
-                          ${item.price.toFixed(2)} × {item.quantity}
+                          ${item.unit_price.toFixed(2)} × {item.quantity}
                         </p>
                       </div>
                       <p
@@ -278,7 +292,7 @@ export default function PurchaseHistoryPage() {
                           isDarkMode ? "text-gray-100" : "text-gray-800"
                         }`}
                       >
-                        ${(item.price * item.quantity).toFixed(2)}
+                        ${(item.unit_price * item.quantity).toFixed(2)}
                       </p>
                     </div>
                   ))}

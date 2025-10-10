@@ -19,6 +19,7 @@ const ProfileSchema = new mongoose.Schema(
     travelMode: String,
     livingStatus: String,
     hobbies: [String],
+    gender: String, // Add this field for gender preference
     location: String,
     pets: String,
     petType: String, // Add this line

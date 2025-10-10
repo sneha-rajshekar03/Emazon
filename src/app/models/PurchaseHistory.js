@@ -1,18 +1,25 @@
 import mongoose from "mongoose";
 
 const PurchaseHistorySchema = new mongoose.Schema({
+  transaction_id: {
+    type: String,
+    required: true,
+    unique: true,
+  },
   user_id: {
     type: String,
+    required: true,
+  },
+  transaction_date: {
+    type: Date,
+    default: Date.now,
     required: true,
   },
   items: [
     {
       product_id: { type: String, required: true },
-      title: { type: String, required: true },
-      price: { type: Number, required: true },
       quantity: { type: Number, required: true },
-      image: String,
-      category_name: String,
+      unit_price: { type: Number, required: true },
     },
   ],
   total_amount: {
@@ -21,13 +28,16 @@ const PurchaseHistorySchema = new mongoose.Schema({
   },
   payment_method: {
     type: String,
-    enum: ["upi", "card", "cod"],
-    default: "cod", // Default value for existing records
     required: true,
   },
-  purchase_date: {
-    type: Date,
-    default: Date.now,
+  device_type: {
+    type: String,
+    required: true,
+  },
+  status: {
+    type: String,
+    default: "completed",
+    required: true,
   },
 });
 

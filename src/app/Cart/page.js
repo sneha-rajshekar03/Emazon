@@ -91,7 +91,7 @@ export default function CartPage() {
 
     setShowPaymentModal(true);
   };
-
+  // Detect device type
   const processCheckout = async () => {
     if (!selectedPayment) {
       setModalContent({
@@ -108,7 +108,9 @@ export default function CartPage() {
     setIsCheckingOut(true);
 
     try {
-      const result = await checkout();
+      // Just pass the payment method as a string
+      const result = await checkout(selectedPayment);
+
       setModalContent({
         type: "success",
         message: "Order placed successfully!",
@@ -129,7 +131,6 @@ export default function CartPage() {
       setIsCheckingOut(false);
     }
   };
-
   const paymentMethods = [
     {
       id: "upi",

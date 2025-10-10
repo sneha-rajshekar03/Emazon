@@ -15,8 +15,8 @@ import {
   MapPin,
 } from "lucide-react";
 
-const POPUP_INTERVAL_MS = 70000;
-const POPUP_INITIAL_DELAY_MS = 20000;
+const POPUP_INTERVAL_MS = 700000;
+const POPUP_INITIAL_DELAY_MS = 200000;
 
 const iconMap = {
   User,
@@ -80,6 +80,13 @@ const profileQuestions = [
     icon: "Car",
   },
   {
+    field: "region",
+    question: "Region?",
+    type: "select",
+    options: ["Semi-Rural", "Semi-rural", "Urban"],
+    icon: "User",
+  },
+  {
     field: "livingStatus",
     question: "What's your living situation?",
     type: "buttons",
@@ -133,13 +140,6 @@ const profileQuestions = [
     ],
     condition: (profile) => profile.pets === "Yes",
     icon: "Heart",
-  },
-  {
-    field: "paymentMode",
-    question: "How do you prefer to pay?",
-    type: "select",
-    options: ["Cash", "Credit Card", "Debit Card", "UPI", "Digital Wallet"],
-    icon: "CreditCard",
   },
 ].map((q) => ({ ...q, icon: iconMap[q.icon] }));
 

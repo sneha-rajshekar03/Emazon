@@ -22,8 +22,8 @@ const ProfileSchema = new mongoose.Schema(
     gender: String, // Add this field for gender preference
     location: String,
     pets: String,
+    region: String,
     petType: String, // Add this line
-    paymentMode: String,
     preferredLanguage: String, // Add this field for language preference
   },
   {

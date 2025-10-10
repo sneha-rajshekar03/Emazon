@@ -13,6 +13,7 @@ import warnings
 from typing import Optional, List, Dict
 from datetime import datetime
 warnings.filterwarnings('ignore')
+from database import get_all_transactions, get_user_current_profile
 
 # ============================================================================
 # FastAPI App Setup
@@ -77,11 +78,10 @@ class PaymentPredictor:
         self.feature_columns = None
         self.label_encoders = None
         self.user_profiles = {}
-        self.user_id_mapping = {}  # Maps numeric IDs to hex IDs
         self.is_loaded = False
     
     def load_models(self):
-        """Load trained models and build user profiles"""
+        """Load trained models and build user profiles from MongoDB"""
         try:
             print("📦 Loading ML models...")
             
@@ -94,58 +94,49 @@ class PaymentPredictor:
             print(f"   - Gradient Boosting: {self.gb_model.n_estimators} estimators")
             print(f"   - Features: {len(self.feature_columns)}")
             
-            print("📥 Loading transaction history...")
-            df = pd.read_csv('personalized_payment_data.csv')
+            print("📥 Loading transaction history from MongoDB...")
+            records = get_all_transactions()
             
-            # CRITICAL: Handle both numeric and hex string user_ids
-            if df['user_id'].dtype in ['int64', 'int32', 'float64']:
-                print("   ⚠️  CSV has NUMERIC user_ids but DB uses HEX strings")
-                print("   ⚠️  You need to either:")
-                print("      1. Update CSV with hex user_ids from DB, OR")
-                print("      2. Create a mapping between numeric and hex IDs")
-                print("   ⚠️  For now, converting numeric to string for internal use")
-                # Store numeric as string for now
-                df['user_id'] = df['user_id'].astype(str)
-            else:
-                # Already string format (hex IDs)
-                df['user_id'] = df['user_id'].astype(str)
+            if not records:
+                print("⚠️ No transaction data found in MongoDB!")
+                return False
+
+            df = pd.DataFrame(records)
             
+            # Ensure user_id is string (hex format)
+            df['user_id'] = df['user_id'].astype(str)
             df['transaction_date'] = pd.to_datetime(df['transaction_date'])
             df = df.sort_values(['user_id', 'transaction_date']).reset_index(drop=True)
             
-            print(f"✅ Loaded {len(df)} transactions")
+            print(f"✅ Loaded {len(df)} transactions from {df['user_id'].nunique()} users")
             
-            print("🔧 Building user profiles...")
+            print("🔧 Building user profiles from database...")
+            # Use the LATEST state for each user (last transaction)
             for user_id in df['user_id'].unique():
                 user_data = df[df['user_id'] == user_id].sort_values('transaction_date')
                 
-                payment_history = user_data['payment_method'].tolist()
-                price_history = user_data['product_price'].tolist()
-                last_date = user_data['transaction_date'].iloc[-1]
-                last_payment = payment_history[-1]
+                # Get CURRENT profile state using database function
+                current_profile = get_user_current_profile(user_id)
                 
-                payment_counts = pd.Series(payment_history).value_counts()
-                total_txns = len(payment_history)
-                
-                last_row = user_data.iloc[-1]
-                
-                # Use STRING user_id as dictionary key (hex format)
-                self.user_profiles[user_id] = {
-                    'past_txns': total_txns,
-                    'past_upi_ratio': payment_counts.get('upi', 0) / total_txns,
-                    'past_card_ratio': payment_counts.get('card', 0) / total_txns,
-                    'past_cod_ratio': payment_counts.get('cod', 0) / total_txns,
-                    'avg_order_value': float(np.mean(price_history)),
-                    'last_payment': last_payment,
-                    'last_date': last_date,
-                    'user_data': {
-                        'age': int(last_row['age']),
-                        'gender': str(last_row['gender']),
-                        'occupation': str(last_row['occupation']),
-                        'region': str(last_row['region']),
-                        'device_type': str(last_row['device_type'])
+                if current_profile:
+                    last_row = user_data.iloc[-1]
+                    
+                    self.user_profiles[user_id] = {
+                        'past_txns': current_profile['past_transactions'],
+                        'past_upi_ratio': current_profile['past_upi_ratio'],
+                        'past_card_ratio': current_profile['past_card_ratio'],
+                        'past_cod_ratio': current_profile['past_cod_ratio'],
+                        'avg_order_value': current_profile['average_order_value'],
+                        'last_payment': current_profile['last_payment_method'],
+                        'last_date': user_data['transaction_date'].iloc[-1],
+                        'user_data': {
+                            'age': current_profile['age'],
+                            'gender': current_profile['gender'],
+                            'occupation': current_profile['occupation'],
+                            'region': current_profile['region'],
+                            'device_type': current_profile['device_type']
+                        }
                     }
-                }
             
             self.is_loaded = True
             print(f"✅ Built profiles for {len(self.user_profiles)} users")
@@ -170,8 +161,15 @@ class PaymentPredictor:
         """Enhanced prediction with HEX STRING user_id"""
         
         try:
-            # Handle new users
+            # Handle new users (not in database yet)
             if user_id not in self.user_profiles:
+                # Set defaults for new users
+                default_age = age or 30
+                default_gender = gender or 'Male'
+                default_occupation = occupation or 'Other'
+                default_region = region or 'Urban'
+                default_device = device_type or 'Mobile'
+                
                 return {
                     'user_id': user_id,
                     'prediction': 'upi',
@@ -180,11 +178,11 @@ class PaymentPredictor:
                     'probabilities': {'upi': 0.40, 'card': 0.35, 'cod': 0.25},
                     'user_profile': None,
                     'features_used': {
-                        'age': age or 'not_provided',
-                        'gender': gender or 'not_provided',
-                        'occupation': occupation or 'not_provided',
-                        'region': region or 'not_provided',
-                        'device_type': device_type or 'not_provided',
+                        'age': default_age,
+                        'gender': default_gender,
+                        'occupation': default_occupation,
+                        'region': default_region,
+                        'device_type': default_device,
                         'hour_of_day': hour_of_day if hour_of_day is not None else 'not_provided',
                         'is_weekend': is_weekend if is_weekend is not None else 'not_provided',
                         'product_price': product_price

@@ -350,7 +350,7 @@ export default function ProfilePage() {
       profile.livingStatus,
       profile.location,
       profile.pets,
-      profile.paymentMode,
+      profile.region,
     ];
     const filledFields = fields.filter((f) => f && f !== "").length;
     const hobbiesScore = profile.hobbies.length > 0 ? 1 : 0;
@@ -433,7 +433,7 @@ export default function ProfilePage() {
         location: profile.location || "",
         pets: profile.pets || "",
         petType: profile.pets === "Yes" ? profile.petType : "",
-        paymentMode: profile.paymentMode || "",
+        region: profile.region || "",
       };
       const res = await fetch("/api/profile", {
         method: "PUT",
@@ -767,6 +767,35 @@ export default function ProfilePage() {
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium mb-2">Region</label>
+                <select
+                  value={profile.region}
+                  onChange={(e) => handleUpdate("region", e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all"
+                  style={{
+                    background: isDarkMode ? "#3d3d3d" : "#ffffff",
+                    borderColor: isDarkMode ? "#555" : "#d1d5db",
+                    color: isDarkMode ? "#ffffff" : "#111827",
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = profile.themeColor.hex;
+                    e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = isDarkMode
+                      ? "#555"
+                      : "#d1d5db";
+                    e.target.style.boxShadow = "";
+                  }}
+                >
+                  <option value="">Select your region</option>
+                  <option value="Semi-Rural">Semi Rural</option>
+                  <option value="Urban">Urban</option>
+                  <option value="Rural">Rural</option>
+                </select>
+              </div>
+
+              <div>
                 <label
                   className="flex items-center text-sm font-medium mb-2.5"
                   style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
@@ -880,42 +909,6 @@ export default function ProfilePage() {
                   <option value="Above $1000">Above $1000</option>
                 </select>
               </div>
-              <div>
-                <label
-                  className="flex items-center text-sm font-medium mb-2.5"
-                  style={{ color: isDarkMode ? "#9ca3af" : "#374151" }}
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Payment Mode
-                </label>
-                <select
-                  value={profile.paymentMode}
-                  onChange={(e) => handleUpdate("paymentMode", e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border focus:outline-none transition-all cursor-pointer"
-                  style={{
-                    background: isDarkMode ? "#3d3d3d" : "#ffffff",
-                    borderColor: isDarkMode ? "#555" : "#d1d5db",
-                    color: isDarkMode ? "#ffffff" : "#111827",
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = profile.themeColor.hex;
-                    e.target.style.boxShadow = `0 0 0 3px ${profile.themeColor.hex}20`;
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = isDarkMode
-                      ? "#555"
-                      : "#d1d5db";
-                    e.target.style.boxShadow = "";
-                  }}
-                >
-                  <option value="">Select mode</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Credit Card">Credit Card</option>
-                  <option value="Debit Card">Debit Card</option>
-                  <option value="UPI">UPI</option>
-                  <option value="Digital Wallet">Digital Wallet</option>
-                </select>
-              </div>
             </div>
             <div>
               <label
@@ -954,6 +947,7 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label

@@ -1,6 +1,6 @@
 "use client";
-import { useCart } from "@app/context/CartContent";
-import { useColor } from "@app/context/ColorContext";
+import { Card } from "@/components/ui/card";
+import { useState, useEffect } from "react";
 import {
   Trash2,
   Plus,
@@ -12,12 +12,14 @@ import {
   CreditCard,
   Smartphone,
   Banknote,
+  Sparkles,
+  AlertCircle,
 } from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
+import { useColor } from "@app/context/ColorContext";
+import { useCart } from "@app/context/CartContent";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import Link from "next/link";
 
 export default function CartPage() {
   const {
@@ -32,38 +34,116 @@ export default function CartPage() {
   const router = useRouter();
   const { hexColor, isDarkMode } = useColor();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const [modalContent, setModalContent] = useState({
     type: "",
     message: "",
     orderId: "",
     amount: 0,
   });
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState("");
-  const [countdown, setCountdown] = useState(5);
+  const [predictedPayment, setPredictedPayment] = useState(null);
+  const [predictionConfidence, setPredictionConfidence] = useState(0);
+  const [loadingPrediction, setLoadingPrediction] = useState(false);
+  const [predictionError, setPredictionError] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const subtotal = getCartTotal();
   const tax = subtotal * 0.1;
   const shipping = subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
   const total = subtotal + tax + shipping;
 
-  useEffect(() => {
-    if (showModal && modalContent.type === "success") {
-      setCountdown(5);
-      const interval = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            setShowModal(false);
-            return 5;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
+  const getDeviceType = () => {
+    const ua = navigator.userAgent;
+    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua))
+      return "Tablet";
+    if (
+      /Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(
+        ua
+      )
+    ) {
+      return "Mobile";
     }
-  }, [showModal, modalContent.type]);
+    return "Desktop";
+  };
+
+  const fetchPaymentPrediction = async () => {
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      console.error("No user ID available");
+      setPredictedPayment("upi");
+      setSelectedPayment("upi");
+      setPredictionConfidence(0.4);
+      return;
+    }
+
+    if (total === 0) return;
+
+    setLoadingPrediction(true);
+    setPredictionError(null);
+
+    try {
+      const profileResponse = await fetch(`/api/user-profile/${userId}`);
+
+      if (!profileResponse.ok) {
+        throw new Error("Failed to fetch user profile");
+      }
+
+      const userProfile = await profileResponse.json();
+
+      const now = new Date();
+      const isWeekend = now.getDay() === 0 || now.getDay() === 6 ? 1 : 0;
+      const hourOfDay = now.getHours();
+      const deviceType = getDeviceType();
+
+      const predictionPayload = {
+        user_id: userProfile.user_id,
+        age: userProfile.age,
+        gender: userProfile.gender,
+        occupation: userProfile.occupation,
+        region: userProfile.region,
+        device_type: deviceType,
+        product_price: parseFloat(total.toFixed(2)),
+        is_weekend: isWeekend,
+        hour_of_day: hourOfDay,
+        past_transactions: userProfile.past_transactions || 0,
+        past_upi_ratio: userProfile.past_upi_ratio || 0,
+        past_card_ratio: userProfile.past_card_ratio || 0,
+        past_cod_ratio: userProfile.past_cod_ratio || 0,
+        average_order_value: userProfile.average_order_value || total,
+        last_payment_method: userProfile.last_payment_method || "upi",
+        days_since_last_purchase: userProfile.days_since_last_purchase || 30,
+      };
+
+      const predictionResponse = await fetch("/api/predict-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(predictionPayload),
+      });
+
+      if (!predictionResponse.ok) {
+        const errorData = await predictionResponse.json();
+        throw new Error(errorData.error || "Prediction failed");
+      }
+
+      const prediction = await predictionResponse.json();
+
+      setPredictedPayment(prediction.predicted_method);
+      setPredictionConfidence(prediction.confidence);
+      setSelectedPayment(prediction.predicted_method);
+    } catch (error) {
+      console.error("Payment prediction error:", error);
+      setPredictionError(error.message);
+      setPredictedPayment("upi");
+      setSelectedPayment("upi");
+      setPredictionConfidence(0.4);
+    } finally {
+      setLoadingPrediction(false);
+    }
+  };
 
   const handleCheckout = async () => {
     if (!session?.user?.id) {
@@ -78,48 +158,44 @@ export default function CartPage() {
       return;
     }
 
-    if (cart.length === 0) {
-      setModalContent({
-        type: "error",
-        message: "Your cart is empty",
-        orderId: "",
-        amount: 0,
-      });
-      setShowModal(true);
-      return;
-    }
-
+    if (cart.length === 0) return;
+    await fetchPaymentPrediction();
     setShowPaymentModal(true);
   };
-  // Detect device type
+
   const processCheckout = async () => {
-    if (!selectedPayment) {
-      setModalContent({
-        type: "error",
-        message: "Please select a payment method",
-        orderId: "",
-        amount: 0,
-      });
-      setShowModal(true);
-      return;
-    }
+    if (!selectedPayment) return;
 
     setShowPaymentModal(false);
     setIsCheckingOut(true);
 
+    const finalTotal = total;
+
     try {
-      // Just pass the payment method as a string
       const result = await checkout(selectedPayment);
 
       setModalContent({
         type: "success",
         message: "Order placed successfully!",
         orderId: result.purchase_id,
-        amount: result.total_amount,
+        amount: finalTotal,
       });
       setShowModal(true);
-      setSelectedPayment("");
+
+      setTimeout(() => {
+        setShowModal(false);
+        setSelectedPayment("");
+        setPredictedPayment(null);
+        setModalContent({
+          type: "",
+          message: "",
+          orderId: "",
+          amount: 0,
+        });
+        router.push("/purchase-history");
+      }, 3000);
     } catch (error) {
+      console.error("Checkout error:", error);
       setModalContent({
         type: "error",
         message: `Checkout failed: ${error.message}`,
@@ -131,6 +207,7 @@ export default function CartPage() {
       setIsCheckingOut(false);
     }
   };
+
   const paymentMethods = [
     {
       id: "upi",
@@ -152,42 +229,20 @@ export default function CartPage() {
     },
   ];
 
-  if (isLoading) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center pt-20"
-        style={{ background: isDarkMode ? "#000000" : undefined }}
-      >
-        <div className="text-center">
-          <div
-            className="animate-spin rounded-full h-12 w-12 border-4 border-t-transparent mx-auto mb-4"
-            style={{ borderColor: `${hexColor}30`, borderTopColor: hexColor }}
-          />
-          <p
-            className={`font-medium ${
-              isDarkMode ? "text-gray-300" : "text-gray-600"
-            }`}
-          >
-            Loading your cart...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
-      className="min-h-screen py-8 pt-20"
-      style={{ background: isDarkMode ? "#000000" : undefined }}
+      className="min-h-screen py-8"
+      style={{ background: isDarkMode ? "#000000" : "#f8fafc" }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Link
-          href="/"
-          className="flex items-center gap-2 font-semibold mb-6 transition-colors hover:opacity-80"
-          style={{ color: hexColor }}
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Continue Shopping
+        <Link href="/">
+          <button
+            className="flex items-center gap-2 font-semibold mb-6 transition-colors hover:opacity-80"
+            style={{ color: hexColor }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Continue Shopping
+          </button>
         </Link>
 
         <div className="mb-8">
@@ -207,7 +262,6 @@ export default function CartPage() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {cart.length === 0 ? (
               <div
@@ -244,27 +298,14 @@ export default function CartPage() {
                 >
                   Start shopping to add items!
                 </p>
-                <div className="flex flex-row justify-center gap-4">
-                  <Link
-                    href="/"
+                <Link href="/">
+                  <button
                     className="inline-block text-white px-6 py-3 rounded-lg transition-all hover:scale-105 hover:shadow-lg active:scale-95 font-semibold"
-                    style={{
-                      background: hexColor,
-                    }}
+                    style={{ background: hexColor }}
                   >
                     Browse Products
-                  </Link>
-                  <Link
-                    href="/purchase-history"
-                    className="inline-block px-6 py-3 rounded-lg transition-colors font-semibold"
-                    style={{
-                      background: `linear-gradient(135deg, ${hexColor}20 0%, ${hexColor}30 100%)`,
-                      color: hexColor,
-                    }}
-                  >
-                    Purchase History
-                  </Link>
-                </div>
+                  </button>
+                </Link>
               </div>
             ) : (
               cart.map((item) => (
@@ -287,26 +328,17 @@ export default function CartPage() {
                 >
                   <div className="flex gap-4">
                     <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
-                      {item.imgUrl ? (
-                        <Image
-                          src={item.imgUrl}
-                          alt={item.title}
-                          fill
-                          className="object-cover rounded-xl"
-                        />
-                      ) : (
-                        <div
-                          className={`w-full h-full rounded-xl flex items-center justify-center ${
-                            isDarkMode ? "bg-gray-800" : "bg-gray-200"
+                      <div
+                        className={`w-full h-full rounded-xl flex items-center justify-center ${
+                          isDarkMode ? "bg-gray-800" : "bg-gray-200"
+                        }`}
+                      >
+                        <ShoppingBag
+                          className={`w-8 h-8 ${
+                            isDarkMode ? "text-gray-600" : "text-gray-400"
                           }`}
-                        >
-                          <ShoppingBag
-                            className={`w-8 h-8 ${
-                              isDarkMode ? "text-gray-600" : "text-gray-400"
-                            }`}
-                          />
-                        </div>
-                      )}
+                        />
+                      </div>
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -392,10 +424,9 @@ export default function CartPage() {
             )}
           </div>
 
-          {/* Order Summary */}
           <div className="lg:col-span-1">
             <div
-              className="rounded-2xl p-6 sticky top-24"
+              className="rounded-2xl p-6 sticky top-8"
               style={{
                 background: isDarkMode
                   ? `linear-gradient(145deg, rgba(31,41,55,0.7) 0%, rgba(31,41,55,0.5) 100%)`
@@ -471,28 +502,6 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {!session?.user?.id && (
-                <div
-                  className="mb-4 p-3 rounded-lg"
-                  style={{
-                    background: isDarkMode
-                      ? "rgba(113, 63, 18, 0.3)"
-                      : "rgba(254, 240, 138, 0.2)",
-                    border: isDarkMode
-                      ? "1px solid rgba(180, 83, 9, 0.4)"
-                      : "1px solid rgba(252, 211, 77, 0.3)",
-                  }}
-                >
-                  <p
-                    className={`text-sm ${
-                      isDarkMode ? "text-amber-400" : "text-amber-800"
-                    }`}
-                  >
-                    Please log in to checkout
-                  </p>
-                </div>
-              )}
-
               <button
                 onClick={handleCheckout}
                 disabled={cart.length === 0 || isCheckingOut}
@@ -509,38 +518,32 @@ export default function CartPage() {
                     : { background: hexColor }
                 }
               >
-                {isCheckingOut ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Processing...
-                  </span>
-                ) : (
-                  "Proceed to Checkout"
-                )}
+                {isCheckingOut ? "Processing..." : "Proceed to Checkout"}
               </button>
 
-              <Link
-                href="/"
-                className="block w-full text-center font-semibold py-3 rounded-xl transition-colors"
-                style={{
-                  color: hexColor,
-                  background: `${hexColor}10`,
-                }}
-              >
-                Continue Shopping
+              <Link href="/">
+                <button
+                  className="block w-full text-center font-semibold py-3 rounded-xl transition-colors"
+                  style={{
+                    color: hexColor,
+                    background: `${hexColor}10`,
+                  }}
+                >
+                  Continue Shopping
+                </button>
               </Link>
             </div>
           </div>
         </div>
       </div>
-      {/* Payment Method Modal */}
+
       {showPaymentModal && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{
             backgroundColor: isDarkMode
               ? "rgba(0, 0, 0, 0.7)"
-              : `${hexColor}40`,
+              : "rgba(59, 130, 246, 0.25)",
             backdropFilter: "blur(12px) saturate(150%)",
             WebkitBackdropFilter: "blur(12px) saturate(150%)",
           }}
@@ -573,113 +576,185 @@ export default function CartPage() {
             >
               Select Payment Method
             </h3>
-            <p
-              className={`mb-6 ${
-                isDarkMode ? "text-gray-400" : "text-gray-600"
-              }`}
-            >
-              Choose how you would like to pay
-            </p>
 
-            <div className="space-y-3 mb-6">
-              {paymentMethods.map((method) => {
-                const Icon = method.icon;
-                return (
-                  <button
-                    key={method.id}
-                    onClick={() => setSelectedPayment(method.id)}
-                    className="w-full p-4 rounded-xl border-2 transition-all text-left"
+            {loadingPrediction ? (
+              <div className="py-8 text-center">
+                <div
+                  className="animate-spin rounded-full h-10 w-10 border-4 border-t-transparent mx-auto mb-3"
+                  style={{
+                    borderColor: `${hexColor}30`,
+                    borderTopColor: hexColor,
+                  }}
+                />
+                <p
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  Analyzing your preferences...
+                </p>
+              </div>
+            ) : (
+              <>
+                {predictionError && (
+                  <div
+                    className="mb-4 p-3 rounded-lg flex items-center gap-2"
                     style={{
-                      borderColor:
-                        selectedPayment === method.id
-                          ? hexColor
-                          : `${hexColor}20`,
-                      background:
-                        selectedPayment === method.id
-                          ? `${hexColor}10`
-                          : "transparent",
+                      background: "rgba(251, 191, 36, 0.1)",
+                      border: "1px solid rgba(251, 191, 36, 0.3)",
                     }}
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="p-2 rounded-lg"
+                    <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                    <p className="text-sm text-yellow-800">
+                      Using default prediction (API unavailable)
+                    </p>
+                  </div>
+                )}
+
+                {predictedPayment && (
+                  <div
+                    className="mb-4 p-3 rounded-lg flex items-center gap-2"
+                    style={{
+                      background: `${hexColor}15`,
+                      border: `1px solid ${hexColor}30`,
+                    }}
+                  >
+                    <Sparkles
+                      className="w-4 h-4 flex-shrink-0"
+                      style={{ color: hexColor }}
+                    />
+                    <p
+                      className={`text-sm ${
+                        isDarkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
+                    >
+                      <span className="font-semibold">AI Recommended:</span>{" "}
+                      {predictedPayment.toUpperCase()} (
+                      {(predictionConfidence * 100).toFixed(0)}% confidence)
+                    </p>
+                  </div>
+                )}
+
+                <p
+                  className={`mb-6 ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  {predictedPayment
+                    ? "We've pre-selected your preferred method"
+                    : "Choose how you would like to pay"}
+                </p>
+
+                <div className="space-y-3 mb-6">
+                  {paymentMethods.map((method) => {
+                    const Icon = method.icon;
+                    const isRecommended = predictedPayment === method.id;
+                    return (
+                      <button
+                        key={method.id}
+                        onClick={() => setSelectedPayment(method.id)}
+                        className="w-full p-4 rounded-xl border-2 transition-all text-left relative"
                         style={{
-                          background:
+                          borderColor:
                             selectedPayment === method.id
                               ? hexColor
-                              : `${hexColor}15`,
-                          color:
-                            selectedPayment === method.id ? "white" : hexColor,
+                              : `${hexColor}20`,
+                          background:
+                            selectedPayment === method.id
+                              ? `${hexColor}10`
+                              : "transparent",
                         }}
                       >
-                        <Icon className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1">
-                        <div
-                          className={`font-semibold ${
-                            isDarkMode ? "text-gray-100" : "text-gray-900"
-                          }`}
-                        >
-                          {method.name}
+                        {isRecommended && (
+                          <div
+                            className="absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-semibold text-white flex items-center gap-1"
+                            style={{ background: hexColor }}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            AI Pick
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="p-2 rounded-lg"
+                            style={{
+                              background:
+                                selectedPayment === method.id
+                                  ? hexColor
+                                  : `${hexColor}15`,
+                              color:
+                                selectedPayment === method.id
+                                  ? "white"
+                                  : hexColor,
+                            }}
+                          >
+                            <Icon className="w-6 h-6" />
+                          </div>
+                          <div className="flex-1">
+                            <div
+                              className={`font-semibold ${
+                                isDarkMode ? "text-gray-100" : "text-gray-900"
+                              }`}
+                            >
+                              {method.name}
+                            </div>
+                            <div
+                              className={`text-sm ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              {method.description}
+                            </div>
+                          </div>
+                          {selectedPayment === method.id && (
+                            <CheckCircle
+                              className="w-6 h-6"
+                              style={{ color: hexColor }}
+                            />
+                          )}
                         </div>
-                        <div
-                          className={`text-sm ${
-                            isDarkMode ? "text-gray-400" : "text-gray-500"
-                          }`}
-                        >
-                          {method.description}
-                        </div>
-                      </div>
-                      {selectedPayment === method.id && (
-                        <CheckCircle
-                          className="w-6 h-6"
-                          style={{ color: hexColor }}
-                        />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-            <button
-              onClick={processCheckout}
-              disabled={!selectedPayment}
-              className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center transition-all ${
-                !selectedPayment
-                  ? isDarkMode
-                    ? "bg-gray-800 text-gray-600 cursor-not-allowed"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "text-white hover:opacity-90"
-              }`}
-              style={!selectedPayment ? {} : { background: hexColor }}
-            >
-              Confirm Payment
-            </button>
+                <button
+                  onClick={processCheckout}
+                  disabled={!selectedPayment}
+                  className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center transition-all ${
+                    !selectedPayment
+                      ? isDarkMode
+                        ? "bg-gray-800 text-gray-600 cursor-not-allowed"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "text-white hover:opacity-90"
+                  }`}
+                  style={!selectedPayment ? {} : { background: hexColor }}
+                >
+                  Confirm Payment
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
-      {/* Success/Error Modal */}
+
       {showModal && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
             backgroundColor: isDarkMode
               ? "rgba(0, 0, 0, 0.7)"
               : `${hexColor}40`,
-            backdropFilter: "blur(12px) saturate(150%)",
-            WebkitBackdropFilter: "blur(12px) saturate(150%)",
           }}
         >
-          <div
-            className="rounded-2xl shadow-2xl max-w-md w-full p-8 relative"
-            style={{
-              background: isDarkMode
-                ? "rgba(31, 41, 55, 0.98)"
-                : "rgba(255, 255, 255, 0.98)",
-              backdropFilter: "blur(20px) saturate(180%)",
-              WebkitBackdropFilter: "blur(20px) saturate(180%)",
-            }}
+          <Card
+            className={`rounded-3xl max-w-md w-full p-8 relative backdrop-blur-xl border transition-all duration-500 ${
+              isDarkMode
+                ? "bg-gray-900/70 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border-gray-800/50"
+                : "bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.05)] border-gray-100/50"
+            }`}
           >
             <button
               onClick={() => setShowModal(false)}
@@ -748,8 +823,7 @@ export default function CartPage() {
                       isDarkMode ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
-                    This message will close in {countdown} second
-                    {countdown !== 1 ? "s" : ""}
+                    Redirecting to purchase history...
                   </p>
                 </>
               ) : (
@@ -792,7 +866,7 @@ export default function CartPage() {
                 </>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

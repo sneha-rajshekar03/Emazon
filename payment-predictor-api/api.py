@@ -354,7 +354,16 @@ class PaymentPredictor:
         features['age_young'] = 1 if user_data['age'] < 30 else 0
         features['age_middle'] = 1 if 30 <= user_data['age'] < 50 else 0
         features['age_senior'] = 1 if user_data['age'] >= 50 else 0
-        
+        # Fill missing or empty categorical fields with defaults
+        defaults = {
+       'gender': 'Male',
+       'occupation': 'Other',
+       'region': 'Urban'
+      }
+
+        for col in ['gender', 'occupation', 'region']:
+          if col not in user_data or user_data[col] in [None, '']:user_data[col] = defaults[col]
+
         # Encode categorical features
         for col in ['gender', 'occupation', 'region']:
             encoded_val = self.label_encoders[col].transform([user_data[col]])[0]

@@ -28,6 +28,11 @@ export function BuyBox({ product, ...props }) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [predictedPayment, setPredictedPayment] = useState(null);
+  const [predictionConfidence, setPredictionConfidence] = useState(0);
+  const [loadingPrediction, setLoadingPrediction] = useState(false);
+  const [predictionError, setPredictionError] = useState(null);
+
   const [modalContent, setModalContent] = useState({
     type: "",
     message: "",
@@ -57,6 +62,72 @@ export function BuyBox({ product, ...props }) {
     },
   ];
 
+  const fetchPaymentPrediction = async () => {
+    if (!session?.user?.id) return;
+
+    setLoadingPrediction(true);
+    setPredictionError(null);
+
+    try {
+      // Step 1: fetch user profile
+      const profileRes = await fetch(`/api/user-profile/${session.user.id}`);
+      if (!profileRes.ok) throw new Error("Failed to fetch user profile");
+      const userProfile = await profileRes.json();
+
+      // Step 2: prepare payload
+      const now = new Date();
+      const hourOfDay = now.getHours();
+      const isWeekend = now.getDay() === 0 || now.getDay() === 6 ? 1 : 0;
+      const deviceType = /Mobi|Android/i.test(navigator.userAgent)
+        ? "Mobile"
+        : "Desktop";
+
+      const payload = {
+        user_id: userProfile.user_id,
+        age: userProfile.age,
+        gender: userProfile.gender,
+        occupation: userProfile.occupation,
+        region: userProfile.region,
+        device_type: deviceType,
+        product_price: parseFloat(product.price?.toFixed(2)),
+        is_weekend: isWeekend,
+        hour_of_day: hourOfDay,
+        past_transactions: userProfile.past_transactions || 0,
+        past_upi_ratio: userProfile.past_upi_ratio || 0,
+        past_card_ratio: userProfile.past_card_ratio || 0,
+        past_cod_ratio: userProfile.past_cod_ratio || 0,
+        average_order_value: userProfile.average_order_value || product.price,
+        last_payment_method: userProfile.last_payment_method || "upi",
+        days_since_last_purchase: userProfile.days_since_last_purchase || 30,
+      };
+
+      // Step 3: call prediction API
+      const predictionRes = await fetch("/api/predict-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!predictionRes.ok) {
+        const errorData = await predictionRes.json();
+        throw new Error(errorData.error || "Prediction failed");
+      }
+
+      const prediction = await predictionRes.json();
+      setPredictedPayment(prediction.predicted_method);
+      setPredictionConfidence(prediction.confidence);
+      setSelectedPayment(prediction.predicted_method);
+    } catch (err) {
+      console.error(err);
+      setPredictionError(err.message);
+      setPredictedPayment("upi"); // fallback
+      setSelectedPayment("upi");
+      setPredictionConfidence(0.4);
+    } finally {
+      setLoadingPrediction(false);
+    }
+  };
+
   const handleAddToCart = () => {
     if (!session) {
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
@@ -84,7 +155,7 @@ export function BuyBox({ product, ...props }) {
     }
 
     addToCart(product, quantity);
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await fetchPaymentPrediction(); // fetch AI suggestion
     setShowPaymentModal(true);
   };
 
@@ -276,7 +347,7 @@ export function BuyBox({ product, ...props }) {
       {/* Payment Method Modal */}
       {showPaymentModal && (
         <div
-          className="fixed inset-0 flex p-4"
+          className="fixed inset-0 p-4"
           style={{
             zIndex: 9999,
             backdropFilter: "blur(10px)",
@@ -334,78 +405,135 @@ export function BuyBox({ product, ...props }) {
               Choose how you'd like to pay
             </p>
 
-            <div className="space-y-3 mb-6">
-              {paymentMethods.map((method) => {
-                const Icon = method.icon;
-                return (
-                  <button
-                    key={method.id}
-                    onClick={() => setSelectedPayment(method.id)}
-                    className="w-full p-4 rounded-xl border-2 transition-all text-left"
+            {loadingPrediction ? (
+              <div className="py-8 text-center">
+                <div
+                  className="animate-spin rounded-full h-10 w-10 border-4 border-t-transparent mx-auto mb-3"
+                  style={{
+                    borderColor: `${hexColor}30`,
+                    borderTopColor: hexColor,
+                  }}
+                />
+                <p
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  Analyzing your preferences...
+                </p>
+              </div>
+            ) : (
+              <>
+                {predictionError && (
+                  <div
+                    className="mb-4 p-3 rounded-lg flex items-center gap-2"
                     style={{
-                      borderColor:
-                        selectedPayment === method.id
-                          ? hexColor
-                          : `${hexColor}20`,
-                      background:
-                        selectedPayment === method.id
-                          ? `${hexColor}10`
-                          : "transparent",
+                      background: "rgba(251,191,36,0.1)",
+                      border: "1px solid rgba(251,191,36,0.3)",
                     }}
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="p-2 rounded-lg"
+                    <X className="w-4 h-4 text-yellow-600" />
+                    <p className="text-sm text-yellow-800">
+                      Using default prediction (API unavailable)
+                    </p>
+                  </div>
+                )}
+                {predictedPayment && (
+                  <div
+                    className="mb-4 p-3 rounded-lg flex items-center gap-2"
+                    style={{
+                      background: `${hexColor}15`,
+                      border: `1px solid ${hexColor}30`,
+                    }}
+                  >
+                    <Zap className="w-4 h-4" style={{ color: hexColor }} />
+                    <p
+                      className={`text-sm ${
+                        isDarkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
+                    >
+                      AI Recommended: {predictedPayment.toUpperCase()} (
+                      {(predictionConfidence * 100).toFixed(0)}% confidence)
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-3 mb-6">
+                  {paymentMethods.map((method) => {
+                    const Icon = method.icon;
+                    return (
+                      <button
+                        key={method.id}
+                        onClick={() => setSelectedPayment(method.id)}
+                        className="w-full p-4 rounded-xl border-2 transition-all text-left"
                         style={{
-                          background:
+                          borderColor:
                             selectedPayment === method.id
                               ? hexColor
-                              : `${hexColor}15`,
-                          color:
-                            selectedPayment === method.id ? "white" : hexColor,
+                              : `${hexColor}20`,
+                          background:
+                            selectedPayment === method.id
+                              ? `${hexColor}10`
+                              : "transparent",
                         }}
                       >
-                        <Icon className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1">
-                        <div
-                          className={`font-semibold ${
-                            isDarkMode ? "text-gray-100" : "text-gray-900"
-                          }`}
-                        >
-                          {method.name}
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="p-2 rounded-lg"
+                            style={{
+                              background:
+                                selectedPayment === method.id
+                                  ? hexColor
+                                  : `${hexColor}15`,
+                              color:
+                                selectedPayment === method.id
+                                  ? "white"
+                                  : hexColor,
+                            }}
+                          >
+                            <Icon className="w-6 h-6" />
+                          </div>
+                          <div className="flex-1">
+                            <div
+                              className={`font-semibold ${
+                                isDarkMode ? "text-gray-100" : "text-gray-900"
+                              }`}
+                            >
+                              {method.name}
+                            </div>
+                            <div
+                              className={`text-sm ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              {method.description}
+                            </div>
+                          </div>
+                          {selectedPayment === method.id && (
+                            <CheckCircle
+                              className="w-6 h-6"
+                              style={{ color: hexColor }}
+                            />
+                          )}
                         </div>
-                        <div
-                          className={`text-sm ${
-                            isDarkMode ? "text-gray-400" : "text-gray-500"
-                          }`}
-                        >
-                          {method.description}
-                        </div>
-                      </div>
-                      {selectedPayment === method.id && (
-                        <CheckCircle
-                          className="w-6 h-6"
-                          style={{ color: hexColor }}
-                        />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-            <button
-              onClick={processCheckout}
-              disabled={!selectedPayment}
-              className="w-full text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-              style={{
-                background: `linear-gradient(135deg, ${hexColor} 0%, ${hexColor}f5 100%)`,
-                boxShadow: `0 4px 15px ${hexColor}30`,
-              }}
-            >
-              Confirm Payment
-            </button>
+                <button
+                  onClick={processCheckout}
+                  disabled={!selectedPayment}
+                  className="w-full text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                  style={{
+                    background: `linear-gradient(135deg, ${hexColor} 0%, ${hexColor}f5 100%)`,
+                    boxShadow: `0 4px 15px ${hexColor}30`,
+                  }}
+                >
+                  Confirm Payment
+                </button>
+              </>
+            )}
           </Card>
         </div>
       )}
@@ -413,7 +541,7 @@ export function BuyBox({ product, ...props }) {
       {/* Success/Error Modal */}
       {showModal && (
         <div
-          className="fixed inset-0 flex p-4"
+          className="fixed inset-0 p-4"
           style={{
             zIndex: 9999,
             backdropFilter: "blur(10px)",

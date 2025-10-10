@@ -20,7 +20,7 @@ def get_all_transactions() -> list:
     
     # Fetch all data from correct collections
     transactions = list(db.purchasehistories.find({}).sort('transaction_date', 1))
-    user_profiles = {u['userId']: u for u in db.profiles.find({})}
+    user_profiles = {str(u['userId']).strip(): u for u in db.profiles.find({})}
     
     if not transactions:
         print("⚠️  No transactions found in database!")
@@ -105,7 +105,7 @@ def get_all_transactions() -> list:
     
     profile_data = []
     for _, row in df.iterrows():
-        user_id = row['user_id']
+        user_id = str(user_id).strip()
         profile = user_profiles.get(user_id, {})
         
         # Extract age (handle empty strings)

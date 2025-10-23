@@ -3,7 +3,6 @@ from pymongo import MongoClient
 import pandas as pd
 from datetime import datetime
 
-MONGO_URI = "mongodb+srv://sneh:Qz2pTT3705MOsh47@cluster0.1fwsiaq.mongodb.net/Emzon?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client.get_database("Emzon")
 

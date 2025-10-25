@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@app/components/productCard/ProductCard";
 import { AlertCircle } from "lucide-react";
+
 export default function ProductSearchPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function ProductSearchPage() {
   const [loading, setLoading] = useState(false);
   const [userColor, setUserColor] = useState("#ffffff");
   const [error, setError] = useState(null);
-  const [searchType, setSearchType] = useState(null); // 'category', 'query', or 'lastSearch'
+  const [searchType, setSearchType] = useState(null);
   const [displayText, setDisplayText] = useState("");
 
   // Fetch user color
@@ -30,6 +31,29 @@ export default function ProductSearchPage() {
     }
     fetchUser();
   }, []);
+
+  // 🔹 Helper function to remove duplicates and add unique keys
+  const removeDuplicatesAndAddKeys = (productsArray) => {
+    const seen = new Set();
+    const uniqueProducts = [];
+
+    productsArray.forEach((product, index) => {
+      const productId = product.product_id || product._id || product.id;
+
+      // Check if we've seen this product ID
+      if (!seen.has(productId)) {
+        seen.add(productId);
+        uniqueProducts.push({
+          ...product,
+          id: productId,
+          // Add a unique key combining product_id and index as fallback
+          uniqueKey: `${productId}_${index}`,
+        });
+      }
+    });
+
+    return uniqueProducts;
+  };
 
   // Main effect to handle all search scenarios
   useEffect(() => {
@@ -53,15 +77,22 @@ export default function ProductSearchPage() {
           const data = await res.json();
 
           if (data.valid && data.products?.length > 0) {
-            setProducts(
-              data.products.slice(0, 20).map((p) => ({
-                ...p,
-                id: p.product_id || Math.random().toString(36).substring(2, 9),
-              }))
+            // Remove duplicates and add unique keys
+            const uniqueProducts = removeDuplicatesAndAddKeys(
+              data.products.slice(0, 20)
             );
+            setProducts(uniqueProducts);
 
             if (data.type === "category") {
               setDisplayText(`${data.category} Products`);
+            } else if (data.type === "hybrid") {
+              setDisplayText(`Personalized results for "${searchQuery}" ✨`);
+            }
+
+            // Show source info in console for debugging
+            console.log("Search source:", data.source || "unknown");
+            if (data.user_preferences) {
+              console.log("User preferences active:", data.user_preferences);
             }
           } else {
             setError(`No products found for "${searchQuery}"`);
@@ -78,12 +109,11 @@ export default function ProductSearchPage() {
           const data = await res.json();
 
           if (data.products?.length > 0) {
-            setProducts(
-              data.products.slice(0, 20).map((p) => ({
-                ...p,
-                id: p.product_id || Math.random().toString(36).substring(2, 9),
-              }))
+            // Remove duplicates and add unique keys
+            const uniqueProducts = removeDuplicatesAndAddKeys(
+              data.products.slice(0, 20)
             );
+            setProducts(uniqueProducts);
           } else {
             setError(`No products found in category "${urlCategory}"`);
           }
@@ -107,12 +137,11 @@ export default function ProductSearchPage() {
           const productsData = await productsRes.json();
 
           if (productsData.products?.length > 0) {
-            setProducts(
-              productsData.products.slice(0, 20).map((p) => ({
-                ...p,
-                id: p.product_id || Math.random().toString(36).substring(2, 9),
-              }))
+            // Remove duplicates and add unique keys
+            const uniqueProducts = removeDuplicatesAndAddKeys(
+              productsData.products.slice(0, 20)
             );
+            setProducts(uniqueProducts);
           } else {
             setProducts([]);
             setError("No products found");
@@ -173,7 +202,10 @@ export default function ProductSearchPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map((product, index) => (
             <ProductCard
-              key={product.product_id || product.id}
+              key={
+                product.uniqueKey ||
+                `${product.product_id || product.id}_${index}`
+              }
               product={product}
               color={userColor}
               priority={index < 4}

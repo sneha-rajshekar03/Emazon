@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: recommender-api
+    ports:
+      - "8000:8000"
+    environment:
+      - TRANSFORMERS_CACHE=/app/database/models
+      - SENTENCE_TRANSFORMERS_HOME=/app/database/models
+      - HF_HOME=/app/database/models
+      - TOKENIZERS_PARALLELISM=false
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount the entire database directory to persist user preferences
+      # This allows user_preferences.pkl to be created and persisted
+      - ./database:/app/database
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import requests; requests.get('http://localhost:8000/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - recommender-network
+
+networks:
+  recommender-network:
+    driver: bridge

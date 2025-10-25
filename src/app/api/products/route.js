@@ -1,25 +1,399 @@
+// app/api/products/route.js
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { connectToDB } from "@app/utils/database";
 import Product from "@app/models/Product";
-export async function GET(req) {
+
+const ML_API_URL = process.env.ML_API_URL || "http://localhost:8000";
+
+function deduplicateProducts(products) {
+  const seen = new Set();
+  return products.filter((product) => {
+    const id = product.product_id;
+    if (seen.has(id)) {
+      console.warn(`⚠️ Duplicate product removed: ${id}`);
+      return false;
+    }
+    seen.add(id);
+    return true;
+  });
+}
+
+export async function GET(request) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
+    const query = searchParams.get("query");
+    const limit = searchParams.get("limit") || "20";
+    const sortBy = searchParams.get("sort_by") || "relevance";
 
-    await connectToDB();
+    // Get user ID from cookies or session
+    const cookieStore = cookies();
+    const userId = cookieStore.get("user_id")?.value || null;
 
-    let products;
-    if (category) {
-      products = await Product.find({
-        category_name: { $regex: category, $options: "i" },
-      }).lean();
+    let apiUrl;
+
+    // Determine which ML endpoint to use
+    if (query) {
+      // Search endpoint
+      apiUrl = `${ML_API_URL}/products/search?query=${encodeURIComponent(
+        query
+      )}&limit=${limit}`;
+      if (category) {
+        apiUrl += `&category=${encodeURIComponent(category)}`;
+      }
+    } else if (category) {
+      // Category endpoint with personalization
+      apiUrl = `${ML_API_URL}/products/category/${encodeURIComponent(
+        category
+      )}?limit=${limit}&sort_by=${sortBy}`;
+      if (userId) {
+        apiUrl += `&user_id=${userId}`;
+      }
     } else {
-      products = await Product.find({}).lean();
+      // General recommendations endpoint
+      apiUrl = `${ML_API_URL}/products/recommended?limit=${limit}`;
+      if (userId) {
+        apiUrl += `&user_id=${userId}`;
+      }
     }
 
-    return NextResponse.json({ products });
-  } catch (err) {
-    console.error("Products API error:", err);
-    return NextResponse.json({ products: [], error: "Server error" });
+    console.log("🔍 Fetching product IDs from ML model:", apiUrl);
+
+    // Step 1: Get product IDs and scores from ML model
+    const mlResponse = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!mlResponse.ok) {
+      const errorData = await mlResponse.json().catch(() => ({}));
+      console.error("ML API error:", errorData);
+      throw new Error(
+        `ML API returned ${mlResponse.status}: ${
+          errorData.detail || "Unknown error"
+        }`
+      );
+    }
+
+    const mlData = await mlResponse.json();
+
+    if (!mlData.products || mlData.products.length === 0) {
+      return NextResponse.json({
+        success: true,
+        products: [],
+        total: 0,
+        personalized: false,
+        message: "No products found",
+      });
+    }
+
+    console.log(`✅ ML model returned ${mlData.products.length} product IDs`);
+
+    // Step 2: Extract product IDs from ML results
+    const productIds = mlData.products.map((p) => p.product_id);
+
+    // Create a map of product_id -> ML scores for later merging
+    const mlScoresMap = {};
+    mlData.products.forEach((p) => {
+      mlScoresMap[p.product_id] = {
+        relevance_score:
+          p.relevance_score ||
+          p.recommendation_score ||
+          p.similarity_score ||
+          0,
+        recommendation_score: p.recommendation_score || 0,
+        preference_score: p.preference_score || 0,
+        suitability_score: p.suitability_score || 0,
+        rank: p.rank || 0,
+      };
+    });
+
+    console.log("📦 Fetching full product details from MongoDB...");
+
+    // Step 3: Connect to MongoDB and fetch full product details
+    await connectToDB();
+
+    const fullProducts = await Product.find({
+      product_id: { $in: productIds },
+    }).lean();
+
+    console.log(`✅ MongoDB returned ${fullProducts.length} full products`);
+
+    // Step 4: Merge ML scores with MongoDB data and maintain ML ranking order
+    const productMap = {};
+    fullProducts.forEach((product) => {
+      productMap[product.product_id] = product;
+    });
+
+    const mergedProducts = productIds
+      .map((productId) => {
+        const mongoProduct = productMap[productId];
+        const mlScores = mlScoresMap[productId];
+
+        if (!mongoProduct) {
+          console.warn(`⚠️ Product ${productId} not found in MongoDB`);
+          return null;
+        }
+
+        return {
+          ...mongoProduct,
+          ml_scores: mlScores,
+          _id: mongoProduct._id.toString(),
+        };
+      })
+      .filter((p) => p !== null);
+
+    // CRITICAL FIX: Final deduplication
+    const finalProducts = deduplicateProducts(mergedProducts);
+
+    console.log(
+      `🎯 Final result: ${
+        finalProducts.length
+      } products with ML scores (removed ${
+        mergedProducts.length - finalProducts.length
+      } duplicates)`
+    );
+
+    return NextResponse.json({
+      success: true,
+      products: finalProducts,
+      total: finalProducts.length,
+      personalized: mlData.personalized || false,
+      category: category,
+      query: query,
+    });
+  } catch (error) {
+    console.error("Error fetching products:", error);
+
+    // Fallback to MongoDB-only if ML model fails
+    try {
+      console.log("⚠️ ML model failed, falling back to MongoDB only...");
+      await connectToDB();
+
+      const { searchParams } = new URL(request.url);
+      const category = searchParams.get("category");
+      const limit = parseInt(searchParams.get("limit") || "20");
+
+      let products;
+      if (category) {
+        products = await Product.find({
+          category_name: { $regex: category, $options: "i" },
+        })
+          .limit(limit)
+          .lean();
+      } else {
+        products = await Product.find({}).limit(limit).lean();
+      }
+
+      // Convert _id to string
+      products = products.map((p) => ({
+        ...p,
+        _id: p._id.toString(),
+      }));
+
+      return NextResponse.json({
+        success: true,
+        products: products,
+        total: products.length,
+        personalized: false,
+        fallback: true,
+        message: "Using database fallback (ML model unavailable)",
+      });
+    } catch (fallbackError) {
+      console.error("Fallback also failed:", fallbackError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+          products: [],
+        },
+        { status: 500 }
+      );
+    }
+  }
+}
+
+// POST endpoint for personalized recommendations with full profile
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    console.log("📥 POST /api/products received body:", body);
+
+    const {
+      user_id,
+      query,
+      seed_item_idx,
+      top_k = 20,
+      user_profile,
+      alphas = [0.25, 0.25, 0.2, 0.3],
+    } = body;
+
+    // Use the main recommend endpoint with full profile
+    const apiUrl = `${ML_API_URL}/recommend`;
+
+    // Match the exact schema expected by ML API
+    const requestBody = {
+      user_id: user_id || "guest_user", // Send string instead of null
+      query: query || null,
+      seed_item_idx: seed_item_idx !== undefined ? seed_item_idx : null,
+      top_k: top_k,
+      user_profile: {
+        gender: user_profile?.gender || "female",
+        age: user_profile?.age || 25,
+        occupation: user_profile?.occupation || "professional",
+        pets: user_profile?.pets || [],
+      },
+      alphas: alphas,
+    };
+
+    console.log("🎯 Sending to ML API:", apiUrl);
+    console.log("📤 Request payload:", JSON.stringify(requestBody, null, 2));
+
+    // Step 1: Get recommendations from ML model
+    const mlResponse = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log("📥 ML API response status:", mlResponse.status);
+    console.log("📥 ML API response OK:", mlResponse.ok);
+
+    if (!mlResponse.ok) {
+      const errorText = await mlResponse.text();
+      console.error("❌ ML API error response:", errorText);
+
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { detail: errorText };
+      }
+
+      console.error("❌ ML API error data:", errorData);
+
+      // Return more detailed error
+      return NextResponse.json(
+        {
+          success: false,
+          error: `ML API returned ${mlResponse.status}`,
+          details: errorData,
+          products: [],
+        },
+        { status: 500 }
+      );
+    }
+
+    const mlData = await mlResponse.json();
+    console.log("✅ ML API response received");
+    console.log("📊 ML response structure:", {
+      hasRecommendations: !!mlData.recommendations,
+      recommendationsCount: mlData.recommendations?.length || 0,
+      hasUserPreferences: !!mlData.user_preferences,
+    });
+
+    if (!mlData.recommendations || mlData.recommendations.length === 0) {
+      console.log("⚠️ No recommendations in ML response");
+      return NextResponse.json({
+        success: true,
+        products: [],
+        total: 0,
+        user_preferences: mlData.user_preferences,
+        personalized: true,
+        message: "No recommendations found",
+      });
+    }
+
+    // Step 2: Extract product IDs
+    const productIds = mlData.recommendations.map((p) => p.id);
+    console.log(
+      "📋 Product IDs to fetch from MongoDB:",
+      productIds.slice(0, 5),
+      `... (${productIds.length} total)`
+    );
+
+    // Create scores map
+    const mlScoresMap = {};
+    mlData.recommendations.forEach((p, index) => {
+      mlScoresMap[p.id] = {
+        final_score: p.final_score || 0,
+        initial_score: p.initial_score || 0,
+        suitability_score: p.suitability_score || 0,
+        preference_score: p.preference_score || 0,
+        rank: index + 1,
+      };
+    });
+
+    console.log("📦 Fetching full product details from MongoDB...");
+
+    // Step 3: Get full details from MongoDB
+    await connectToDB();
+
+    const fullProducts = await Product.find({
+      product_id: { $in: productIds },
+    }).lean();
+
+    console.log(`✅ MongoDB returned ${fullProducts.length} products`);
+
+    // Step 4: Merge and maintain order
+    const productMap = {};
+    fullProducts.forEach((product) => {
+      productMap[product.product_id] = product;
+    });
+
+    const mergedProducts = productIds
+      .map((productId) => {
+        const mongoProduct = productMap[productId];
+        const mlScores = mlScoresMap[productId];
+
+        if (!mongoProduct) {
+          console.warn(`⚠️ Product ${productId} not found in MongoDB`);
+          return null;
+        }
+
+        return {
+          ...mongoProduct,
+          ml_scores: mlScores,
+          _id: mongoProduct._id.toString(),
+        };
+      })
+      .filter((p) => p !== null);
+
+    console.log(`🔗 Merged ${mergedProducts.length} products with ML scores`);
+
+    // CRITICAL FIX: Final deduplication
+    const finalProducts = deduplicateProducts(mergedProducts);
+
+    console.log(
+      `🎯 Final result: ${finalProducts.length} unique products (removed ${
+        mergedProducts.length - finalProducts.length
+      } duplicates)`
+    );
+
+    return NextResponse.json({
+      success: true,
+      products: finalProducts,
+      total: finalProducts.length,
+      user_preferences: mlData.user_preferences,
+      personalized: true,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching personalized recommendations:", error);
+    console.error("❌ Error stack:", error.stack);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+        products: [],
+      },
+      { status: 500 }
+    );
   }
 }

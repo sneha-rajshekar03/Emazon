@@ -1,22 +1,88 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { ProductHeader } from "./ProductHeader";
-import { usePathname } from "next/navigation";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useParams, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { ProductHeader } from "./ProductHeader";
 import { BuyBox } from "./BuyBox";
 import { ProductDescription } from "./ProductDescription";
 import { ProductReviews } from "./ProductReviews";
 import { MainImage } from "./MainImage";
 import { Thumbnails } from "./Thumbnails";
 import { Random } from "./Random";
+// Assuming these are stable functions, but we'll import them for completeness
 import { trackInteraction } from "@app/utils/interactionTracker";
 import { getPrioritizedInteractions } from "@app/utils/interactionTracker";
-import { resetInteractions } from "@app/utils/interactionTracker";
-import { getInteractionScores } from "@app/utils/interactionTracker";
 import { usePreferences } from "@app/hooks/usePreferences";
-import ProfilePopupSystem from "@app/profile/page";
 import { useColor } from "@app/context/ColorContext";
+
+// Define the reorderable elements outside the component to prevent recreation on re-render
+const REORDERABLE_ELEMENTS = [
+  "BuyBox",
+  "ProductDescription",
+  "ProductReviews",
+  "Random",
+];
+
+// Define a minimum score for an element to be considered 'preferred' enough to influence layout
+const IMAGE_LAYOUT_THRESHOLD = 15;
+
+// Memoize the initial component map to avoid recreating the onClick/onMouseEnter functions
+// on every single render. We wrap the creation in useMemo.
+const useComponentMap = (product, product_id) =>
+  useMemo(() => {
+    // Component mapping with interaction tracking
+    // We only create this map if 'product' is available.
+    if (!product) return {};
+
+    return {
+      ProductHeader: <ProductHeader key="ProductHeader" product={product} />,
+      BuyBox: (
+        <BuyBox
+          key="BuyBox"
+          product={product}
+          id="BuyBox"
+          onClick={() => trackInteraction("BuyBox", "click")}
+          onMouseEnter={() => trackInteraction("BuyBox", "hover-start")}
+          onMouseLeave={() => trackInteraction("BuyBox", "hover-end")}
+        />
+      ),
+      ProductDescription: (
+        <ProductDescription
+          key="ProductDescription"
+          product={product}
+          id="ProductDescription"
+          onClick={() => trackInteraction("ProductDescription", "click")}
+          onMouseEnter={() =>
+            trackInteraction("ProductDescription", "hover-start")
+          }
+          onMouseLeave={() =>
+            trackInteraction("ProductDescription", "hover-end")
+          }
+        />
+      ),
+      ProductReviews: (
+        <ProductReviews
+          key="ProductReviews"
+          product={product}
+          id="ProductReviews"
+          onClick={() => trackInteraction("ProductReviews", "click")}
+          onMouseEnter={() => trackInteraction("ProductReviews", "hover-start")}
+          onMouseLeave={() => trackInteraction("ProductReviews", "hover-end")}
+        />
+      ),
+      Random: (
+        <Random
+          key="Random"
+          product={product}
+          productId={product_id} // Added: This was outside of componentMap in original code
+          id="Random"
+          onClick={() => trackInteraction("Random", "click")}
+          onMouseEnter={() => trackInteraction("Random", "hover-start")}
+          onMouseLeave={() => trackInteraction("Random", "hover-end")}
+        />
+      ),
+    };
+  }, [product, product_id]); // Depend only on product data and ID
 
 export default function AmazonProductPage() {
   const { product_id } = useParams();
@@ -25,14 +91,6 @@ export default function AmazonProductPage() {
   const pathname = usePathname();
   const { themeColor, isDarkMode } = useColor();
 
-  // Elements that can be reordered (excluding ProductHeader)
-  const reorderableElements = [
-    "BuyBox",
-    "ProductDescription",
-    "ProductReviews",
-    "Random",
-  ];
-
   const [error, setError] = useState(null);
   const { preferences, isLoading } = usePreferences();
 
@@ -40,257 +98,27 @@ export default function AmazonProductPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
-  // CACHED ELEMENT ORDER - only updates on route changes or initial load
-  const [elementOrder, setElementOrder] = useState(reorderableElements);
+  // CACHED ELEMENT ORDER - only updates on route changes or initial preferences load
+  const [elementOrder, setElementOrder] = useState(REORDERABLE_ELEMENTS);
 
   // Track image layout preference
   const [imageLayoutVertical, setImageLayoutVertical] = useState(false);
 
-  // Clear any stored guest preferences on page reload (fresh start for guests)
+  // 1. DEDUPING FETCH LOGIC & REORDERING
+  // Combine all product-related fetching logic into a single useEffect
   useEffect(() => {
-    if (!session?.user?.id) {
-      console.log(
-        "Guest user detected on page load - clearing any existing session data"
-      );
-      try {
-        sessionStorage.removeItem("guestPreferences");
-      } catch (err) {
-        console.error("Storage clear error:", err);
-      }
-    }
-  }, []); // Empty dependency array - runs only on mount (page reload)
+    let isCancelled = false;
 
-  // FIXED: Get element order based on preferences with case-insensitive matching
-  const calculateElementOrder = () => {
-    if (!preferences || preferences.length === 0) {
-      console.log("Using default order - no preferences");
-      return reorderableElements;
-    }
+    async function fetchProductAndSimilar() {
+      if (!product_id) return;
 
-    console.log("Calculating element order with preferences:", preferences);
-    console.log("Reorderable elements:", reorderableElements);
-
-    // Create a case-insensitive preference map
-    const prefMap = new Map();
-    preferences.forEach((pref) => {
-      const normalizedKey = pref.element.toLowerCase();
-      prefMap.set(normalizedKey, pref.score || 0);
-      console.log(
-        `Mapped: "${pref.element}" → "${normalizedKey}" = ${pref.score}`
-      );
-    });
-
-    console.log("Preference map:", Object.fromEntries(prefMap));
-
-    // Sort elements by their preference scores (highest first)
-    const orderedElements = [...reorderableElements].sort((a, b) => {
-      const scoreA = prefMap.get(a.toLowerCase()) || 0;
-      const scoreB = prefMap.get(b.toLowerCase()) || 0;
-
-      console.log(`Comparing: ${a}(${scoreA}) vs ${b}(${scoreB})`);
-      const result = scoreB - scoreA;
-      console.log(
-        `   → ${result > 0 ? b + " wins" : result < 0 ? a + " wins" : "tie"}`
-      );
-      return result;
-    });
-
-    console.log("Final calculated element order:", orderedElements);
-
-    // Debug: Show the final scoring
-    orderedElements.forEach((element, index) => {
-      const score = prefMap.get(element.toLowerCase()) || 0;
-      console.log(`   ${index + 1}. ${element} (score: ${score})`);
-    });
-
-    return orderedElements;
-  };
-
-  // Calculate if image interactions are dominant
-  const calculateImageLayoutPreference = () => {
-    if (!preferences || preferences.length === 0) {
-      return false; // Default to horizontal layout
-    }
-
-    // Find MainImage preference only (not thumbnails)
-    const mainImagePref = preferences.find(
-      (pref) => pref.element.toLowerCase() === "mainimage"
-    );
-
-    // Find non-image preferences (the reorderable elements)
-    const nonImagePrefs = preferences.filter((pref) =>
-      reorderableElements.some(
-        (el) => el.toLowerCase() === pref.element.toLowerCase()
-      )
-    );
-
-    if (!mainImagePref || (mainImagePref.score || 0) === 0) {
-      return false; // No main image interactions yet
-    }
-
-    // Get main image score
-    const mainImageScore = mainImagePref.score || 0;
-
-    // Find the highest scoring non-image element
-    const highestNonImageScore =
-      nonImagePrefs.length > 0
-        ? Math.max(...nonImagePrefs.map((pref) => pref.score || 0))
-        : 0;
-
-    // Debug logging
-    console.log("Image layout calculation:", {
-      mainImagePref,
-      mainImageScore,
-      nonImagePrefs,
-      highestNonImageScore,
-      threshold: Math.max(highestNonImageScore, 15), // Either beat highest or reach minimum
-    });
-
-    // Switch to vertical layout if main image score is highest among all elements
-    // OR if it reaches a minimum threshold
-    const shouldSwitchToVertical =
-      mainImageScore > highestNonImageScore && mainImageScore >= 15;
-
-    console.log("Should switch to vertical layout:", shouldSwitchToVertical);
-
-    return shouldSwitchToVertical;
-  };
-
-  // Update element order ONLY on pathname changes or initial preferences load
-  useEffect(() => {
-    if (!isLoading) {
-      const newOrder = calculateElementOrder();
-      setElementOrder(newOrder);
-
-      // Also recalculate image layout on route changes
-      const shouldBeVertical = calculateImageLayoutPreference();
-      if (shouldBeVertical !== imageLayoutVertical) {
-        setImageLayoutVertical(shouldBeVertical);
-      }
-
-      console.log("Layout updated for route change:", {
-        pathname,
-        newOrder,
-        preferencesCount: preferences.length,
-        imageLayoutVertical: shouldBeVertical,
-        timestamp: new Date().toLocaleTimeString(),
-      });
-    }
-  }, [pathname, isLoading]); // Only depend on pathname and loading state
-
-  // Real-time image layout updates based on preferences
-  useEffect(() => {
-    if (!isLoading && preferences.length > 0) {
-      const shouldBeVertical = calculateImageLayoutPreference();
-      if (shouldBeVertical !== imageLayoutVertical) {
-        console.log(
-          `Changing image layout from ${imageLayoutVertical} to ${shouldBeVertical}`
-        );
-        setImageLayoutVertical(shouldBeVertical);
-      }
-    }
-  }, [preferences]); // Depend on preferences to update in real-time
-
-  // Log preference updates but DON'T change layout order (only image layout can change)
-  useEffect(() => {
-    if (preferences.length > 0) {
-      console.log(
-        "Preferences updated while on product page (element layout stays stable):",
-        {
-          preferencesCount: preferences.length,
-          currentLayout: elementOrder,
-          currentImageLayout: imageLayoutVertical ? "Vertical" : "Horizontal",
-          latestPreferences: preferences.slice(0, 3), // Show first 3
-          willChangeOnNextPageVisit: true,
-        }
-      );
-    }
-  }, [preferences]);
-
-  // Component mapping with image interaction tracking
-  const componentMap = {
-    ProductHeader: <ProductHeader key="ProductHeader" product={product} />,
-    BuyBox: (
-      <BuyBox
-        key="BuyBox"
-        product={product}
-        id="BuyBox"
-        onClick={() => trackInteraction("BuyBox", "click")}
-        onMouseEnter={() => trackInteraction("BuyBox", "hover-start")}
-        onMouseLeave={() => trackInteraction("BuyBox", "hover-end")}
-      />
-    ),
-    ProductDescription: (
-      <ProductDescription
-        key="ProductDescription"
-        product={product}
-        id="ProductDescription"
-        onClick={() => trackInteraction("ProductDescription", "click")}
-        onMouseEnter={() =>
-          trackInteraction("ProductDescription", "hover-start")
-        }
-        onMouseLeave={() => trackInteraction("ProductDescription", "hover-end")}
-      />
-    ),
-    ProductReviews: (
-      <ProductReviews
-        key="ProductReviews"
-        product={product}
-        id="ProductReviews"
-        onClick={() => trackInteraction("ProductReviews", "click")}
-        onMouseEnter={() => trackInteraction("ProductReviews", "hover-start")}
-        onMouseLeave={() => trackInteraction("ProductReviews", "hover-end")}
-      />
-    ),
-    Random: (
-      <Random
-        key="Random"
-        product={product}
-        id="Random"
-        onClick={() => trackInteraction("Random", "click")}
-        onMouseEnter={() => trackInteraction("Random", "hover-start")}
-        onMouseLeave={() => trackInteraction("Random", "hover-end")}
-      />
-    ),
-  };
-
-  useEffect(() => {
-    function handleUnload() {
-      const sorted = getPrioritizedInteractions();
-      console.log("Leaving page →", sorted);
-    }
-
-    window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      const sorted = getPrioritizedInteractions();
-      console.log(`Navigated away from ${pathname} →`, sorted);
-    };
-  }, [pathname]);
-
-  useEffect(() => {
-    function handleScroll() {
-      const bottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 50;
-      if (bottom) {
-        const sorted = getPrioritizedInteractions();
-        console.log("User reached bottom →", sorted);
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    async function fetchProduct() {
+      // 1. Fetch main product
       try {
         setError(null);
+        console.log("🔵 Fetching product:", product_id);
         const res = await fetch(`/api/products/${product_id}`);
-        console.log("page product", res);
+
+        if (isCancelled) return; // Ignore stale result
 
         if (!res.ok) {
           throw new Error(
@@ -299,19 +127,224 @@ export default function AmazonProductPage() {
         }
 
         const data = await res.json();
-        console.log("Page DATA", data);
+        console.log("✅ Product fetched:", data);
         setProduct(data);
+
+        // 2. Fetch similar products (move inside try block for main product)
+        console.log("🟡 Fetching similar products for:", product_id);
+
+        // Use a separate fetch to avoid blocking product rendering if similar fails
+        const similarRes = await fetch(
+          `/api/products/${product_id}/similar?limit=10`
+        );
+
+        if (isCancelled) return; // Ignore stale result
+
+        if (similarRes.ok) {
+          const similarData = await similarRes.json();
+          const formatted = (similarData.products || [])
+            .slice(0, 3)
+            .map((prod) => ({
+              id: prod.product_id,
+              name: prod.title,
+              price: prod.price,
+              originalPrice: prod.listPrice,
+              rating: prod.stars,
+              imgUrl: prod.imgUrl,
+            }));
+
+          localStorage.setItem("similarProducts", JSON.stringify(formatted));
+          console.log(
+            "✅ Stored in localStorage (similarProducts):",
+            formatted
+          );
+        } else {
+          console.error("❌ Similar products API failed:", similarRes.status);
+        }
       } catch (err) {
-        console.error("Error fetching product:", err);
-        setError(err.message);
+        if (!isCancelled) {
+          console.error("❌ Error fetching product:", err);
+          setError(err.message);
+        }
       }
     }
 
-    if (product_id) {
-      fetchProduct();
-    }
-  }, [product_id]);
+    fetchProductAndSimilar();
 
+    // Cleanup function to prevent setting state on unmounted component
+    return () => {
+      isCancelled = true;
+      // Clean up similar products on route change, as in the original code
+      localStorage.removeItem("similarProducts");
+    };
+  }, [product_id]);
+  // Removed redundant fetch useEffect at the bottom of the original code.
+
+  // Clear guest preferences on initial mount
+  useEffect(() => {
+    if (!session?.user?.id) {
+      console.log(
+        "Guest user detected on mount - ensuring session storage is clean"
+      );
+      try {
+        // Use session storage as it persists for the current tab session,
+        // which is better for demonstrating live preference changes for a guest
+        // while still resetting on a full browser/tab close.
+        // Original code used a simple `removeItem` on page reload.
+        sessionStorage.removeItem("guestPreferences");
+        // Or if you only want to clear on *initial* load for guest:
+        // localStorage.removeItem("guestPreferences");
+      } catch (err) {
+        console.error("Storage clear error:", err);
+      }
+    }
+  }, [session?.user?.id]); // Depend on session to only run once per guest/user state
+
+  // 2. MEMOIZED CALCULATION FUNCTIONS (useCallback and useMemo)
+  const calculateElementOrder = useCallback(() => {
+    if (!preferences || preferences.length === 0) {
+      console.log("Using default order - no preferences");
+      return REORDERABLE_ELEMENTS;
+    }
+
+    // Create a case-insensitive preference map (Optimized loop)
+    const prefMap = new Map(
+      preferences.map((pref) => [pref.element.toLowerCase(), pref.score || 0])
+    );
+
+    // Sort elements by their preference scores (highest first)
+    const orderedElements = [...REORDERABLE_ELEMENTS].sort((a, b) => {
+      const scoreA = prefMap.get(a.toLowerCase()) || 0;
+      const scoreB = prefMap.get(b.toLowerCase()) || 0;
+      return scoreB - scoreA;
+    });
+
+    console.log("Final calculated element order:", orderedElements);
+    return orderedElements;
+  }, [preferences]);
+
+  const calculateImageLayoutPreference = useCallback(() => {
+    if (!preferences || preferences.length === 0) {
+      return false; // Default to horizontal layout
+    }
+
+    // Use the optimized map creation for faster lookup
+    const prefMap = new Map(
+      preferences.map((pref) => [pref.element.toLowerCase(), pref.score || 0])
+    );
+
+    // Get main image score
+    const mainImageScore = prefMap.get("mainimage") || 0;
+
+    // Find the highest scoring non-image element from the REORDERABLE_ELEMENTS
+    let highestNonImageScore = 0;
+    for (const element of REORDERABLE_ELEMENTS) {
+      const score = prefMap.get(element.toLowerCase()) || 0;
+      if (score > highestNonImageScore) {
+        highestNonImageScore = score;
+      }
+    }
+
+    // Switch to vertical layout if main image score is highest
+    // AND it reaches a minimum threshold
+    const shouldSwitchToVertical =
+      mainImageScore > highestNonImageScore &&
+      mainImageScore >= IMAGE_LAYOUT_THRESHOLD;
+
+    return shouldSwitchToVertical;
+  }, [preferences]);
+
+  // 3. SEPARATE LAYOUT EFFECTS FOR CLARITY AND STABILITY
+
+  // A. Effect to update component order (Only runs on route change or initial preferences load)
+  // This layout should be STABLE during a single page view, even if preferences change.
+  useEffect(() => {
+    if (!isLoading) {
+      const newOrder = calculateElementOrder();
+      setElementOrder(newOrder);
+
+      // We still update image layout here for the initial load/route change
+      const shouldBeVertical = calculateImageLayoutPreference();
+      setImageLayoutVertical(shouldBeVertical);
+
+      console.log("Layout updated on Route/Initial Load:", {
+        newOrder,
+        imageLayoutVertical: shouldBeVertical,
+      });
+    }
+  }, [
+    pathname,
+    isLoading,
+    calculateElementOrder,
+    calculateImageLayoutPreference,
+  ]);
+  // Dependency array is cleaned up.
+
+  // B. Effect for real-time image layout updates (runs when preferences change)
+  // Image layout can change in real-time as it's less disruptive.
+  useEffect(() => {
+    if (!isLoading && preferences.length > 0) {
+      const shouldBeVertical = calculateImageLayoutPreference();
+      if (shouldBeVertical !== imageLayoutVertical) {
+        console.log(
+          `Real-time image layout change: ${imageLayoutVertical} to ${shouldBeVertical}`
+        );
+        setImageLayoutVertical(shouldBeVertical);
+      }
+    }
+  }, [
+    preferences,
+    isLoading,
+    imageLayoutVertical,
+    calculateImageLayoutPreference,
+  ]);
+  // Dependency array is cleaned up.
+
+  // 4. Cleanup/Logging effects (using useCallback for event handlers)
+  const handleUnload = useCallback(() => {
+    const sorted = getPrioritizedInteractions();
+    console.log("Leaving page →", sorted);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, [handleUnload]);
+
+  useEffect(() => {
+    return () => {
+      const sorted = getPrioritizedInteractions();
+      console.log(`Mapsd away from ${pathname} →`, sorted);
+    };
+  }, [pathname]);
+
+  const handleScroll = useCallback(() => {
+    const bottom =
+      window.innerHeight + window.scrollY >= document.body.offsetHeight - 50;
+    if (bottom) {
+      const sorted = getPrioritizedInteractions();
+      console.log("User reached bottom →", sorted);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
+
+  // 5. MEMOIZE IMAGES AND COMPONENT MAP
+
+  // Image data is memoized to prevent recreation on every render
+  const images = useMemo(() => {
+    return product?.imgUrl
+      ? [product.imgUrl, product.imgUrl, product.imgUrl]
+      : ["/placeholder-image.jpg"];
+  }, [product?.imgUrl]);
+
+  // Component map is memoized (defined above)
+  const componentMap = useComponentMap(product, product_id);
+
+  // 6. EARLY EXIT RENDERING (no changes needed, this is already good practice)
   if (error)
     return (
       <p
@@ -329,25 +362,23 @@ export default function AmazonProductPage() {
       </p>
     );
 
-  const images = product.imgUrl
-    ? [product.imgUrl, product.imgUrl, product.imgUrl]
-    : ["/placeholder-image.jpg"];
-
+  // --- Main Render ---
   return (
     <div
       className="min-h-screen transition-colors duration-500"
       style={{ background: isDarkMode ? "#000000" : themeColor }}
     >
-      {/* Dynamic Layout Container with glassmorphism */}
+      {/* Dynamic Layout Container */}
       <div
         className={`
-        max-w-7xl mx-auto p-4 gap-6 transition-all duration-500 rounded-3xl
-        ${
-          imageLayoutVertical
-            ? "flex flex-col"
-            : "grid grid-cols-1 md:grid-cols-12"
-        }
+         max-w-7xl mx-auto p-4 gap-6 transition-all duration-500 rounded-3xl
+         ${
+           imageLayoutVertical
+             ? "flex flex-col"
+             : "grid grid-cols-1 md:grid-cols-12"
+         }
       `}
+        // ... (Styling remains the same for glassmorphism)
         style={{
           background: isDarkMode
             ? "rgba(31, 41, 55, 0.7)"
@@ -371,6 +402,7 @@ export default function AmazonProductPage() {
         >
           {/* Layout Change Indicator with glassmorphism */}
           {imageLayoutVertical && (
+            // ... (Layout indicator component remains the same)
             <div
               className="mt-10 mb-4 p-3 rounded-2xl"
               style={{
@@ -414,14 +446,15 @@ export default function AmazonProductPage() {
           )}
           <div
             className={`
-  transition-all duration-500
-  ${
-    imageLayoutVertical
-      ? "flex flex-col gap-4 items-center"
-      : "sticky top-4 flex flex-row gap-4 items-start"
-  }
-`}
+              transition-all duration-500
+              ${
+                imageLayoutVertical
+                  ? "flex flex-col gap-4 items-center"
+                  : "sticky top-4 flex flex-row gap-4 items-start"
+              }
+          `}
           >
+            {/* Thumbnails in vertical layout (top) */}
             {imageLayoutVertical && (
               <div className="w-full">
                 <Thumbnails
@@ -430,6 +463,8 @@ export default function AmazonProductPage() {
                   setSelectedImage={setSelectedImage}
                   product={product}
                   isVerticalLayout={true}
+                  // ADDED: Track interaction on thumbnail click for preference scoring
+                  onClick={() => trackInteraction("Thumbnails", "click")}
                 />
               </div>
             )}
@@ -453,25 +488,39 @@ export default function AmazonProductPage() {
               />
             </div>
 
-            {imageLayoutVertical && (
-              <div className="w-full">
-                <Thumbnails
-                  images={images}
-                  selectedImage={selectedImage}
-                  setSelectedImage={setSelectedImage}
-                  product={product}
-                />
-              </div>
+            {/* Thumbnails in horizontal layout (side) or vertical (bottom) */}
+            {!imageLayoutVertical && ( // Only show on the side in horizontal layout
+              <Thumbnails
+                images={images}
+                selectedImage={selectedImage}
+                setSelectedImage={setSelectedImage}
+                product={product}
+                // ADDED: Track interaction on thumbnail click for preference scoring
+                onClick={() => trackInteraction("Thumbnails", "click")}
+              />
             )}
           </div>
+          {/* Thumbnails below the main image in vertical layout (Moved from inside the flex-div) */}
+          {imageLayoutVertical && (
+            <div className="w-full mt-4">
+              <Thumbnails
+                images={images}
+                selectedImage={selectedImage}
+                setSelectedImage={setSelectedImage}
+                product={product}
+                isVerticalLayout={true}
+                onClick={() => trackInteraction("Thumbnails", "click")}
+              />
+            </div>
+          )}
         </div>
 
         {/* Content Section */}
         <div
           className={`
-          space-y-8 transition-all duration-500
-          ${imageLayoutVertical ? "w-full" : "md:col-span-7"}
-        `}
+            space-y-8 transition-all duration-500
+            ${imageLayoutVertical ? "w-full" : "md:col-span-7"}
+          `}
         >
           {/* ProductHeader always stays at the top */}
           {componentMap.ProductHeader}
@@ -481,7 +530,7 @@ export default function AmazonProductPage() {
         </div>
       </div>
 
-      {/* Debug section with glassmorphism */}
+      {/* Debug section remains the same for analysis... */}
       <div
         className="max-w-7xl mx-auto p-4 mt-6 rounded-3xl"
         style={{
@@ -700,7 +749,7 @@ export default function AmazonProductPage() {
               const mainImageScore = mainImagePref?.score || 0;
 
               const nonImagePrefs = preferences.filter((pref) =>
-                reorderableElements.some(
+                REORDERABLE_ELEMENTS.some(
                   (el) => el.toLowerCase() === pref.element.toLowerCase()
                 )
               );
@@ -718,13 +767,13 @@ export default function AmazonProductPage() {
                     {mainImageScore > highestNonImageScore
                       ? "WINNING"
                       : "not winning"}
-                    {mainImageScore >= 15
+                    {mainImageScore >= IMAGE_LAYOUT_THRESHOLD
                       ? " (above minimum)"
-                      : " (below minimum 15)"}
+                      : ` (below minimum ${IMAGE_LAYOUT_THRESHOLD})`}
                   </div>
                   <div>
                     Threshold for vertical layout: Beat highest other element
-                    AND reach 15+ score
+                    AND reach {IMAGE_LAYOUT_THRESHOLD}+ score
                   </div>
                 </div>
               );

@@ -39,13 +39,32 @@ export const SearchBar = () => {
       const res = await fetch("/api/recentSearches");
       if (res.ok) {
         const data = await res.json();
-        setRecentSearches(data.searches || []);
+        console.log("Raw searches from API:", data.searches);
+
+        // Ensure we get only the 4 most recent searches, sorted by most recent first
+        const sortedSearches = (data.searches || [])
+          .sort((a, b) => {
+            const dateA = new Date(
+              a.searchedAt || a.createdAt || a.timestamp || 0
+            );
+            const dateB = new Date(
+              b.searchedAt || b.createdAt || b.timestamp || 0
+            );
+            console.log(
+              `Comparing: ${a.query} (${dateA}) vs ${b.query} (${dateB})`
+            );
+            console.log(`Result: ${dateB - dateA}`);
+            return dateB - dateA; // Most recent first
+          })
+          .slice(0, 4);
+
+        console.log("Sorted searches:", sortedSearches);
+        setRecentSearches(sortedSearches);
       }
     } catch (err) {
       console.error("Error fetching recent searches:", err);
     }
   };
-
   const handleSearch = async (searchQuery) => {
     const queryToSearch = searchQuery || query;
 
@@ -60,6 +79,11 @@ export const SearchBar = () => {
         router.push(`/search?q=${encodeURIComponent(queryToSearch)}`);
         setQuery("");
         setShowRecent(false);
+
+        // Refresh recent searches after navigation
+        if (session?.user) {
+          setTimeout(() => fetchRecentSearches(), 500);
+        }
         return;
       }
 
@@ -83,9 +107,9 @@ export const SearchBar = () => {
         setQuery("");
         setShowRecent(false);
 
-        // Refresh recent searches
+        // Refresh recent searches after navigation
         if (session?.user) {
-          fetchRecentSearches();
+          setTimeout(() => fetchRecentSearches(), 500);
         }
       } else {
         // Only show error on home page
@@ -184,7 +208,7 @@ export const SearchBar = () => {
       {/* Recent Searches Dropdown */}
       {showRecent && recentSearches.length > 0 && !error && (
         <div
-          className="absolute left-0 right-0 mt-2 rounded-xl shadow-lg z-20 max-h-80 overflow-hidden"
+          className="absolute left-0 right-0 mt-2 rounded-xl shadow-lg z-20 overflow-hidden"
           style={{
             background: isDarkMode
               ? "rgba(45, 45, 45, 0.98)"
@@ -211,8 +235,8 @@ export const SearchBar = () => {
               Recent Searches
             </span>
           </div>
-          <div className="overflow-y-auto max-h-64">
-            {recentSearches.slice(0, 10).map((search, index) => (
+          <div className="overflow-y-auto">
+            {recentSearches.map((search, index) => (
               <div
                 key={search._id}
                 onClick={() => handleRecentClick(search)}

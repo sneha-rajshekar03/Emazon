@@ -12,8 +12,11 @@ const Footer = () => {
       {/* Top Section */}
       <div
         className={`
-          flex flex-col md:flex-row items-start justify-evenly
-          px-8 md:px-16 lg:px-32 py-10 gap-12
+          flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap
+          items-start justify-center lg:justify-evenly
+          px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32
+          py-8 sm:py-10 md:py-12
+          gap-8 sm:gap-10 md:gap-12 lg:gap-16
           backdrop-blur-md
           ${
             isDarkMode ? "border-t border-gray-800" : "border-t border-gray-200"
@@ -26,16 +29,16 @@ const Footer = () => {
         }}
       >
         {/* Logo + Description */}
-        <div className="flex flex-row items-center md:items-start gap-5 max-w-sm text-center md:text-left">
+        <div className="flex flex-col items-center sm:items-start gap-4 w-full sm:w-auto sm:max-w-xs lg:max-w-sm text-center sm:text-left">
           <Image
-            className="w-14 md:w-16 opacity-90 hover:opacity-100 transition"
+            className="w-12 sm:w-14 md:w-16 opacity-90 hover:opacity-100 transition"
             src="/logo.svg"
             alt="Emazon Logo"
             width={70}
             height={70}
           />
           <p
-            className={`text-xs md:text-sm leading-relaxed ${
+            className={`text-xs sm:text-sm md:text-base leading-relaxed ${
               isDarkMode ? "text-gray-400" : "text-gray-600"
             }`}
           >
@@ -54,20 +57,20 @@ const Footer = () => {
         </div>
 
         {/* Company Links */}
-        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+        <div className="flex flex-col items-center sm:items-start text-center sm:text-left w-full sm:w-auto">
           <h2
-            className={`font-semibold mb-4 text-sm uppercase tracking-wide ${
+            className={`font-semibold mb-3 sm:mb-4 text-sm sm:text-base uppercase tracking-wide ${
               isDarkMode ? "text-gray-100" : "text-gray-900"
             }`}
           >
             Company
           </h2>
-          <ul className="text-xs md:text-sm space-y-2">
+          <ul className="text-xs sm:text-sm md:text-base space-y-2 sm:space-y-2.5">
             {["Home", "About us", "Contact us", "Privacy policy"].map(
               (item) => (
                 <li key={item}>
                   <a
-                    className={`transition-colors duration-200 ${
+                    className={`transition-colors duration-200 hover:underline ${
                       isDarkMode
                         ? "text-gray-400 hover:text-gray-100"
                         : "text-gray-600 hover:text-gray-900"
@@ -83,30 +86,30 @@ const Footer = () => {
         </div>
 
         {/* Contact Info */}
-        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+        <div className="flex flex-col items-center sm:items-start text-center sm:text-left w-full sm:w-auto">
           <h2
-            className={`font-semibold mb-4 text-sm uppercase tracking-wide ${
+            className={`font-semibold mb-3 sm:mb-4 text-sm sm:text-base uppercase tracking-wide ${
               isDarkMode ? "text-gray-100" : "text-gray-900"
             }`}
           >
             Get in touch
           </h2>
           <div
-            className={`text-xs md:text-sm space-y-2 ${
+            className={`text-xs sm:text-sm md:text-base space-y-2.5 sm:space-y-3 ${
               isDarkMode ? "text-gray-300" : "text-gray-800"
             }`}
           >
-            <div className="flex items-center justify-center md:justify-start space-x-2">
+            <div className="flex items-center justify-center sm:justify-start space-x-2 sm:space-x-3">
               <Phone
-                className={`w-4 h-4 ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${
                   isDarkMode ? "text-gray-500" : "text-gray-500"
                 }`}
               />
               <p className="tracking-wide">+91 7342 9232</p>
             </div>
-            <div className="flex items-center justify-center md:justify-start space-x-2">
+            <div className="flex items-center justify-center sm:justify-start space-x-2 sm:space-x-3">
               <Mail
-                className={`w-4 h-4 ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${
                   isDarkMode ? "text-gray-500" : "text-gray-500"
                 }`}
               />
@@ -118,7 +121,7 @@ const Footer = () => {
 
       {/* Bottom Copyright */}
       <div
-        className={`py-4 text-center text-xs md:text-sm ${
+        className={`py-3 sm:py-4 md:py-5 text-center text-xs sm:text-sm md:text-base ${
           isDarkMode
             ? "text-gray-500 border-t border-gray-800 bg-gray-950"
             : "text-gray-500 border-t border-gray-200 bg-white"

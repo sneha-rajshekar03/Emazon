@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useColor } from "@app/context/ColorContext";
@@ -204,8 +204,8 @@ export const Language = () => {
     return countryMap[lastPart] || null;
   };
 
-  useEffect(() => {
-    const initializeLanguage = async () => {
+  const initializeLanguage = useCallback(
+    async (forceRefresh = false) => {
       let locationCode = null;
       let detectedLocation = null;
       let savedLanguageFromDB = null;
@@ -246,7 +246,6 @@ export const Language = () => {
 
       setSuggestedLangs(languages);
 
-      // Check if location was just detected and saved
       const wasLocationJustDetected =
         userLocation === null && detectedLocation !== null;
 
@@ -255,12 +254,10 @@ export const Language = () => {
 
       let languageToUse = null;
 
-      // Manual override always takes preference
       if (savedLanguageFromDB) {
         languageToUse = savedLanguageFromDB;
         setManualOverride(true);
       } else {
-        // No manual override - use location-based auto-detection
         if (languages && languages.length > 0) {
           languageToUse = languages[0].code;
           setManualOverride(false);
@@ -270,29 +267,53 @@ export const Language = () => {
         }
       }
 
-      // Only update and navigate if language actually changed OR location was just detected
-      if (languageToUse !== selectedLang || wasLocationJustDetected) {
+      if (
+        languageToUse !== selectedLang ||
+        wasLocationJustDetected ||
+        locationChanged ||
+        forceRefresh
+      ) {
         setSelectedLang(languageToUse);
         document.documentElement.lang = languageToUse;
 
         console.log(
-          `🌍 Location detected: ${detectedLocation}, switching to: ${languageToUse}`
+          `🌍 Location ${
+            forceRefresh ? "updated" : "detected"
+          }: ${detectedLocation}, switching to: ${languageToUse}`
         );
 
-        // Auto-navigate to new language
         const currentPath = pathname || "/";
         router.push(currentPath, { locale: languageToUse });
       } else {
-        // Still update state even if language didn't change
         setSelectedLang(languageToUse);
         document.documentElement.lang = languageToUse;
       }
-    };
+    },
+    [status, session?.user?.id, userLocation, selectedLang, pathname, router]
+  );
 
+  useEffect(() => {
     if (status !== "loading") {
       initializeLanguage();
     }
-  }, [status, session?.user?.id]);
+  }, [status, session?.user?.id, initializeLanguage]);
+
+  // Listen for location updates from Profile page
+  useEffect(() => {
+    const handleLocationUpdate = (event) => {
+      console.log("🔄 Location update received:", event.detail);
+      // Force refresh language when location changes
+      setTimeout(() => {
+        initializeLanguage(true);
+      }, 100);
+    };
+
+    window.addEventListener("locationUpdated", handleLocationUpdate);
+
+    return () => {
+      window.removeEventListener("locationUpdated", handleLocationUpdate);
+    };
+  }, [initializeLanguage]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

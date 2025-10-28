@@ -552,7 +552,7 @@ if __name__ == "__main__":
     import uvicorn
     
     print("\n🚀 Starting Payment Predictor API Server v2.1.0")
-    print("📍 http://localhost:8000")
-    print("📚 http://localhost:8000/docs")
+    print("📍 http://localhost:5050")
+    print("📚 http://localhost:5050/docs")
     
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=5050, log_level="info")

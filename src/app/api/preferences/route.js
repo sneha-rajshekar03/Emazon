@@ -191,7 +191,7 @@ export async function POST(req) {
   } catch (err) {
     console.error("❌ Error saving preferences:", err);
 
-    // Better error categorization
+    // Better error categorizationa
     const errorMessage = err.message || "Unknown error occurred";
     const statusCode = err.name === "ValidationError" ? 400 : 500;
 

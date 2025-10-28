@@ -1,71 +1,126 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState, useMemo } from "react"; // Added useMemo
+import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import ProductCard from "./components/productCard/ProductCard";
 import HeaderSlider from "./components/Nav/HeaderSlider";
 import Banner from "./components/Nav/Banner";
 import NewsLetter from "./components/Nav/NewsLetter";
 import Footer from "./components/Nav/Footer";
+import { Loader2, AlertCircle } from "lucide-react";
+
+// Helper for parsing session user ID - memoized value is better
+const getUserIdFromSession = (session) =>
+  session?.users?.id ||
+  session?.users?._id ||
+  session?.user?.id ||
+  session?.user?._id;
+
+// Helper function to parse pets data - moved outside to prevent re-creation on every render
+const parsePets = (data) => {
+  // Check if pets field exists and has value
+  if (data.pets && data.pets !== "" && data.pets !== null) {
+    if (Array.isArray(data.pets)) {
+      return data.pets.filter((pet) => pet && pet !== "");
+    }
+    return [data.pets];
+  }
+
+  // Fallback to petType if pets is empty
+  if (data.petType && data.petType !== "" && data.petType !== null) {
+    return [data.petType];
+  }
+
+  // Return empty array if no pet data
+  return [];
+};
+
+// Default profile object - moved outside to prevent re-creation on every render
+const DEFAULT_PROFILE = {
+  gender: "female",
+  age: 25,
+  occupation: "professional",
+  pets: [],
+  hobbies: [],
+  region: "Urban",
+  location: "",
+};
 
 export default function Home() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: session } = useSession();
   const urlCategory = searchParams.get("category");
   const urlQuery = searchParams.get("query");
 
+  // State initialization is fine
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [userColor, setUserColor] = useState("#ffffff");
   const [error, setError] = useState(null);
   const [category, setCategory] = useState(null);
-  const [userId, setUserId] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
 
-  // Fetch user data (ID, profile, color)
+  // 1. Use useMemo to extract and memoize userId.
+  // This ensures the dependency array in the second useEffect is stable (if userId changes, it's a real change).
+  const userId = useMemo(() => getUserIdFromSession(session), [session]);
+
+  // 2. Combine all data fetching (User Data, Color, Profile) into a single useEffect
+  // that runs only once when the session object loads. This reduces API calls and avoids
+  // unnecessary state updates (setting userId, which can trigger a chain reaction).
   useEffect(() => {
+    // Only fetch if session is loaded AND we haven't already set the profile based on the session.
+    // The previous check was 'if (session !== undefined)'. This is similar but we ensure 'userId' is available
+    // or we are running for a guest user flow.
+    if (session === undefined) {
+      return;
+    }
+
     async function fetchUserData() {
+      // **A. Initialize userId from session** - Now done via useMemo
+      // const userIdFromSession = getUserIdFromSession(session);
+      // setUserId(userIdFromSession); // Removed state update for userId; use the useMemo'd value
+
       try {
-        // Fetch user profile
-        const userRes = await fetch("/api/user");
+        // **B. Fetch profile from MongoDB profile collection**
+        const profileUrl = userId
+          ? `/api/profile?userId=${userId}`
+          : "/api/profile";
 
-        if (userRes.ok) {
-          const userData = await userRes.json();
+        const profileRes = await fetch(profileUrl, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
 
-          // Set user ID
-          const extractedUserId = userData.user_id || userData.id || null;
-          setUserId(extractedUserId);
+        if (profileRes.ok) {
+          const profileResponse = await profileRes.json();
+          const profileData = profileResponse.data || profileResponse;
 
-          // Set user profile with proper structure
-          if (userData.profile) {
-            const profile = {
-              gender: userData.profile.gender || "female",
-              age: userData.profile.age || 25,
-              occupation: userData.profile.occupation || "professional",
-              pets: userData.profile.pets || [],
-            };
-            setUserProfile(profile);
-          } else {
-            // Default profile if not available
-            const defaultProfile = {
-              gender: "female",
-              age: 25,
-              occupation: "professional",
-              pets: [],
-            };
-            setUserProfile(defaultProfile);
-          }
+          // Parse and set user profile
+          const parsedPets = parsePets(profileData);
+          const profile = {
+            gender: (profileData.gender || "female").toLowerCase(),
+            age: parseInt(profileData.age) || 25,
+            occupation: (
+              profileData.occupation || "professional"
+            ).toLowerCase(),
+            pets: parsedPets,
+            hobbies: Array.isArray(profileData.hobbies)
+              ? profileData.hobbies
+              : [],
+            region: profileData.region || "Urban",
+            location: profileData.location || "",
+          };
+          setUserProfile(profile);
         } else {
-          setUserId(null);
-          setUserProfile({
-            gender: "female",
-            age: 25,
-            occupation: "professional",
-            pets: [],
-          });
+          // Set default profile on API failure
+          setUserProfile(DEFAULT_PROFILE);
         }
 
-        // Fetch user color
+        // **C. Fetch user color**
         const colorRes = await fetch("/api/userColor");
-
         if (colorRes.ok) {
           const body = await colorRes.json();
           const colorFromApi =
@@ -81,48 +136,50 @@ export default function Home() {
       } catch (err) {
         console.error("Error fetching user data:", err);
         // Set defaults on error
-        const fallbackProfile = {
-          gender: "female",
-          age: 25,
-          occupation: "professional",
-          pets: [],
-        };
-        setUserProfile(fallbackProfile);
+        setUserProfile(DEFAULT_PROFILE);
         setUserColor("#ffffff");
       }
     }
-    fetchUserData();
-  }, []);
 
-  // Initialize category from last search or URL
+    fetchUserData();
+  }, [session, userId]); // Keep userId in dependency array to refetch if it changes
+
+  // 3. Keep the category initialization separate for clarity, but it's logically sound.
   useEffect(() => {
     async function initCategory() {
       try {
-        const res = await fetch("/api/lastSearch");
-
-        if (!res.ok) {
-          throw new Error(`Failed to fetch last search: ${res.status}`);
+        // Priority 1: Category from URL
+        if (urlCategory) {
+          setCategory(urlCategory);
+          return;
         }
 
-        const data = await res.json();
+        // Priority 2: Query from URL (already good as it's a fall-through)
+        if (urlQuery) {
+          setCategory(urlQuery);
+          return;
+        }
 
-        if (data?.category) {
-          setCategory(data.category);
-        } else if (urlCategory) {
-          setCategory(urlCategory);
+        // Priority 3: Last search from database
+        const res = await fetch("/api/lastSearch");
+
+        if (res.ok) {
+          const data = await res.json();
+          setCategory(data?.category || "Appliances"); // Simplified logic
         } else {
           setCategory("Appliances");
         }
       } catch (err) {
         console.error("Error fetching last search:", err);
-        const fallbackCategory = urlCategory || "Appliances";
-        setCategory(fallbackCategory);
+        setCategory("Appliances");
       }
     }
     initCategory();
-  }, [urlCategory]);
+  }, [urlCategory, urlQuery]); // Dependencies are primitive strings, so this is efficient
 
-  // Fetch ML-powered recommendations
+  // 4. Fetch ML-powered recommendations
+  // This useEffect will now only trigger once 'category' AND 'userProfile' are set.
+  // The logic for fetching and processing products is largely fine, but minor efficiency tweaks are made.
   useEffect(() => {
     // Wait until we have both category and user profile
     if (!category || !userProfile) {
@@ -131,15 +188,17 @@ export default function Home() {
 
     setLoading(true);
     setError(null);
+    setProducts([]); // Clear previous products immediately
 
     async function fetchProducts() {
       try {
         const requestPayload = {
-          user_id: userId || "guest_user",
-          query: urlQuery || category,
+          user_id: userId || "guest_user", // Use memoized userId
+          query: category,
           seed_item_idx: null,
           top_k: 20,
           user_profile: {
+            // Use logical OR with defaults, though userProfile should be guaranteed by 'if' check
             gender: userProfile.gender || "female",
             age: userProfile.age || 25,
             occupation: userProfile.occupation || "professional",
@@ -148,7 +207,6 @@ export default function Home() {
           alphas: [0.25, 0.25, 0.2, 0.3],
         };
 
-        // Use the POST endpoint that calls ML model
         const res = await fetch("/api/products", {
           method: "POST",
           headers: {
@@ -164,25 +222,23 @@ export default function Home() {
         const data = await res.json();
 
         if (data.success && data.products?.length > 0) {
-          // Deduplicate products by product_id
-          const seen = new Set();
-          const uniqueProducts = data.products.filter((p) => {
+          // **Performance Improvement: Optimized Product Processing**
+          // Combined deduplication and processing into a single loop for efficiency.
+          const uniqueProductsMap = new Map();
+          data.products.forEach((p, idx) => {
             const id = p.product_id || p._id || p.id;
-            if (seen.has(id)) {
-              return false;
+            if (id && !uniqueProductsMap.has(id)) {
+              uniqueProductsMap.set(id, {
+                ...p,
+                // Ensure all ID fields are set for consistency
+                id: id,
+                product_id: id,
+                uniqueKey: `${id}_${idx}`,
+              });
             }
-            seen.add(id);
-            return true;
           });
 
-          const processedProducts = uniqueProducts.map((p, idx) => ({
-            ...p,
-            // Ensure all ID fields are set for consistency
-            id: p.product_id || p._id || p.id || `product-${idx}`,
-            product_id: p.product_id || p._id || p.id || `product-${idx}`,
-          }));
-
-          setProducts(processedProducts);
+          setProducts(Array.from(uniqueProductsMap.values()));
         } else {
           setProducts([]);
           setError(data.message || "No products found");
@@ -197,52 +253,68 @@ export default function Home() {
     }
 
     fetchProducts();
-  }, [category, urlQuery, userId, userProfile]);
+  }, [category, userId, userProfile]); // userId is now from useMemo
+
+  // 5. Memoize the rendered products for the grid
+  // This prevents the mapping logic from running on every render if `products` hasn't changed.
+  const productCards = useMemo(() => {
+    if (loading || error || products.length === 0) {
+      return null;
+    }
+
+    return products.slice(0, 12).map((product, index) => (
+      <ProductCard
+        key={product.uniqueKey || `${product.product_id}_${index}`}
+        product={product}
+        color={userColor}
+        // index < 2 is a stable check, no change needed
+        priority={index < 2}
+      />
+    ));
+  }, [products, loading, error, userColor]); // Recalculates only if these dependencies change
 
   return (
     <main className="p-6">
       {/* Hero banner */}
       <HeaderSlider color={userColor} />
-
-      {/* Product Grid */}
-      {loading ? (
+      {/* Loading State */}
+      {loading && (
         <div className="flex flex-col justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-          <p className="mt-4 text-gray-600">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
+          <p className="text-gray-600">
             Loading personalized recommendations...
           </p>
         </div>
-      ) : error ? (
-        <div className="text-center py-10">
-          <p className="text-red-500 font-semibold">{error}</p>
-          <p className="text-gray-500 text-sm mt-2">
-            Try refreshing or searching for something else
-          </p>
+      )}
+      {/* Error State */}
+      {error && !loading && (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-red-800 mb-2">
+              Unable to Load Products
+            </h2>
+            <p className="text-red-600">{error}</p>
+            <p className="text-sm text-gray-600 mt-4">
+              Try refreshing or searching for something else
+            </p>
+          </div>
         </div>
-      ) : products.length > 0 ? (
+      )}
+      {/* Product Grid */}
+      {/* Conditional rendering is simplified by using the memoized productCards */}
+      {productCards && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.slice(0, 12).map((product, index) => {
-            const uniqueKey =
-              product.product_id ||
-              product._id ||
-              product.id ||
-              `fallback-${index}`;
-            return (
-              <ProductCard
-                key={`product-${uniqueKey}-${index}`}
-                product={product}
-                color={userColor}
-                priority={index < 2}
-              />
-            );
-          })}
+          {productCards}
         </div>
-      ) : (
+      )}
+      {/* Empty State */}
+      {!loading && !error && products.length === 0 && (
         <div className="text-center py-10">
           <p className="text-gray-500">No products available</p>
         </div>
       )}
-
+      {/* Ensure Banner is included if it was previously outside Footer/NewsLetter */}
       <NewsLetter />
       <Footer />
     </main>

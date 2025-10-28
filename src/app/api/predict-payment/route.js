@@ -27,7 +27,7 @@ export async function POST(request) {
     };
 
     // Call your FastAPI backend
-    const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
+    const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:5050";
     const response = await fetch(`${FASTAPI_URL}/predict`, {
       method: "POST",
       headers: {

@@ -22,14 +22,14 @@ COPY personalized_payment_data.csv .
 COPY payment_predictor_time_aware.pkl .
 COPY feature_columns_time_aware.pkl .
 COPY label_encoders_time_aware.pkl .
+COPY database.py .
 
-# Expose port
-EXPOSE 8000
+# Expose port 5050
+EXPOSE 5050
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
+    CMD python -c "import requests; requests.get('http://localhost:5050/health')"
 
-# Run the application
-# In your Dockerfile
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Run the application on port 5050
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "5050", "--reload"]

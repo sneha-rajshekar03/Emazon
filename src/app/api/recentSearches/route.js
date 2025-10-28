@@ -16,7 +16,7 @@ export async function GET(req) {
 
     await connectToDB();
 
-    // Get last 10 unique searches
+    // Get last 10 unique searches (sorted by most recent)
     const searches = await SearchHistory.find({
       email: session.user.email,
     })
@@ -29,6 +29,55 @@ export async function GET(req) {
     console.error("Error fetching recent searches:", err);
     return NextResponse.json(
       { error: "Failed to fetch searches" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Save a new search (removes duplicates automatically)
+export async function POST(req) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { query, category } = await req.json();
+
+    if (!query || !query.trim()) {
+      return NextResponse.json({ error: "Query is required" }, { status: 400 });
+    }
+
+    await connectToDB();
+
+    const normalizedQuery = query.trim();
+
+    // Remove any existing search with the same query (case-insensitive)
+    // This ensures no duplicates and moves the search to the top when searched again
+    await SearchHistory.findOneAndDelete({
+      email: session.user.email,
+      query: {
+        $regex: new RegExp(
+          `^${normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          "i"
+        ),
+      },
+    });
+
+    // Create new search entry
+    const newSearch = await SearchHistory.create({
+      email: session.user.email,
+      query: normalizedQuery,
+      category: category || null,
+      createdAt: new Date(),
+    });
+
+    return NextResponse.json({ success: true, search: newSearch });
+  } catch (err) {
+    console.error("Error saving search:", err);
+    return NextResponse.json(
+      { error: "Failed to save search" },
       { status: 500 }
     );
   }

@@ -6,7 +6,7 @@ import { connectToDB } from "@app/utils/database";
 import SearchHistory from "@app/models/SearchHistory";
 import { authOptions } from "@app/api/auth/[...nextauth]/route";
 import Product from "@app/models/Product";
-import User from "@app/models/User"; // Import User model to get demographics
+import User from "@app/models/User";
 
 // 🔹 Configuration for Python API
 const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
@@ -14,6 +14,38 @@ const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
 // 🔹 normalize query & strings (handles plural/singular)
 function normalize(str) {
   return str.toLowerCase().trim().replace(/s$/, ""); // strip trailing 's'
+}
+
+// 🔹 Helper function to save search history (with deduplication)
+async function saveSearchHistory(userEmail, query, category, source) {
+  if (!userEmail) return;
+
+  try {
+    const normalizedQuery = query.trim();
+
+    // Remove any existing search with the same query (case-insensitive)
+    await SearchHistory.findOneAndDelete({
+      email: userEmail,
+      query: {
+        $regex: new RegExp(
+          `^${normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          "i"
+        ),
+      },
+    });
+
+    // Create new search entry (will be most recent)
+    await SearchHistory.create({
+      userId: userEmail,
+      query: normalizedQuery,
+      email: userEmail,
+      category: category || "Mixed",
+      source: source || "mongodb",
+      createdAt: new Date(),
+    });
+  } catch (error) {
+    console.error("Error saving search history:", error);
+  }
 }
 
 // 🔹 Call Python hybrid recommender API
@@ -211,16 +243,13 @@ export async function POST(req) {
         })
         .filter((p) => p !== null);
 
-      // Save to search history
-      if (userEmail) {
-        await SearchHistory.create({
-          userId: userEmail,
-          query,
-          email: userEmail,
-          category: enrichedProducts[0]?.category_name || "Mixed",
-          source: "hybrid_recommender",
-        });
-      }
+      // Save to search history (with deduplication)
+      await saveSearchHistory(
+        userEmail,
+        query,
+        enrichedProducts[0]?.category_name || "Mixed",
+        "hybrid_recommender"
+      );
 
       return NextResponse.json({
         valid: true,
@@ -235,18 +264,16 @@ export async function POST(req) {
     console.log("Falling back to MongoDB search");
     const fallbackResults = await mongoFallbackSearch(query);
 
-    // Save to search history
-    if (userEmail && fallbackResults.valid) {
-      await SearchHistory.create({
-        userId: userEmail,
+    // Save to search history (with deduplication)
+    if (fallbackResults.valid) {
+      await saveSearchHistory(
+        userEmail,
         query,
-        email: userEmail,
-        category:
-          fallbackResults.category ||
+        fallbackResults.category ||
           fallbackResults.products[0]?.category_name ||
           "Mixed",
-        source: "mongodb",
-      });
+        "mongodb"
+      );
     }
 
     return NextResponse.json(fallbackResults);

@@ -9,7 +9,6 @@ import { ProductReviews } from "./ProductReviews";
 import { MainImage } from "./MainImage";
 import { Thumbnails } from "./Thumbnails";
 import { Random } from "./Random";
-// Assuming these are stable functions, but we'll import them for completeness
 import { trackInteraction } from "@app/utils/interactionTracker";
 import { getPrioritizedInteractions } from "@app/utils/interactionTracker";
 import { usePreferences } from "@app/hooks/usePreferences";
@@ -23,15 +22,20 @@ const REORDERABLE_ELEMENTS = [
   "Random",
 ];
 
+// Elements to consider for image layout preference (includes BuyBox)
+const IMAGE_LAYOUT_ELEMENTS = [
+  "BuyBox",
+  "ProductDescription",
+  "ProductReviews",
+  "Random",
+];
+
 // Define a minimum score for an element to be considered 'preferred' enough to influence layout
 const IMAGE_LAYOUT_THRESHOLD = 15;
 
 // Memoize the initial component map to avoid recreating the onClick/onMouseEnter functions
-// on every single render. We wrap the creation in useMemo.
 const useComponentMap = (product, product_id) =>
   useMemo(() => {
-    // Component mapping with interaction tracking
-    // We only create this map if 'product' is available.
     if (!product) return {};
 
     return {
@@ -74,7 +78,7 @@ const useComponentMap = (product, product_id) =>
         <Random
           key="Random"
           product={product}
-          productId={product_id} // Added: This was outside of componentMap in original code
+          productId={product_id}
           id="Random"
           onClick={() => trackInteraction("Random", "click")}
           onMouseEnter={() => trackInteraction("Random", "hover-start")}
@@ -82,7 +86,7 @@ const useComponentMap = (product, product_id) =>
         />
       ),
     };
-  }, [product, product_id]); // Depend only on product data and ID
+  }, [product, product_id]);
 
 export default function AmazonProductPage() {
   const { product_id } = useParams();
@@ -104,21 +108,19 @@ export default function AmazonProductPage() {
   // Track image layout preference
   const [imageLayoutVertical, setImageLayoutVertical] = useState(false);
 
-  // 1. DEDUPING FETCH LOGIC & REORDERING
-  // Combine all product-related fetching logic into a single useEffect
+  // Fetch product and similar products
   useEffect(() => {
     let isCancelled = false;
 
     async function fetchProductAndSimilar() {
       if (!product_id) return;
 
-      // 1. Fetch main product
       try {
         setError(null);
         console.log("🔵 Fetching product:", product_id);
         const res = await fetch(`/api/products/${product_id}`);
 
-        if (isCancelled) return; // Ignore stale result
+        if (isCancelled) return;
 
         if (!res.ok) {
           throw new Error(
@@ -130,15 +132,13 @@ export default function AmazonProductPage() {
         console.log("✅ Product fetched:", data);
         setProduct(data);
 
-        // 2. Fetch similar products (move inside try block for main product)
         console.log("🟡 Fetching similar products for:", product_id);
 
-        // Use a separate fetch to avoid blocking product rendering if similar fails
         const similarRes = await fetch(
           `/api/products/${product_id}/similar?limit=10`
         );
 
-        if (isCancelled) return; // Ignore stale result
+        if (isCancelled) return;
 
         if (similarRes.ok) {
           const similarData = await similarRes.json();
@@ -171,14 +171,11 @@ export default function AmazonProductPage() {
 
     fetchProductAndSimilar();
 
-    // Cleanup function to prevent setting state on unmounted component
     return () => {
       isCancelled = true;
-      // Clean up similar products on route change, as in the original code
       localStorage.removeItem("similarProducts");
     };
   }, [product_id]);
-  // Removed redundant fetch useEffect at the bottom of the original code.
 
   // Clear guest preferences on initial mount
   useEffect(() => {
@@ -187,32 +184,24 @@ export default function AmazonProductPage() {
         "Guest user detected on mount - ensuring session storage is clean"
       );
       try {
-        // Use session storage as it persists for the current tab session,
-        // which is better for demonstrating live preference changes for a guest
-        // while still resetting on a full browser/tab close.
-        // Original code used a simple `removeItem` on page reload.
         sessionStorage.removeItem("guestPreferences");
-        // Or if you only want to clear on *initial* load for guest:
-        // localStorage.removeItem("guestPreferences");
       } catch (err) {
         console.error("Storage clear error:", err);
       }
     }
-  }, [session?.user?.id]); // Depend on session to only run once per guest/user state
+  }, [session?.user?.id]);
 
-  // 2. MEMOIZED CALCULATION FUNCTIONS (useCallback and useMemo)
+  // Calculate element order
   const calculateElementOrder = useCallback(() => {
     if (!preferences || preferences.length === 0) {
       console.log("Using default order - no preferences");
       return REORDERABLE_ELEMENTS;
     }
 
-    // Create a case-insensitive preference map (Optimized loop)
     const prefMap = new Map(
       preferences.map((pref) => [pref.element.toLowerCase(), pref.score || 0])
     );
 
-    // Sort elements by their preference scores (highest first)
     const orderedElements = [...REORDERABLE_ELEMENTS].sort((a, b) => {
       const scoreA = prefMap.get(a.toLowerCase()) || 0;
       const scoreB = prefMap.get(b.toLowerCase()) || 0;
@@ -223,30 +212,26 @@ export default function AmazonProductPage() {
     return orderedElements;
   }, [preferences]);
 
+  // Calculate image layout preference
   const calculateImageLayoutPreference = useCallback(() => {
     if (!preferences || preferences.length === 0) {
-      return false; // Default to horizontal layout
+      return false;
     }
 
-    // Use the optimized map creation for faster lookup
     const prefMap = new Map(
       preferences.map((pref) => [pref.element.toLowerCase(), pref.score || 0])
     );
 
-    // Get main image score
     const mainImageScore = prefMap.get("mainimage") || 0;
 
-    // Find the highest scoring non-image element from the REORDERABLE_ELEMENTS
     let highestNonImageScore = 0;
-    for (const element of REORDERABLE_ELEMENTS) {
+    for (const element of IMAGE_LAYOUT_ELEMENTS) {
       const score = prefMap.get(element.toLowerCase()) || 0;
       if (score > highestNonImageScore) {
         highestNonImageScore = score;
       }
     }
 
-    // Switch to vertical layout if main image score is highest
-    // AND it reaches a minimum threshold
     const shouldSwitchToVertical =
       mainImageScore > highestNonImageScore &&
       mainImageScore >= IMAGE_LAYOUT_THRESHOLD;
@@ -254,16 +239,12 @@ export default function AmazonProductPage() {
     return shouldSwitchToVertical;
   }, [preferences]);
 
-  // 3. SEPARATE LAYOUT EFFECTS FOR CLARITY AND STABILITY
-
-  // A. Effect to update component order (Only runs on route change or initial preferences load)
-  // This layout should be STABLE during a single page view, even if preferences change.
+  // Update component order on route change or initial load
   useEffect(() => {
     if (!isLoading) {
       const newOrder = calculateElementOrder();
       setElementOrder(newOrder);
 
-      // We still update image layout here for the initial load/route change
       const shouldBeVertical = calculateImageLayoutPreference();
       setImageLayoutVertical(shouldBeVertical);
 
@@ -278,10 +259,8 @@ export default function AmazonProductPage() {
     calculateElementOrder,
     calculateImageLayoutPreference,
   ]);
-  // Dependency array is cleaned up.
 
-  // B. Effect for real-time image layout updates (runs when preferences change)
-  // Image layout can change in real-time as it's less disruptive.
+  // Real-time image layout updates
   useEffect(() => {
     if (!isLoading && preferences.length > 0) {
       const shouldBeVertical = calculateImageLayoutPreference();
@@ -298,9 +277,8 @@ export default function AmazonProductPage() {
     imageLayoutVertical,
     calculateImageLayoutPreference,
   ]);
-  // Dependency array is cleaned up.
 
-  // 4. Cleanup/Logging effects (using useCallback for event handlers)
+  // Cleanup/Logging effects
   const handleUnload = useCallback(() => {
     const sorted = getPrioritizedInteractions();
     console.log("Leaving page →", sorted);
@@ -314,7 +292,7 @@ export default function AmazonProductPage() {
   useEffect(() => {
     return () => {
       const sorted = getPrioritizedInteractions();
-      console.log(`Mapsd away from ${pathname} →`, sorted);
+      console.log(`Moved away from ${pathname} →`, sorted);
     };
   }, [pathname]);
 
@@ -332,19 +310,17 @@ export default function AmazonProductPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
-  // 5. MEMOIZE IMAGES AND COMPONENT MAP
-
-  // Image data is memoized to prevent recreation on every render
+  // Memoize images
   const images = useMemo(() => {
     return product?.imgUrl
       ? [product.imgUrl, product.imgUrl, product.imgUrl]
       : ["/placeholder-image.jpg"];
   }, [product?.imgUrl]);
 
-  // Component map is memoized (defined above)
+  // Component map
   const componentMap = useComponentMap(product, product_id);
 
-  // 6. EARLY EXIT RENDERING (no changes needed, this is already good practice)
+  // Early exit rendering
   if (error)
     return (
       <p
@@ -362,7 +338,6 @@ export default function AmazonProductPage() {
       </p>
     );
 
-  // --- Main Render ---
   return (
     <div
       className="min-h-screen transition-colors duration-500"
@@ -378,7 +353,6 @@ export default function AmazonProductPage() {
              : "grid grid-cols-1 md:grid-cols-12"
          }
       `}
-        // ... (Styling remains the same for glassmorphism)
         style={{
           background: isDarkMode
             ? "rgba(31, 41, 55, 0.7)"
@@ -393,16 +367,15 @@ export default function AmazonProductPage() {
             : "0 8px 32px rgba(0, 0, 0, 0.1)",
         }}
       >
-        {/* Image Section - Dynamic positioning */}
+        {/* Image Section */}
         <div
           className={`
           transition-all duration-500
           ${imageLayoutVertical ? "w-full mb-6" : "md:col-span-5"}
         `}
         >
-          {/* Layout Change Indicator with glassmorphism */}
+          {/* Layout Change Indicator */}
           {imageLayoutVertical && (
-            // ... (Layout indicator component remains the same)
             <div
               className="mt-10 mb-4 p-3 rounded-2xl"
               style={{
@@ -454,22 +427,7 @@ export default function AmazonProductPage() {
               }
           `}
           >
-            {/* Thumbnails in vertical layout (top) */}
-            {imageLayoutVertical && (
-              <div className="w-full">
-                <Thumbnails
-                  images={images}
-                  selectedImage={selectedImage}
-                  setSelectedImage={setSelectedImage}
-                  product={product}
-                  isVerticalLayout={true}
-                  // ADDED: Track interaction on thumbnail click for preference scoring
-                  onClick={() => trackInteraction("Thumbnails", "click")}
-                />
-              </div>
-            )}
-
-            {/* Main Image with interaction tracking */}
+            {/* Main Image */}
             <div
               className={imageLayoutVertical ? "w-100" : "flex-1"}
               onClick={() => trackInteraction("MainImage", "click")}
@@ -488,19 +446,18 @@ export default function AmazonProductPage() {
               />
             </div>
 
-            {/* Thumbnails in horizontal layout (side) or vertical (bottom) */}
-            {!imageLayoutVertical && ( // Only show on the side in horizontal layout
+            {/* Thumbnails in horizontal layout (side) */}
+            {!imageLayoutVertical && (
               <Thumbnails
                 images={images}
                 selectedImage={selectedImage}
                 setSelectedImage={setSelectedImage}
                 product={product}
-                // ADDED: Track interaction on thumbnail click for preference scoring
                 onClick={() => trackInteraction("Thumbnails", "click")}
               />
             )}
           </div>
-          {/* Thumbnails below the main image in vertical layout (Moved from inside the flex-div) */}
+          {/* Thumbnails below the main image in vertical layout */}
           {imageLayoutVertical && (
             <div className="w-full mt-4">
               <Thumbnails
@@ -522,15 +479,12 @@ export default function AmazonProductPage() {
             ${imageLayoutVertical ? "w-full" : "md:col-span-7"}
           `}
         >
-          {/* ProductHeader always stays at the top */}
           {componentMap.ProductHeader}
-
-          {/* Other elements ordered by cached preferences */}
           {elementOrder.map((elementName) => componentMap[elementName])}
         </div>
       </div>
 
-      {/* Debug section remains the same for analysis... */}
+      {/* Debug section */}
       <div
         className="max-w-7xl mx-auto p-4 mt-6 rounded-3xl"
         style={{
@@ -696,7 +650,7 @@ export default function AmazonProductPage() {
           </div>
         </div>
 
-        {/* Enhanced Debug section with glassmorphism */}
+        {/* Enhanced Debug section */}
         <div
           className="mt-4 p-3 rounded-2xl"
           style={{
@@ -735,7 +689,6 @@ export default function AmazonProductPage() {
             <strong>Current Element Order:</strong> {elementOrder.join(" → ")}
           </div>
 
-          {/* Image interaction scores */}
           <div
             className={`text-xs mt-1 ${
               isDarkMode ? "text-yellow-300" : "text-yellow-800"
@@ -749,7 +702,7 @@ export default function AmazonProductPage() {
               const mainImageScore = mainImagePref?.score || 0;
 
               const nonImagePrefs = preferences.filter((pref) =>
-                REORDERABLE_ELEMENTS.some(
+                IMAGE_LAYOUT_ELEMENTS.some(
                   (el) => el.toLowerCase() === pref.element.toLowerCase()
                 )
               );
@@ -773,7 +726,8 @@ export default function AmazonProductPage() {
                   </div>
                   <div>
                     Threshold for vertical layout: Beat highest other element
-                    AND reach {IMAGE_LAYOUT_THRESHOLD}+ score
+                    (BuyBox, ProductDescription, ProductReviews, Random) AND
+                    reach {IMAGE_LAYOUT_THRESHOLD}+ score
                   </div>
                 </div>
               );

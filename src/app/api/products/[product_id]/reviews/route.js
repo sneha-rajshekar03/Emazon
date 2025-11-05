@@ -1,116 +1,87 @@
-// File: src/app/api/products/[product_id]/reviews/route.js
-
 import { NextResponse } from "next/server";
 import { connectToDB } from "@app/utils/database";
 import Product from "@app/models/Product";
 
-// POST - Add a new review
+// 🟢 POST — Add a new customer review
 export async function POST(request, { params }) {
-  const { product_id } = await params; // ← Await params
-
   try {
-    await connectToDB();
+    const { product_id } = params;
+    const { user, rating, text } = await request.json();
 
-    // Parse request body
-    const { user, rating, comment } = await request.json();
-
-    // Validate input
-    if (!user || rating === undefined || !comment) {
+    if (!user || !rating || !text) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Convert rating to number (handle both plain numbers and $numberInt format)
-    const ratingValue = parseInt(rating.$numberInt || rating);
+    await connectToDB();
 
-    if (isNaN(ratingValue) || ratingValue < 1 || ratingValue > 5) {
-      return NextResponse.json(
-        { error: "Rating must be between 1 and 5" },
-        { status: 400 }
-      );
-    }
-
-    // Create new review object - store as plain number, not extended JSON
-    const newReview = {
-      user: user.trim(),
-      rating: ratingValue, // ← Plain number, not { $numberInt: ... }
-      comment: comment.trim(),
-    };
-
-    // Find product
-    const product = await Product.findOne({ product_id: product_id });
-
+    const product = await Product.findOne({ product_id });
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // Add review to customer_reviews array
-    if (!product.customer_reviews) {
-      product.customer_reviews = [];
-    }
+    // 🟢 Add the review into customer_reviews array
+    const newReview = {
+      user,
+      rating: Number(rating),
+      comment: text,
+    };
+
     product.customer_reviews.push(newReview);
 
-    // Calculate new average rating
-    const totalRating = product.customer_reviews.reduce((sum, review) => {
-      // Handle both number and $numberInt formats for backward compatibility
-      const reviewRating =
-        typeof review.rating === "object" && review.rating?.$numberInt
-          ? parseInt(review.rating.$numberInt)
-          : Number(review.rating);
-      return sum + reviewRating;
-    }, 0);
+    // 🟡 Recalculate average stars
+    const totalRating = product.customer_reviews.reduce(
+      (sum, r) => sum + Number(r.rating),
+      0
+    );
+    product.stars = totalRating / product.customer_reviews.length;
 
-    const averageRating = totalRating / product.customer_reviews.length;
-
-    // Update product with new review and average rating
-    product.stars = averageRating;
     await product.save();
 
-    return NextResponse.json(product, { status: 200 });
-  } catch (error) {
-    console.error("Error submitting review:", error);
     return NextResponse.json(
-      { error: "Failed to submit review", details: error.message },
+      {
+        message: "Review added successfully",
+        reviews: product.customer_reviews,
+        stars: product.stars,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("❌ Error submitting review:", error);
+    return NextResponse.json(
+      { error: "Server error while submitting review" },
       { status: 500 }
     );
   }
 }
 
-// GET - Fetch paginated reviews
+// 🟡 GET — Fetch reviews (with pagination)
 export async function GET(request, { params }) {
-  const { product_id } = await params; // ← Await params
-
   try {
+    const { product_id } = params;
     const { searchParams } = new URL(request.url);
-    const skip = parseInt(searchParams.get("skip")) || 0;
-    const limit = parseInt(searchParams.get("limit")) || 3;
+    const skip = parseInt(searchParams.get("skip") || "0");
+    const limit = parseInt(searchParams.get("limit") || "3");
 
     await connectToDB();
 
-    // Find product
-    const product = await Product.findOne({ product_id: product_id }).lean();
-
+    const product = await Product.findOne({ product_id });
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    const allReviews = product.customer_reviews || [];
+    const reviews = product.customer_reviews.slice(skip, skip + limit);
 
-    // Get paginated reviews
-    const paginatedReviews = allReviews.slice(skip, skip + limit);
-
-    return NextResponse.json({
-      customer_reviews: paginatedReviews,
-      total: allReviews.length,
-      skip: skip,
-      limit: limit,
-    });
-  } catch (error) {
-    console.error("Error fetching reviews:", error);
     return NextResponse.json(
-      { error: "Failed to fetch reviews", details: error.message },
+      { reviews, stars: product.stars },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("❌ Error fetching reviews:", error);
+    return NextResponse.json(
+      { error: "Server error while fetching reviews" },
       { status: 500 }
     );
   }

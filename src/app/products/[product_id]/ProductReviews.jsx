@@ -7,26 +7,20 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useColor } from "@app/context/ColorContext";
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react"; // ✅ for session
 
+// Utility functions
 const calculateRatingDistribution = (reviews) => {
   const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-
   reviews.forEach((review) => {
-    // Handle both $numberInt, $numberDouble, and plain number formats
     let rating = review.rating;
-    if (review.rating?.$numberInt) {
-      rating = parseInt(review.rating.$numberInt);
-    } else if (review.rating?.$numberDouble) {
+    if (review.rating?.$numberInt) rating = parseInt(review.rating.$numberInt);
+    else if (review.rating?.$numberDouble)
       rating = Math.round(parseFloat(review.rating.$numberDouble));
-    }
-
-    if (rating >= 1 && rating <= 5) {
-      distribution[rating]++;
-    }
+    if (rating >= 1 && rating <= 5) distribution[rating]++;
   });
 
   const total = reviews.length;
-
   return [5, 4, 3, 2, 1].map((stars) => ({
     stars,
     count: distribution[stars],
@@ -38,11 +32,9 @@ const calculateAverageRating = (reviews) => {
   if (reviews.length === 0) return 0;
   const sum = reviews.reduce((acc, review) => {
     let rating = review.rating;
-    if (review.rating?.$numberInt) {
-      rating = parseInt(review.rating.$numberInt);
-    } else if (review.rating?.$numberDouble) {
+    if (review.rating?.$numberInt) rating = parseInt(review.rating.$numberInt);
+    else if (review.rating?.$numberDouble)
       rating = parseFloat(review.rating.$numberDouble);
-    }
     return acc + rating;
   }, 0);
   return sum / reviews.length;
@@ -68,6 +60,8 @@ const getTimeAgo = () => {
 
 export function ProductReviews({ product, ...props }) {
   const { isDarkMode } = useColor();
+  const { data: session } = useSession();
+
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -85,12 +79,20 @@ export function ProductReviews({ product, ...props }) {
       : product.stars || 0
   );
 
+  // ✅ Autofill username from session
   useEffect(() => {
-    // Calculate and update the average rating whenever reviews change
+    if (session?.user?.name) {
+      setUserName(session.user.name);
+    } else if (session?.user?.email) {
+      const nameFromEmail = session.user.email.split("@")[0];
+      setUserName(nameFromEmail);
+    }
+  }, [session]);
+
+  useEffect(() => {
     const newAvgRating = calculateAverageRating(reviews);
     setProductRating(newAvgRating);
   }, [reviews]);
-
   const handleSubmitReview = async (e) => {
     e.preventDefault();
 
@@ -101,52 +103,51 @@ export function ProductReviews({ product, ...props }) {
 
     setIsSubmitting(true);
 
-    const newReview = {
-      user: userName.trim(),
-      rating: { $numberInt: rating.toString() },
-      text: reviewComment.trim(),
-    };
-
     try {
-      // Save review to database
+      const newReview = {
+        user: userName.trim(),
+        rating,
+        text: reviewComment.trim(),
+      };
+
       const response = await fetch(
         `/api/products/${product.product_id}/reviews`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(newReview),
         }
       );
 
+      // ✅ Check for response status
       if (!response.ok) {
-        throw new Error("Failed to submit review");
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to submit review");
       }
 
+      // ✅ Expecting JSON { reviews: [...], stars: ... }
       const result = await response.json();
 
-      // Update local state with new reviews and average rating
-      setReviews(result.reviews || []);
-      if (result.stars) {
+      // ✅ Update reviews and product rating
+      if (result?.reviews) {
+        setReviews(result.reviews);
+      }
+      if (result?.stars) {
         setProductRating(
           result.stars?.$numberDouble
             ? parseFloat(result.stars.$numberDouble)
-            : result.stars
+            : parseFloat(result.stars)
         );
       }
 
-      // Reset form
+      // ✅ Reset form fields and show success message
       setRating(0);
-      setUserName("");
       setReviewComment("");
       setShowReviewForm(false);
-
-      // Show success message
       setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 5000);
+      setTimeout(() => setShowSuccessMessage(false), 4000);
     } catch (error) {
-      console.error("Error submitting review:", error);
+      console.error("❌ Error submitting review:", error);
       alert("Failed to submit review. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -155,40 +156,21 @@ export function ProductReviews({ product, ...props }) {
 
   const handleLoadMore = async () => {
     if (allReviewsLoaded || isLoadingMore) return;
-
     setIsLoadingMore(true);
-
     try {
-      // Fetch more reviews from database
       const skip = reviews.length;
       const limit = 3;
-
       const response = await fetch(
         `/api/products/${product.product_id}/reviews?skip=${skip}&limit=${limit}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        { method: "GET", headers: { "Content-Type": "application/json" } }
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to load more reviews");
-      }
-
+      if (!response.ok) throw new Error("Failed to load more reviews");
       const result = await response.json();
 
-      if (result.reviews && result.reviews.length > 0) {
+      if (result.reviews && result.reviews.length > 0)
         setReviews((prev) => [...prev, ...result.reviews]);
-      }
-
-      // Check if all reviews have been loaded
-      if (!result.reviews || result.reviews.length < limit) {
+      if (!result.reviews || result.reviews.length < limit)
         setAllReviewsLoaded(true);
-      }
-
-      // Increment visible reviews
       setVisibleReviews((prev) => prev + 3);
     } catch (error) {
       console.error("Error loading more reviews:", error);
@@ -198,14 +180,28 @@ export function ProductReviews({ product, ...props }) {
     }
   };
 
+  const getTitleFromRating = (rating) => {
+    const titles = {
+      5: ["Excellent product!", "Highly recommended!", "Amazing quality!"],
+      4: [
+        "Good value for money",
+        "Pretty good overall",
+        "Satisfied with purchase",
+      ],
+      3: ["It's okay", "Average product", "Meets expectations"],
+      2: ["Could be better", "Not what I expected", "Disappointed"],
+      1: ["Poor quality", "Not recommended", "Waste of money"],
+    };
+    const ratingTitles = titles[rating] || titles[3];
+    return ratingTitles[Math.floor(Math.random() * ratingTitles.length)];
+  };
+
   const transformedReviews = reviews.map((review, index) => {
-    // Parse rating from different formats
     let ratingValue = review.rating;
-    if (review.rating?.$numberInt) {
+    if (review.rating?.$numberInt)
       ratingValue = parseInt(review.rating.$numberInt);
-    } else if (review.rating?.$numberDouble) {
+    else if (review.rating?.$numberDouble)
       ratingValue = Math.round(parseFloat(review.rating.$numberDouble));
-    }
 
     return {
       id: index + 1,
@@ -222,36 +218,14 @@ export function ProductReviews({ product, ...props }) {
   const ratingDistribution = calculateRatingDistribution(reviews);
   const reviewCount = reviews.length;
 
-  function getTitleFromRating(rating) {
-    const titles = {
-      5: ["Excellent product!", "Highly recommended!", "Amazing quality!"],
-      4: [
-        "Good value for money",
-        "Pretty good overall",
-        "Satisfied with purchase",
-      ],
-      3: ["It's okay", "Average product", "Meets expectations"],
-      2: ["Could be better", "Not what I expected", "Disappointed"],
-      1: ["Poor quality", "Not recommended", "Waste of money"],
-    };
-    const ratingTitles = titles[rating] || titles[3];
-    return ratingTitles[Math.floor(Math.random() * ratingTitles.length)];
-  }
-
   return (
     <Card
       {...props}
-      className={`
-        p-8 rounded-3xl 
-        backdrop-blur-xl 
-        border 
-        transition-all duration-500
-        ${
-          isDarkMode
-            ? "bg-gray-900/70 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border-gray-800/50 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
-            : "bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.05)] border-gray-100/50 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)]"
-        }
-      `}
+      className={`p-8 rounded-3xl backdrop-blur-xl border transition-all duration-500 ${
+        isDarkMode
+          ? "bg-gray-900/70 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border-gray-800/50"
+          : "bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.05)] border-gray-100/50"
+      }`}
     >
       {/* Header */}
       <div
@@ -329,16 +303,18 @@ export function ProductReviews({ product, ...props }) {
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
                 placeholder="Enter your name"
+                readOnly={!!session?.user?.name}
                 className={`w-full px-4 py-2 rounded-lg border outline-none transition-all ${
                   isDarkMode
                     ? "bg-gray-900/50 border-gray-600/50 text-gray-100 placeholder-gray-500 focus:border-gray-500"
                     : "bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-gray-400"
+                } ${
+                  session?.user?.name ? "opacity-80 cursor-not-allowed" : ""
                 }`}
-                required
               />
             </div>
 
-            {/* Rating Input */}
+            {/* Rating */}
             <div>
               <label
                 className={`block text-sm font-medium mb-2 ${
@@ -371,7 +347,7 @@ export function ProductReviews({ product, ...props }) {
               </div>
             </div>
 
-            {/* Comment Input */}
+            {/* Comment */}
             <div>
               <label
                 className={`block text-sm font-medium mb-2 ${
@@ -383,7 +359,7 @@ export function ProductReviews({ product, ...props }) {
               <textarea
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
-                placeholder="Share your experience with this product..."
+                placeholder="Share your experience..."
                 rows={4}
                 className={`w-full px-4 py-2 rounded-lg border outline-none transition-all resize-none ${
                   isDarkMode
@@ -394,7 +370,6 @@ export function ProductReviews({ product, ...props }) {
               />
             </div>
 
-            {/* Submit Button */}
             <Button
               type="submit"
               disabled={isSubmitting}
@@ -601,7 +576,7 @@ export function ProductReviews({ product, ...props }) {
         </div>
       )}
 
-      {/* Load More or End of Reviews */}
+      {/* Load More Button */}
       {transformedReviews.length > 0 &&
         visibleReviews < transformedReviews.length &&
         !allReviewsLoaded && (
@@ -624,7 +599,7 @@ export function ProductReviews({ product, ...props }) {
           </div>
         )}
 
-      {/* End of Reviews Message */}
+      {/* End of Reviews */}
       {allReviewsLoaded &&
         transformedReviews.length > 0 &&
         visibleReviews >= transformedReviews.length && (

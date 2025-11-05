@@ -202,14 +202,47 @@ export default function ProductCard({ product, onProductClick }) {
           {/* Rating */}
           {product.stars && product.stars !== "N/A" && (
             <div className="flex items-center justify-center gap-1">
-              <span className="text-yellow-500">⭐</span>
-              <span
-                className={`text-sm ${
-                  isDarkMode ? "text-gray-300" : "text-gray-600"
-                }`}
-              >
-                {product.stars}
-              </span>
+              {[1, 2, 3, 4, 5].map((star) => {
+                const rating = parseFloat(product.stars);
+                const filled = star <= Math.floor(rating);
+                const partial = star === Math.ceil(rating) && rating % 1 !== 0;
+
+                return (
+                  <span
+                    key={star}
+                    className="relative inline-block"
+                    style={{ fontSize: "16px" }}
+                  >
+                    {filled ? (
+                      <span className="text-yellow-500">★</span>
+                    ) : partial ? (
+                      <>
+                        <span
+                          className={
+                            isDarkMode ? "text-gray-600" : "text-gray-300"
+                          }
+                        >
+                          ★
+                        </span>
+                        <span
+                          className="absolute top-0 left-0 text-yellow-500 overflow-hidden"
+                          style={{ width: `${(rating % 1) * 100}%` }}
+                        >
+                          ★
+                        </span>
+                      </>
+                    ) : (
+                      <span
+                        className={
+                          isDarkMode ? "text-gray-600" : "text-gray-300"
+                        }
+                      >
+                        ★
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           )}
 

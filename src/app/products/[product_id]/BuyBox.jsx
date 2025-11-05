@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@app/context/CartContent";
 import { useColor } from "@app/context/ColorContext";
 import { useSession } from "next-auth/react";
@@ -17,12 +17,13 @@ import { useRouter, usePathname } from "next/navigation";
 import { Card } from "@/components/ui/card";
 
 export function BuyBox({ product, ...props }) {
-  const { addToCart, checkout } = useCart();
+  const { addToCart } = useCart();
   const { hexColor, isDarkMode } = useColor();
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [quantity, setQuantity] = useState(1);
+  const [mostFrequentQuantity, setMostFrequentQuantity] = useState(null);
   const [added, setAdded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -62,19 +63,74 @@ export function BuyBox({ product, ...props }) {
     },
   ];
 
+  // ✅ FIXED: Fetch most frequent quantity on mount
+  useEffect(() => {
+    if (!session?.user?.id || !product?.product_id) {
+      console.log("[BuyBox] Missing session or product_id:", {
+        userId: session?.user?.id,
+        product_id: product?.product_id,
+        _id: product?._id,
+      });
+      return;
+    }
+
+    const fetchMostFrequentQuantity = async () => {
+      const userId = session.user.id;
+      const productId = product.product_id;
+      const url = `/api/purchase-history?userId=${userId}&productId=${productId}`;
+
+      console.log("[BuyBox] Fetching most frequent quantity...");
+      console.log("[BuyBox] Fetch URL:", url);
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        console.log("[BuyBox] API Response:", data);
+
+        // ✅ FIXED: Check for mostFrequentQuantity field
+        if (data.mostFrequentQuantity && data.mostFrequentQuantity > 0) {
+          setQuantity(data.mostFrequentQuantity);
+          setMostFrequentQuantity(data.mostFrequentQuantity);
+          console.log(
+            `[BuyBox] Quantity set to most frequent:`,
+            data.mostFrequentQuantity
+          );
+        } else {
+          console.log("[BuyBox] No previous quantity found, keeping default 1");
+        }
+      } catch (error) {
+        console.error("[BuyBox] Error fetching most frequent quantity:", error);
+      }
+    };
+
+    fetchMostFrequentQuantity();
+  }, [session?.user?.id, product?.product_id]);
+
   const fetchPaymentPrediction = async () => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id) {
+      console.log("[BuyBox] No session, using default payment method");
+      setPredictedPayment("upi");
+      setSelectedPayment("upi");
+      setPredictionConfidence(0.5);
+      return;
+    }
 
     setLoadingPrediction(true);
     setPredictionError(null);
 
     try {
-      // Step 1: fetch user profile
+      console.log("[BuyBox] Fetching user profile...");
       const profileRes = await fetch(`/api/user-profile/${session.user.id}`);
-      if (!profileRes.ok) throw new Error("Failed to fetch user profile");
-      const userProfile = await profileRes.json();
 
-      // Step 2: prepare payload
+      if (!profileRes.ok) {
+        console.warn("[BuyBox] User profile fetch failed, using fallback");
+        throw new Error("Failed to fetch user profile");
+      }
+
+      const userProfile = await profileRes.json();
+      console.log("[BuyBox] User profile received:", userProfile);
+
       const now = new Date();
       const hourOfDay = now.getHours();
       const isWeekend = now.getDay() === 0 || now.getDay() === 6 ? 1 : 0;
@@ -101,7 +157,8 @@ export function BuyBox({ product, ...props }) {
         days_since_last_purchase: userProfile.days_since_last_purchase || 30,
       };
 
-      // Step 3: call prediction API
+      console.log("[BuyBox] Prediction payload:", payload);
+
       const predictionRes = await fetch("/api/predict-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,17 +167,20 @@ export function BuyBox({ product, ...props }) {
 
       if (!predictionRes.ok) {
         const errorData = await predictionRes.json();
+        console.warn("[BuyBox] Prediction API failed:", errorData);
         throw new Error(errorData.error || "Prediction failed");
       }
 
       const prediction = await predictionRes.json();
+      console.log("[BuyBox] Prediction result:", prediction);
+
       setPredictedPayment(prediction.predicted_method);
       setPredictionConfidence(prediction.confidence);
       setSelectedPayment(prediction.predicted_method);
     } catch (err) {
-      console.error(err);
+      console.error("[BuyBox] Payment prediction error:", err);
       setPredictionError(err.message);
-      setPredictedPayment("upi"); // fallback
+      setPredictedPayment("upi");
       setSelectedPayment("upi");
       setPredictionConfidence(0.4);
     } finally {
@@ -134,6 +194,13 @@ export function BuyBox({ product, ...props }) {
       return;
     }
 
+    console.log("[BuyBox] Adding to cart:", {
+      productId: product._id,
+      productName: product.name,
+      quantity,
+      price: product.price,
+    });
+
     addToCart(product, quantity);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -145,6 +212,14 @@ export function BuyBox({ product, ...props }) {
       return;
     }
 
+    console.log("[BuyBox] Buy Now clicked - will checkout ONLY this product");
+    console.log("[BuyBox] Product:", {
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      quantity,
+    });
+
     const buyBoxElement = e.currentTarget.closest("[data-buybox]");
     if (buyBoxElement) {
       const rect = buyBoxElement.getBoundingClientRect();
@@ -154,13 +229,13 @@ export function BuyBox({ product, ...props }) {
       });
     }
 
-    addToCart(product, quantity);
-    await fetchPaymentPrediction(); // fetch AI suggestion
+    await fetchPaymentPrediction();
     setShowPaymentModal(true);
   };
 
   const processCheckout = async () => {
     if (!selectedPayment) {
+      console.log("[BuyBox] No payment method selected");
       setModalContent({
         type: "error",
         message: "Please select a payment method",
@@ -175,11 +250,74 @@ export function BuyBox({ product, ...props }) {
     setIsProcessing(true);
 
     try {
-      const result = await checkout(selectedPayment);
+      console.log("[BuyBox] Starting checkout for single product");
+      console.log("[BuyBox] Payment method:", selectedPayment);
+
+      const transactionId = `TXN${Date.now()}${Math.random()
+        .toString(36)
+        .substr(2, 9)
+        .toUpperCase()}`;
+
+      const deviceType = /Mobi|Android/i.test(navigator.userAgent)
+        ? "Mobile"
+        : "Desktop";
+
+      const productId =
+        product._id || product.id || product.productId || product.product_id;
+
+      if (!productId) {
+        console.error("[BuyBox] Product object:", product);
+        throw new Error("Product ID not found");
+      }
+
+      console.log("[BuyBox] Product ID extracted:", productId);
+
+      const items = [
+        {
+          product_id: productId,
+          quantity: quantity,
+          unit_price: product.price,
+        },
+      ];
+
+      const totalAmount = product.price * quantity;
+
+      console.log("[BuyBox] Checkout payload:", {
+        transaction_id: transactionId,
+        payment_method: selectedPayment,
+        device_type: deviceType,
+        items: items,
+        total_amount: totalAmount,
+      });
+
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          transaction_id: transactionId,
+          payment_method: selectedPayment,
+          device_type: deviceType,
+          items: items,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("[BuyBox] Checkout failed:", errorData);
+        throw new Error(
+          errorData.details || errorData.error || "Checkout failed"
+        );
+      }
+
+      const result = await response.json();
+      console.log("[BuyBox] Checkout successful:", result);
+
       setModalContent({
         type: "success",
         message: "Order placed successfully!",
-        orderId: result.purchase_id,
+        orderId: result.purchase_id || result.transaction_id || result._id,
         amount: result.total_amount,
       });
       setShowModal(true);
@@ -189,6 +327,7 @@ export function BuyBox({ product, ...props }) {
         router.push("/purchase-history");
       }, 3000);
     } catch (error) {
+      console.error("[BuyBox] Checkout error:", error);
       setModalContent({
         type: "error",
         message: `Checkout failed: ${error.message}`,
@@ -227,6 +366,40 @@ export function BuyBox({ product, ...props }) {
             ${product.price?.toFixed(2)}
           </span>
         </div>
+
+        {/* Smart Quantity Message */}
+        {mostFrequentQuantity && mostFrequentQuantity > 1 && (
+          <div
+            className="mb-4 p-3 rounded-xl flex items-start gap-2 animate-fadeIn"
+            style={{
+              background: `${hexColor}10`,
+              border: `1px solid ${hexColor}30`,
+            }}
+          >
+            <Zap
+              className="w-5 h-5 flex-shrink-0 mt-0.5"
+              style={{ color: hexColor }}
+            />
+            <div>
+              <p
+                className={`text-sm font-semibold ${
+                  isDarkMode ? "text-gray-200" : "text-gray-800"
+                }`}
+              >
+                Heads up!
+              </p>
+              <p
+                className={`text-sm ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                You usually order{" "}
+                <span className="font-bold">{mostFrequentQuantity}</span> of
+                this item.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="mb-6">
           <label
@@ -339,7 +512,7 @@ export function BuyBox({ product, ...props }) {
               isDarkMode ? "text-gray-400" : "text-gray-500"
             }`}
           >
-            Buy Now will take you directly to checkout
+            Buy Now will checkout only this product
           </p>
         )}
       </Card>
@@ -347,7 +520,7 @@ export function BuyBox({ product, ...props }) {
       {/* Payment Method Modal */}
       {showPaymentModal && (
         <div
-          className="fixed inset-0 p-4"
+          className="fixed inset-0 p-4 flex items-center justify-center"
           style={{
             zIndex: 9999,
             backdropFilter: "blur(10px)",
@@ -369,12 +542,6 @@ export function BuyBox({ product, ...props }) {
                   : "bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.05)] border-gray-100/50"
               }
             `}
-            style={{
-              position: "absolute",
-              top: `${buyBoxPosition.top}px`,
-              left: "50%",
-              transform: "translateX(-50%)",
-            }}
           >
             <button
               onClick={() => {
@@ -541,7 +708,7 @@ export function BuyBox({ product, ...props }) {
       {/* Success/Error Modal */}
       {showModal && (
         <div
-          className="fixed inset-0 p-4"
+          className="fixed inset-0 p-4 flex items-center justify-center"
           style={{
             zIndex: 9999,
             backdropFilter: "blur(10px)",
@@ -563,12 +730,6 @@ export function BuyBox({ product, ...props }) {
                   : "bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.05)] border-gray-100/50"
               }
             `}
-            style={{
-              position: "absolute",
-              top: `${buyBoxPosition.top}px`,
-              left: "50%",
-              transform: "translateX(-50%)",
-            }}
           >
             <button
               onClick={() => setShowModal(false)}

@@ -354,15 +354,17 @@ class PaymentPredictor:
         features['age_young'] = 1 if user_data['age'] < 30 else 0
         features['age_middle'] = 1 if 30 <= user_data['age'] < 50 else 0
         features['age_senior'] = 1 if user_data['age'] >= 50 else 0
+        
         # Fill missing or empty categorical fields with defaults
         defaults = {
-       'gender': 'Male',
-       'occupation': 'Other',
-       'region': 'Urban'
-      }
+            'gender': 'Male',
+            'occupation': 'Other',
+            'region': 'Urban'
+        }
 
         for col in ['gender', 'occupation', 'region']:
-          if col not in user_data or user_data[col] in [None, '']:user_data[col] = defaults[col]
+            if col not in user_data or user_data[col] in [None, '']:
+                user_data[col] = defaults[col]
 
         # Encode categorical features
         for col in ['gender', 'occupation', 'region']:
@@ -517,15 +519,18 @@ async def get_user_profile(user_id: str):
     
     return {
         "user_id": user_id,
-        "total_transactions": profile['past_txns'],
-        "payment_preferences": {
-            "upi": f"{profile['past_upi_ratio']*100:.1f}%",
-            "card": f"{profile['past_card_ratio']*100:.1f}%",
-            "cod": f"{profile['past_cod_ratio']*100:.1f}%"
-        },
-        "demographics": user_data,
-        "avg_order_value": round(profile['avg_order_value'], 2),
-        "last_payment": profile['last_payment']
+        "age": user_data['age'],
+        "gender": user_data['gender'],
+        "occupation": user_data['occupation'],
+        "region": user_data['region'],
+        "device_type": user_data['device_type'],
+        "past_transactions": profile['past_txns'],
+        "past_upi_ratio": profile['past_upi_ratio'],
+        "past_card_ratio": profile['past_card_ratio'],
+        "past_cod_ratio": profile['past_cod_ratio'],
+        "average_order_value": round(profile['avg_order_value'], 2),
+        "last_payment_method": profile['last_payment'],
+        "days_since_last_purchase": (pd.Timestamp.now() - profile['last_date']).days
     }
 
 @app.get("/stats")

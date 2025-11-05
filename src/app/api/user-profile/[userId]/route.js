@@ -1,30 +1,37 @@
-// app/api/user-profile/[userId]/route.ts
+// app/api/user-profile/[userId]/route.js
 import { NextResponse } from "next/server";
 
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   try {
-    const { userId } = params;
+    const { userId } = await context.params; // ✅ await params
+
+    console.log("📥 Incoming request for user profile:", userId);
 
     if (!userId) {
+      console.warn("⚠️ Missing userId in request params");
       return NextResponse.json(
         { error: "User ID is required" },
         { status: 400 }
       );
     }
 
-    // Call your database function to get user's current profile
-    // This should match the get_user_current_profile function from your database.py
-    const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
-    const response = await fetch(`${FASTAPI_URL}/user/${userId}/profile`, {
+    const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:5050";
+    const apiUrl = `${FASTAPI_URL}/user/${userId}/profile`;
+
+    console.log("🚀 Sending request to FastAPI:", apiUrl);
+
+    const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
 
+    console.log(`📡 FastAPI Response Status: ${response.status}`);
+
     if (!response.ok) {
       if (response.status === 404) {
-        // New user - return default values
+        console.log("🆕 User not found — returning default profile.");
         return NextResponse.json({
           user_id: userId,
           age: 30,
@@ -43,8 +50,8 @@ export async function GET(request, { params }) {
         });
       }
 
-      const errorData = await response.json();
-      console.error("FastAPI Error:", errorData);
+      const errorData = await response.json().catch(() => ({}));
+      console.error("❌ FastAPI Error:", errorData);
       return NextResponse.json(
         { error: "Failed to fetch user profile", details: errorData },
         { status: response.status }
@@ -52,13 +59,24 @@ export async function GET(request, { params }) {
     }
 
     const profileData = await response.json();
+    console.log(
+      "✅ FastAPI Response Data:",
+      JSON.stringify(profileData, null, 2)
+    );
 
-    return NextResponse.json({
+    const transformedResponse = {
       ...profileData,
       is_new_user: false,
-    });
+    };
+
+    console.log(
+      "📊 Transformed Response to Frontend:",
+      JSON.stringify(transformedResponse, null, 2)
+    );
+
+    return NextResponse.json(transformedResponse);
   } catch (error) {
-    console.error("User profile fetch error:", error);
+    console.error("💥 User profile fetch error:", error);
     return NextResponse.json(
       {
         error: "Internal server error",

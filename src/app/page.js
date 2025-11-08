@@ -1,13 +1,25 @@
 "use client";
-import { useEffect, useState, useMemo } from "react"; // Added useMemo
+import { useEffect, useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import ProductCard from "./components/productCard/ProductCard";
-import HeaderSlider from "./components/Nav/HeaderSlider";
-import Banner from "./components/Nav/Banner";
-import NewsLetter from "./components/Nav/NewsLetter";
-import Footer from "./components/Nav/Footer";
+const HeaderSlider = dynamic(() => import("./components/Nav/HeaderSlider"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />,
+});
+
+// Removed: import Banner from "./components/Nav/Banner";
+const NewsLetter = dynamic(() => import("./components/Nav/NewsLetter"), {
+  ssr: false,
+  loading: () => <div style={{ height: 120 }} />, // lightweight placeholder
+});
+
+const Footer = dynamic(() => import("./components/Nav/Footer"), {
+  ssr: false,
+  loading: () => <div style={{ height: 120 }} />,
+});
 import { Loader2, AlertCircle } from "lucide-react";
+import dynamic from "next/dynamic";
 
 // Helper for parsing session user ID - memoized value is better
 const getUserIdFromSession = (session) =>
@@ -275,8 +287,9 @@ export default function Home() {
 
   return (
     <main className="p-6">
-      {/* Hero banner */}
+      {/* Hero slider with personalized categories */}
       <HeaderSlider color={userColor} />
+
       {/* Loading State */}
       {loading && (
         <div className="flex flex-col justify-center items-center py-20">
@@ -286,6 +299,7 @@ export default function Home() {
           </p>
         </div>
       )}
+
       {/* Error State */}
       {error && !loading && (
         <div className="flex flex-col items-center justify-center py-20">
@@ -301,20 +315,22 @@ export default function Home() {
           </div>
         </div>
       )}
+
       {/* Product Grid */}
-      {/* Conditional rendering is simplified by using the memoized productCards */}
       {productCards && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {productCards}
         </div>
       )}
+
       {/* Empty State */}
       {!loading && !error && products.length === 0 && (
         <div className="text-center py-10">
           <p className="text-gray-500">No products available</p>
         </div>
       )}
-      {/* Ensure Banner is included if it was previously outside Footer/NewsLetter */}
+
+      {/* Newsletter and Footer */}
       <NewsLetter />
       <Footer />
     </main>

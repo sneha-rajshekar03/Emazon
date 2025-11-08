@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@app/api/auth/[...nextauth]/route";
-import { connectToDB } from "@app/utils/database";
-import Cart from "@app/models/Cart";
-import PurchaseHistory from "@app/models/PurchaseHistory";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { connectToDB } from "@/app/utils/database";
+import Cart from "@/app/models/Cart";
+import PurchaseHistory from "@/app/models/PurchaseHistory";
 
 export async function POST(req) {
   console.log("🛒 [CHECKOUT API] POST request received");

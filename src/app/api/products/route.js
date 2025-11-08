@@ -1,9 +1,8 @@
 // app/api/products/route.js
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { connectToDB } from "@app/utils/database";
-import Product from "@app/models/Product";
-
+import { connectToDB } from "@/app/utils/database";
+import Product from "@/app/models/product";
 const ML_API_URL = process.env.ML_API_URL || "http://localhost:8000";
 
 function deduplicateProducts(products) {

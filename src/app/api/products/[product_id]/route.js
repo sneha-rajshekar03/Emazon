@@ -1,8 +1,7 @@
 // src/app/api/products/[product_id]/route.js
 import { NextResponse } from "next/server";
-import { connectToDB } from "@app/utils/database";
-import Product from "@app/models/Product";
-
+import { connectToDB } from "@/app/utils/database";
+import Product from "@/app/models/product";
 export async function GET(req, context) {
   const startTime = Date.now();
   const requestId = Math.random().toString(36).substr(2, 9);

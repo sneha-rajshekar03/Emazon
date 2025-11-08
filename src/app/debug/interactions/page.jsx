@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPrioritizedInteractions } from "@app/utils/interactionTracker";
+import { getPrioritizedInteractions } from "@/app/utils/interactionTracker";
 export default function DebugInteractionsPage() {
   const [interactions, setInteractions] = useState([]);
 

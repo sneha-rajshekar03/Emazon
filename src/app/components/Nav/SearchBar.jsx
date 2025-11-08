@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Clock, X, Search } from "lucide-react";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 
 export const SearchBar = () => {
   const { data: session } = useSession();
@@ -162,7 +162,7 @@ export const SearchBar = () => {
         <div className="relative flex-1">
           <input
             type="text"
-            placeholder="Search Amazon"
+            placeholder="Search emzon"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setShowRecent(true)}

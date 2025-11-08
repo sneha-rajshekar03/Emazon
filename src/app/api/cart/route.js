@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@app/api/auth/[...nextauth]/route";
-import { connectToDB } from "@app/utils/database";
-import Cart from "@app/models/Cart";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { connectToDB } from "@/app/utils/database";
+import Cart from "@/app/models/Cart";
 
 // GET - Fetch user's cart
 export async function GET(req) {

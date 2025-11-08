@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   getInteractionScores,
   resetInteractions,
-} from "@app/utils/interactionTracker";
+} from "@/app/utils/interactionTracker";
 
 export function usePreferences() {
   const { data: session, status } = useSession();

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect } from "react";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 
 export default function HeroBanner({ hero }) {
   const { hexColor } = useColor();

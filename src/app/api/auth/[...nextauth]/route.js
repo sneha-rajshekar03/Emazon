@@ -10,9 +10,8 @@ import {
   updateProfile,
   signOut as firebaseSignOut,
 } from "firebase/auth";
-import { connectToDB } from "@app/utils/database";
-import User from "@app/models/user";
-
+import { connectToDB } from "@/app/utils/database";
+import User from "@/app/models/User";
 // Initialize Firebase
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

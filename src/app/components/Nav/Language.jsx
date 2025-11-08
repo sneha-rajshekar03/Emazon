@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 import { Globe } from "lucide-react";
 
 export const Language = () => {

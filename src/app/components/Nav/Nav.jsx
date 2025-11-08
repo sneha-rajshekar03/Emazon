@@ -11,8 +11,8 @@ import { Account } from "./Account";
 import CartButton from "./CartIcon";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { usePreferences } from "@app/hooks/usePreferences";
-import { useColor } from "@app/context/ColorContext";
+import { usePreferences } from "@/app/hooks/usePreferences";
+import { useColor } from "@/app/context/ColorContext";
 import { ChevronDown, User, ShoppingBag, LogOut } from "lucide-react";
 
 const ProfileImageWithProgress = ({ imageUrl, completion = 0, hexColor }) => {

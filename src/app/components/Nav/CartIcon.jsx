@@ -1,6 +1,6 @@
 "use client";
-import { useCart } from "@app/context/CartContent";
-import { useColor } from "@app/context/ColorContext";
+import { useCart } from "@/app/context/CartContent";
+import { useColor } from "@/app/context/ColorContext";
 import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

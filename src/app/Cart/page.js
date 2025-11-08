@@ -15,8 +15,8 @@ import {
   Sparkles,
   AlertCircle,
 } from "lucide-react";
-import { useColor } from "@app/context/ColorContext";
-import { useCart } from "@app/context/CartContent";
+import { useColor } from "../context/ColorContext";
+import { useCart } from "@/app/context/CartContent";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";

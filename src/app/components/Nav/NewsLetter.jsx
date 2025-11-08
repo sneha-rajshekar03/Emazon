@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 
 const NewsLetter = () => {
   const { hexColor, isDarkMode } = useColor();

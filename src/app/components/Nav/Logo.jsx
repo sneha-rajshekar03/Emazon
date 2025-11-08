@@ -1,8 +1,8 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSelectedLanguage } from "@app/hooks/useSelectedLanguage";
-import { useColor } from "@app/context/ColorContext";
+import { useSelectedLanguage } from "@/app/hooks/useSelectedLanguage";
+import { useColor } from "@/app/context/ColorContext";
 
 export const Logo = () => {
   const brandTranslations = {
@@ -31,7 +31,6 @@ export const Logo = () => {
 
   // Use dark logo when dark mode is enabled
   const logoSrc = isDarkMode ? "/logodark.png" : "/logo.svg";
-
   return (
     <div>
       <Link href="/" className="flex flex-row items-center gap-2">

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { connectToDB } from "@app/utils/database";
-import UserPreference from "@app/models/UserPreference";
+import { connectToDB } from "@/app/utils/database";
+import UserPreference from "@/app/models/UserPreference";
 
 // GET /api/preferences?userId=123 - Fetch user preferences
 export async function GET(req) {

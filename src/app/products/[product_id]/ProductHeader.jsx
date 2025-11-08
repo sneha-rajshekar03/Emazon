@@ -4,7 +4,7 @@ import { Star, Heart, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 
 export function ProductHeader({ product, ...props }) {
   const { isDarkMode } = useColor();

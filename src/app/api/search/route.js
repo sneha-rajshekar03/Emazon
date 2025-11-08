@@ -2,29 +2,37 @@
 import { NextResponse } from "next/server";
 import fuzzysort from "fuzzysort";
 import { getServerSession } from "next-auth";
-import { connectToDB } from "@app/utils/database";
-import SearchHistory from "@app/models/SearchHistory";
-import { authOptions } from "@app/api/auth/[...nextauth]/route";
-import Product from "@app/models/Product";
-import User from "@app/models/User";
+import { connectToDB } from "@/app/utils/database";
+import SearchHistory from "@/app/models/SearchHistory";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import Product from "@/app/models/product";
+import User from "@/app/models/User";
 
-// 🔹 Configuration for Python API
 const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
 
-// 🔹 normalize query & strings (handles plural/singular)
+// ==========================================
+// 🔹 Utility Helpers
+// ==========================================
+
+// Normalize queries (handle plural/singular)
 function normalize(str) {
-  return str.toLowerCase().trim().replace(/s$/, ""); // strip trailing 's'
+  return str.toLowerCase().trim().replace(/s$/, "");
 }
 
-// 🔹 Helper function to save search history (with deduplication)
-async function saveSearchHistory(userEmail, query, category, source) {
+// Save search history with deduplication + frequency tracking
+async function saveSearchHistory(
+  userEmail,
+  query,
+  category,
+  source,
+  resultsCount = 0
+) {
   if (!userEmail) return;
 
   try {
     const normalizedQuery = query.trim();
 
-    // Remove any existing search with the same query (case-insensitive)
-    await SearchHistory.findOneAndDelete({
+    const existingSearch = await SearchHistory.findOne({
       email: userEmail,
       query: {
         $regex: new RegExp(
@@ -34,21 +42,39 @@ async function saveSearchHistory(userEmail, query, category, source) {
       },
     });
 
-    // Create new search entry (will be most recent)
-    await SearchHistory.create({
-      userId: userEmail,
-      query: normalizedQuery,
-      email: userEmail,
-      category: category || "Mixed",
-      source: source || "mongodb",
-      createdAt: new Date(),
-    });
+    if (existingSearch) {
+      await SearchHistory.findByIdAndUpdate(existingSearch._id, {
+        $inc: { searchCount: 1 },
+        $set: {
+          category: category || "Mixed",
+          source: source || "mongodb",
+          resultsCount,
+          lastSearchedAt: new Date(),
+          searchedAt: new Date(),
+        },
+      });
+    } else {
+      await SearchHistory.create({
+        userId: userEmail,
+        query: normalizedQuery,
+        email: userEmail,
+        category: category || "Mixed",
+        source: source || "mongodb",
+        searchCount: 1,
+        resultsCount,
+        searchedAt: new Date(),
+        lastSearchedAt: new Date(),
+      });
+    }
   } catch (error) {
     console.error("Error saving search history:", error);
   }
 }
 
-// 🔹 Call Python hybrid recommender API
+// ==========================================
+// 🔹 Recommender & Fallback Search Logic
+// ==========================================
+
 async function getHybridRecommendations(userId, query, userProfile) {
   try {
     const response = await fetch(`${PYTHON_API_URL}/recommend`, {
@@ -56,17 +82,14 @@ async function getHybridRecommendations(userId, query, userProfile) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: userId,
-        query: query,
+        query,
         top_k: 20,
         user_profile: userProfile,
-        alphas: [0.25, 0.25, 0.2, 0.3], // search, NCF, content, preference
+        alphas: [0.25, 0.25, 0.2, 0.3],
       }),
     });
 
-    if (!response.ok) {
-      console.error("Python API error:", response.status);
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
     return data.recommendations || [];
@@ -76,64 +99,8 @@ async function getHybridRecommendations(userId, query, userProfile) {
   }
 }
 
-// 🔹 Record user interaction with product
-async function recordInteraction(userId, product) {
-  try {
-    await fetch(`${PYTHON_API_URL}/user/interaction`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: userId,
-        product_id: product.product_id || product.id,
-        title: product.title,
-        category: product.category_name || product.category,
-        price: product.price,
-        stars: product.stars,
-        seller_name: product.seller_name,
-      }),
-    });
-  } catch (error) {
-    console.error("Error recording interaction:", error);
-  }
-}
-
-// 🔹 Get user profile from database
-async function getUserProfile(email) {
-  try {
-    const user = await User.findOne({ email }).lean();
-
-    if (!user) {
-      // Return default profile for new users
-      return {
-        gender: "male",
-        age: 25,
-        occupation: "student",
-        pets: [],
-      };
-    }
-
-    return {
-      gender: user.gender || "male",
-      age: user.age || 25,
-      occupation: user.occupation || "student",
-      pets: user.pets || [],
-    };
-  } catch (error) {
-    console.error("Error fetching user profile:", error);
-    return {
-      gender: "male",
-      age: 25,
-      occupation: "student",
-      pets: [],
-    };
-  }
-}
-
-// 🔹 Fallback to MongoDB search if Python API fails
 async function mongoFallbackSearch(query) {
   const q = normalize(query);
-
-  // Step 1: Direct category match
   const categories = await Product.distinct("category_name");
   const direct = categories.find((cat) => normalize(cat).includes(q));
 
@@ -151,7 +118,6 @@ async function mongoFallbackSearch(query) {
     };
   }
 
-  // Step 2: Narrow down candidates with Mongo regex
   const candidates = await Product.find(
     {
       $or: [
@@ -162,7 +128,6 @@ async function mongoFallbackSearch(query) {
     "title category_name product_id imgUrl price stars seller_name"
   ).lean();
 
-  // Step 3: Fuzzy search on narrowed candidates
   const results = fuzzysort.go(q, candidates, {
     key: "title",
     limit: 20,
@@ -170,7 +135,6 @@ async function mongoFallbackSearch(query) {
   });
 
   const matchedProducts = results.map((r) => r.obj);
-
   if (matchedProducts.length > 0) {
     return {
       valid: true,
@@ -183,72 +147,57 @@ async function mongoFallbackSearch(query) {
   return { valid: false, products: [], source: "mongodb" };
 }
 
+// ==========================================
+// 🔹 POST — Main search handler
+// ==========================================
 export async function POST(req) {
   try {
     const { query } = await req.json();
-
     if (!query || !query.trim()) {
       return NextResponse.json({ valid: false, products: [] });
     }
 
-    // ✅ Connect to MongoDB
     await connectToDB();
 
-    // Get user session
     const session = await getServerSession(authOptions);
     const userEmail = session?.user?.email;
     const userId = userEmail || `guest_${Date.now()}`;
 
-    // Get user profile for personalized recommendations
+    // Fetch user profile for personalized hybrid search
     let userProfile = null;
     if (userEmail) {
-      userProfile = await getUserProfile(userEmail);
+      const user = await User.findOne({ email: userEmail }).lean();
+      userProfile = {
+        gender: user?.gender || "male",
+        age: user?.age || 25,
+        occupation: user?.occupation || "student",
+        pets: user?.pets || [],
+      };
     }
 
-    // 🔹 Try hybrid recommender first (if user profile exists)
-    let hybridResults = null;
-    if (userProfile) {
-      hybridResults = await getHybridRecommendations(
-        userId,
-        query,
-        userProfile
-      );
-    }
+    // Hybrid recommender first
+    let hybridResults = userProfile
+      ? await getHybridRecommendations(userId, query, userProfile)
+      : null;
 
-    // 🔹 If hybrid recommender returns results, use them
     if (hybridResults && hybridResults.length > 0) {
-      // Map Python API results to MongoDB format
       const productIds = hybridResults.map((r) => r.id);
-
-      // Fetch full product details from MongoDB
       const fullProducts = await Product.find({
         product_id: { $in: productIds },
       }).lean();
 
-      // Create a map for quick lookup
       const productMap = new Map(fullProducts.map((p) => [p.product_id, p]));
 
-      // Merge hybrid scores with full product data, preserving order
       const enrichedProducts = hybridResults
-        .map((hybridProd) => {
-          const fullProd = productMap.get(hybridProd.id);
-          if (!fullProd) return null;
+        .map((r) => ({ ...productMap.get(r.id), ...r }))
+        .filter(Boolean);
 
-          return {
-            ...fullProd,
-            final_score: hybridProd.final_score,
-            preference_score: hybridProd.preference_score,
-            initial_score: hybridProd.initial_score,
-          };
-        })
-        .filter((p) => p !== null);
-
-      // Save to search history (with deduplication)
       await saveSearchHistory(
         userEmail,
         query,
         enrichedProducts[0]?.category_name || "Mixed",
-        "hybrid_recommender"
+        "hybrid_recommender",
+        enrichedProducts.length
       );
 
       return NextResponse.json({
@@ -256,15 +205,13 @@ export async function POST(req) {
         type: "hybrid",
         products: enrichedProducts.slice(0, 20),
         source: "hybrid_recommender",
-        user_preferences: hybridResults.user_preferences || null,
+        resultsCount: enrichedProducts.length,
       });
     }
 
-    // 🔹 Fallback to MongoDB search
-    console.log("Falling back to MongoDB search");
+    // Fallback to MongoDB search
     const fallbackResults = await mongoFallbackSearch(query);
 
-    // Save to search history (with deduplication)
     if (fallbackResults.valid) {
       await saveSearchHistory(
         userEmail,
@@ -272,11 +219,17 @@ export async function POST(req) {
         fallbackResults.category ||
           fallbackResults.products[0]?.category_name ||
           "Mixed",
-        "mongodb"
+        "mongodb",
+        fallbackResults.products.length
       );
+    } else {
+      await saveSearchHistory(userEmail, query, "No Results", "mongodb", 0);
     }
 
-    return NextResponse.json(fallbackResults);
+    return NextResponse.json({
+      ...fallbackResults,
+      resultsCount: fallbackResults.products.length,
+    });
   } catch (err) {
     console.error("Search API error:", err);
     return NextResponse.json({
@@ -287,8 +240,33 @@ export async function POST(req) {
   }
 }
 
-// 🔹 GET endpoint to check Python API health
+// ==========================================
+// 🔹 GET — With search history support
+// ==========================================
 export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const historyMode = searchParams.get("history");
+
+  // ✅ 1. Handle /api/search?history=true
+  if (historyMode === "true") {
+    try {
+      await connectToDB();
+
+      // Fetch only recent 10 entries, newest first
+      const recent = await SearchHistory.find()
+        .sort({ searchedAt: -1 })
+        .limit(10)
+        .select("category query searchedAt -_id");
+
+      // Return directly usable JSON for hero banner
+      return NextResponse.json(recent || [], { status: 200 });
+    } catch (error) {
+      console.error("Error fetching search history:", error);
+      return NextResponse.json([], { status: 500 });
+    }
+  }
+
+  // ✅ 2. Otherwise, return Python API health status
   try {
     const response = await fetch(`${PYTHON_API_URL}/health`);
     const data = await response.json();

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 import { ShoppingBag, Package, CreditCard } from "lucide-react";
 
 export default function PurchaseHistoryPage() {

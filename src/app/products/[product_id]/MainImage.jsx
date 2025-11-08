@@ -2,7 +2,7 @@
 
 import { ZoomIn } from "lucide-react";
 import Image from "next/image";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 
 export function MainImage({
   product,

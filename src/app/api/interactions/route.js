@@ -1,6 +1,6 @@
-import { connectToDB } from "@app/utils/database";
+import { connectToDB } from "@/app/utils/database";
 import { NextResponse } from "next/server";
-import UserPreference from "@app/models/UserPreference";
+import UserPreference from "@/app/models/UserPreference";
 
 export async function POST(req) {
   try {

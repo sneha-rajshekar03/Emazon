@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { connectToDB } from "@app/utils/database";
-import SearchHistory from "@app/models/SearchHistory";
+import { connectToDB } from "@/app/utils/database";
+import SearchHistory from "@/app/models/SearchHistory";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 export async function GET() {

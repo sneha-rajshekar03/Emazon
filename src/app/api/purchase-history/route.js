@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@app/api/auth/[...nextauth]/route";
-import { connectToDB } from "@app/utils/database";
-import PurchaseHistory from "@app/models/PurchaseHistory";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { connectToDB } from "@/app/utils/database";
+import PurchaseHistory from "@/app/models/PurchaseHistory";
 
 export async function GET(req) {
   console.log("📜 [PURCHASE HISTORY API] GET request received");

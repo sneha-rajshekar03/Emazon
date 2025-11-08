@@ -16,7 +16,7 @@ import {
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 
 const themeColors = [
   {

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
-import { connectToDB } from "@app/utils/database";
-import Profile from "@app/models/Profile";
-import User from "@app/models/user";
-
+import { connectToDB } from "@/app/utils/database";
+import Profile from "@/app/models/Profile";
+import User from "@/app/models/User";
 export async function GET() {
   try {
     console.log("🎯 [GET /api/user/color] Starting request...");

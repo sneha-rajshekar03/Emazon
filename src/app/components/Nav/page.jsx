@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import Nav from "@/components/Nav";
-
+import { Nav } from "./Nav";
 export default function HomePage() {
   const [products, setProducts] = useState([]);
 

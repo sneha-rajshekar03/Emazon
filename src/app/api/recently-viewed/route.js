@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { connectToDB } from "@app/utils/database";
-import RecentlyViewed from "@app/models/RecentlyViewed";
+import { connectToDB } from "@/app/utils/database";
+import RecentlyViewed from "@/app/models/RecentlyViewed";
 
 // GET - Fetch user's recently viewed products
 export async function GET(request) {

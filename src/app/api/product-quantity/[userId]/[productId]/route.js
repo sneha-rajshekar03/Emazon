@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectToDB } from "@app/utils/database";
-import PurchaseHistory from "@app/models/PurchaseHistory";
-import Cart from "@app/models/Cart";
+import { connectToDB } from "@/app/utils/database";
+import PurchaseHistory from "@/app/models/PurchaseHistory";
+import Cart from "@/app/models/Cart";
 
 export async function GET(request) {
   const start = Date.now();

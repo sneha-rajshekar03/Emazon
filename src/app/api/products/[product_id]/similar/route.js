@@ -1,9 +1,8 @@
 // File: src/app/api/products/[product_id]/similar/route.js
 
 import { NextResponse } from "next/server";
-import { connectToDB } from "@app/utils/database";
-import Product from "@app/models/Product";
-
+import { connectToDB } from "@/app/utils/database";
+import Product from "@/app/models/product";
 export async function GET(request, { params }) {
   const { product_id } = await params;
 

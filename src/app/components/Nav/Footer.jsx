@@ -2,7 +2,7 @@
 import React from "react";
 import Image from "next/image";
 import { Phone, Mail } from "lucide-react";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 
 const Footer = () => {
   const { isDarkMode } = useColor();

@@ -1,14 +1,13 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useColor } from "@app/context/ColorContext";
+import { useColor } from "@/app/context/ColorContext";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
 export function Random({ product, productId, userId, ...props }) {
-  const { isDarkMode } = useColor();
+  const { hexColor, isDarkMode } = useColor();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -40,7 +39,7 @@ export function Random({ product, productId, userId, ...props }) {
                   item.title &&
                   item.price
               )
-              .slice(-2); // ✅ Only last 2
+              .slice(-2);
             setRecentlyViewed(filtered);
           }
         } else {
@@ -54,7 +53,7 @@ export function Random({ product, productId, userId, ...props }) {
                 item.name &&
                 item.price
             )
-            .slice(-2); // ✅ Only last 2
+            .slice(-2);
           setRecentlyViewed(filtered);
         }
 
@@ -186,60 +185,224 @@ export function Random({ product, productId, userId, ...props }) {
     >
       {/* Recently Viewed */}
       {recentlyViewed.length > 0 && (
-        <Card className="p-6 rounded-3xl">
-          <h3 className="text-lg font-semibold mb-4">Recently Viewed</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {recentlyViewed.map((item, i) => (
-              <motion.div
-                key={`recent-${item.product_id}-${i}`}
-                className="flex gap-3 cursor-pointer"
-                whileHover={{ scale: 1.03 }}
-                onClick={() => handleProductClick(item.product_id)}
-              >
-                <Image
-                  src={item.imgUrl || "/placeholder.jpg"}
-                  alt={item.name}
-                  width={100}
-                  height={100}
-                  unoptimized
-                />
-                <div>
-                  <p className="font-medium line-clamp-2">{item.name}</p>
-                  <p className="text-gray-500">${item.price}</p>
-                </div>
-              </motion.div>
-            ))}
+        <div
+          className="relative p-6 rounded-3xl border transition-all duration-500"
+          style={{
+            background: isDarkMode
+              ? "rgba(45, 45, 45, 0.6)"
+              : "rgba(255, 255, 255, 0.6)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: isDarkMode
+              ? "1px solid rgba(255, 255, 255, 0.1)"
+              : "1px solid rgba(255, 255, 255, 0.6)",
+            borderRadius: "28px",
+            boxShadow: isDarkMode
+              ? `0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.05)`
+              : `0 4px 20px rgba(0, 0, 0, 0.05), inset 0 0 10px rgba(255, 255, 255, 0.3)`,
+            overflow: "hidden",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = isDarkMode
+              ? `0 15px 30px rgba(0, 0, 0, 0.5)`
+              : `0 15px 30px rgba(0, 0, 0, 0.08)`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = isDarkMode
+              ? `0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.05)`
+              : `0 4px 20px rgba(0, 0, 0, 0.05), inset 0 0 10px rgba(255, 255, 255, 0.3)`;
+          }}
+        >
+          {/* Lighter color tint overlay */}
+          <div
+            style={{
+              content: '""',
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: `linear-gradient(135deg, ${hexColor}05 0%, ${hexColor}0a 100%)`,
+              pointerEvents: "none",
+              zIndex: 0,
+            }}
+          />
+
+          {/* Color tint in bottom-right corner */}
+          <div
+            style={{
+              content: '""',
+              position: "absolute",
+              bottom: "-10%",
+              right: "-10%",
+              width: "45%",
+              height: "45%",
+              background: `radial-gradient(circle at bottom right, ${hexColor}35 0%, transparent 75%)`,
+              pointerEvents: "none",
+              zIndex: 0,
+              filter: "blur(12px)",
+            }}
+          />
+
+          <div className="relative z-10">
+            <h3
+              className={`text-lg font-semibold mb-4 ${
+                isDarkMode ? "text-gray-100" : "text-gray-900"
+              }`}
+            >
+              Recently Viewed
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {recentlyViewed.map((item, i) => (
+                <motion.div
+                  key={`recent-${item.product_id}-${i}`}
+                  className={`flex gap-3 cursor-pointer p-3 rounded-xl transition-all ${
+                    isDarkMode ? "hover:bg-gray-800/50" : "hover:bg-gray-100/50"
+                  }`}
+                  whileHover={{ scale: 1.03 }}
+                  onClick={() => handleProductClick(item.product_id)}
+                >
+                  <div className="relative w-24 h-24 flex-shrink-0">
+                    <Image
+                      src={item.imgUrl || "/placeholder.jpg"}
+                      alt={item.name}
+                      fill
+                      className="object-contain rounded-lg"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <p
+                      className={`font-medium line-clamp-2 text-sm ${
+                        isDarkMode ? "text-gray-100" : "text-gray-900"
+                      }`}
+                    >
+                      {item.name}
+                    </p>
+                    <p
+                      className={`text-sm font-semibold mt-1 ${
+                        isDarkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
+                    >
+                      ${item.price}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Similar Products */}
       {similarProducts.length > 0 && (
-        <Card className="p-6 rounded-3xl">
-          <h3 className="text-lg font-semibold mb-4">Similar Products</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {similarProducts.map((prod, index) => (
-              <motion.div
-                key={`similar-${prod.product_id}-${index}`}
-                className="flex gap-3 cursor-pointer"
-                whileHover={{ scale: 1.02 }}
-                onClick={() => handleProductClick(prod.product_id)}
-              >
-                <Image
-                  src={prod.imgUrl || "/placeholder.jpg"}
-                  alt={prod.name}
-                  width={100}
-                  height={100}
-                  unoptimized
-                />
-                <div>
-                  <h4 className="font-medium line-clamp-2">{prod.name}</h4>
-                  <p className="text-gray-500">${prod.price}</p>
-                </div>
-              </motion.div>
-            ))}
+        <div
+          className="relative p-6 rounded-3xl border transition-all duration-500"
+          style={{
+            background: isDarkMode
+              ? "rgba(45, 45, 45, 0.6)"
+              : "rgba(255, 255, 255, 0.6)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: isDarkMode
+              ? "1px solid rgba(255, 255, 255, 0.1)"
+              : "1px solid rgba(255, 255, 255, 0.6)",
+            borderRadius: "28px",
+            boxShadow: isDarkMode
+              ? `0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.05)`
+              : `0 4px 20px rgba(0, 0, 0, 0.05), inset 0 0 10px rgba(255, 255, 255, 0.3)`,
+            overflow: "hidden",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = isDarkMode
+              ? `0 15px 30px rgba(0, 0, 0, 0.5)`
+              : `0 15px 30px rgba(0, 0, 0, 0.08)`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = isDarkMode
+              ? `0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.05)`
+              : `0 4px 20px rgba(0, 0, 0, 0.05), inset 0 0 10px rgba(255, 255, 255, 0.3)`;
+          }}
+        >
+          {/* Lighter color tint overlay */}
+          <div
+            style={{
+              content: '""',
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: `linear-gradient(135deg, ${hexColor}05 0%, ${hexColor}0a 100%)`,
+              pointerEvents: "none",
+              zIndex: 0,
+            }}
+          />
+
+          {/* Color tint in bottom-right corner */}
+          <div
+            style={{
+              content: '""',
+              position: "absolute",
+              bottom: "-10%",
+              right: "-10%",
+              width: "45%",
+              height: "45%",
+              background: `radial-gradient(circle at bottom right, ${hexColor}35 0%, transparent 75%)`,
+              pointerEvents: "none",
+              zIndex: 0,
+              filter: "blur(12px)",
+            }}
+          />
+
+          <div className="relative z-10">
+            <h3
+              className={`text-lg font-semibold mb-4 ${
+                isDarkMode ? "text-gray-100" : "text-gray-900"
+              }`}
+            >
+              Similar Products
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {similarProducts.map((prod, index) => (
+                <motion.div
+                  key={`similar-${prod.product_id}-${index}`}
+                  className={`flex gap-3 cursor-pointer p-3 rounded-xl transition-all ${
+                    isDarkMode ? "hover:bg-gray-800/50" : "hover:bg-gray-100/50"
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  onClick={() => handleProductClick(prod.product_id)}
+                >
+                  <div className="relative w-24 h-24 flex-shrink-0">
+                    <Image
+                      src={prod.imgUrl || "/placeholder.jpg"}
+                      alt={prod.name}
+                      fill
+                      className="object-contain rounded-lg"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <h4
+                      className={`font-medium line-clamp-2 text-sm ${
+                        isDarkMode ? "text-gray-100" : "text-gray-900"
+                      }`}
+                    >
+                      {prod.name}
+                    </h4>
+                    <p
+                      className={`text-sm font-semibold mt-1 ${
+                        isDarkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
+                    >
+                      ${prod.price}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </Card>
+        </div>
       )}
     </motion.div>
   );

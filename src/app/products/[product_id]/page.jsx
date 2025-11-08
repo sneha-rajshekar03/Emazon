@@ -9,10 +9,10 @@ import { ProductReviews } from "./ProductReviews";
 import { MainImage } from "./MainImage";
 import { Thumbnails } from "./Thumbnails";
 import { Random } from "./Random";
-import { trackInteraction } from "@app/utils/interactionTracker";
-import { getPrioritizedInteractions } from "@app/utils/interactionTracker";
-import { usePreferences } from "@app/hooks/usePreferences";
-import { useColor } from "@app/context/ColorContext";
+import { trackInteraction } from "@/app/utils/interactionTracker";
+import { getPrioritizedInteractions } from "@/app/utils/interactionTracker";
+import { usePreferences } from "@/app/hooks/usePreferences";
+import { useColor } from "@/app/context/ColorContext";
 
 // Define the reorderable elements outside the component to prevent recreation on re-render
 const REORDERABLE_ELEMENTS = [
@@ -341,7 +341,7 @@ export default function AmazonProductPage() {
   return (
     <div
       className="min-h-screen transition-colors duration-500"
-      style={{ background: isDarkMode ? "#000000" : themeColor }}
+      style={{ background: "#000000" }}
     >
       {/* Dynamic Layout Container */}
       <div
@@ -355,15 +355,15 @@ export default function AmazonProductPage() {
       `}
         style={{
           background: isDarkMode
-            ? "rgba(31, 41, 55, 0.7)"
+            ? "rgba(20, 20, 20, 0.85)"
             : "rgba(255, 255, 255, 0.7)",
           backdropFilter: "blur(20px) saturate(180%)",
           WebkitBackdropFilter: "blur(20px) saturate(180%)",
           border: isDarkMode
-            ? "1px solid rgba(75, 85, 99, 0.3)"
+            ? "1px solid rgba(75, 85, 99, 0.85)"
             : "1px solid rgba(255, 255, 255, 0.3)",
           boxShadow: isDarkMode
-            ? "0 8px 32px rgba(0, 0, 0, 0.3)"
+            ? "0 8px 32px rgba(0, 0, 0, 0.7)"
             : "0 8px 32px rgba(0, 0, 0, 0.1)",
         }}
       >
@@ -489,7 +489,7 @@ export default function AmazonProductPage() {
         className="max-w-7xl mx-auto p-4 mt-6 rounded-3xl"
         style={{
           background: isDarkMode
-            ? "rgba(31, 41, 55, 0.6)"
+            ? "rgba(15, 15, 15, 0.9)"
             : "rgba(255, 255, 255, 0.6)",
           backdropFilter: "blur(15px) saturate(150%)",
           WebkitBackdropFilter: "blur(15px) saturate(150%)",

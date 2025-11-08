@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react"; // Add
 import { Loader2 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import ProductCard from "@app/components/productCard/ProductCard";
+import ProductCard from "@/app/components/productCard/ProductCard";
 import { AlertCircle } from "lucide-react";
 
 // Helper functions and constants moved outside the component to prevent re-creation

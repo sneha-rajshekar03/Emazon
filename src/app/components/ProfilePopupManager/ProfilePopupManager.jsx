@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useProfileData } from "@app/hooks/useProfileData";
+import { useProfileData } from "@/app/hooks/useProfileData";
 import { ProfilePopup } from "../ProfilePopup/ProfilePopup";
 import {
   User,

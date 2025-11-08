@@ -1,9 +1,9 @@
 // /app/api/recentSearches/route.js
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { connectToDB } from "@app/utils/database";
-import SearchHistory from "@app/models/SearchHistory";
-import { authOptions } from "@app/api/auth/[...nextauth]/route";
+import { connectToDB } from "@/app/utils/database";
+import SearchHistory from "@/app/models/SearchHistory";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // GET - Fetch recent searches for logged-in user
 export async function GET(req) {

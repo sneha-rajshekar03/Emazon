@@ -9,6 +9,7 @@ import { SearchBar } from "./SearchBar";
 import { Language } from "./Language";
 import { Account } from "./Account";
 import CartButton from "./CartIcon";
+import { WelcomeGreeting } from "./WelcomeGreeting";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { usePreferences } from "@/app/hooks/usePreferences";
@@ -67,11 +68,14 @@ const ProfileImageWithProgress = ({ imageUrl, completion = 0, hexColor }) => {
 };
 
 export const Nav = () => {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const userName = session?.user?.name || "Guest";
   const pathname = usePathname();
   const hideOnLogin = pathname === "/login";
   const { signOutWithSave } = usePreferences();
   const { hexColor, isDarkMode } = useColor();
+
+  console.log("🎯 Nav rendering - Session:", userName, "Status:", status);
 
   const [profileCompletion, setProfileCompletion] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -127,174 +131,136 @@ export const Nav = () => {
   }, [session]);
 
   return (
-    <nav
-      className="fixed top-0 left-0 right-0 z-50 px-6 py-2 flex items-center justify-between transition-all duration-500"
-      style={{
-        background: isDarkMode
-          ? `linear-gradient(135deg, ${themeColor}15 0%, rgba(32,32,32,0.9) 100%)`
-          : `linear-gradient(135deg, ${themeColor}20 0%, rgba(255,255,255,0.85) 100%)`,
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: isDarkMode
-          ? `1px solid ${themeColor}20`
-          : `1px solid ${themeColor}30`,
-        boxShadow: isDarkMode
-          ? "0 1px 3px rgba(0,0,0,0.3)"
-          : "0 1px 3px rgba(0,0,0,0.05)",
-      }}
-    >
-      {/* Logo */}
-      <div className="flex-shrink-0">
-        <Logo />
-      </div>
-
+    <>
+      {/* Welcome Greeting Message - Pass userName as prop */}
       {!hideOnLogin && (
-        <>
-          {/* Search Bar */}
-          <div className="flex-1 mx-6">
-            <SearchBar />
-          </div>
+        <WelcomeGreeting
+          isDarkMode={isDarkMode}
+          hexColor={hexColor}
+          userName={userName}
+        />
+      )}
 
-          {/* Right icons */}
-          <div className="flex items-center gap-5">
-            <div className="hidden md:flex">
-              <Language />
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 px-6 py-2 flex items-center justify-between transition-all duration-500"
+        style={{
+          background: isDarkMode
+            ? `linear-gradient(135deg, ${themeColor}15 0%, rgba(32,32,32,0.9) 100%)`
+            : `linear-gradient(135deg, ${themeColor}20 0%, rgba(255,255,255,0.85) 100%)`,
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderBottom: isDarkMode
+            ? `1px solid ${themeColor}20`
+            : `1px solid ${themeColor}30`,
+          boxShadow: isDarkMode
+            ? "0 1px 3px rgba(0,0,0,0.3)"
+            : "0 1px 3px rgba(0,0,0,0.05)",
+        }}
+      >
+        {/* Logo */}
+        <div className="flex-shrink-0">
+          <Logo />
+        </div>
+
+        {!hideOnLogin && (
+          <>
+            {/* Search Bar */}
+            <div className="flex-1 mx-6">
+              <SearchBar />
             </div>
 
-            {session?.user ? (
-              <div className="flex items-center gap-4">
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 hover:opacity-90 transition"
-                  >
-                    <ProfileImageWithProgress
-                      imageUrl={session.user.image}
-                      completion={profileCompletion}
-                      hexColor={themeColor}
-                    />
-                    <ChevronDown
-                      className={`w-4 h-4 transition-transform duration-300 ${
-                        dropdownOpen ? "rotate-180" : ""
-                      }`}
-                      style={{ color: themeColor }}
-                    />
-                  </button>
+            {/* Right icons */}
+            <div className="flex items-center gap-5">
+              <div className="hidden md:flex">
+                <Language />
+              </div>
 
-                  {dropdownOpen && (
-                    <div
-                      className="absolute right-0 mt-3 w-60 rounded-2xl overflow-hidden z-50 shadow-2xl animate-fadeIn"
-                      style={{
-                        background: isDarkMode
-                          ? `linear-gradient(180deg, rgba(45,45,45,0.98), rgba(35,35,35,0.96))`
-                          : `linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,245,245,0.96))`,
-                        backdropFilter: "blur(20px)",
-                        WebkitBackdropFilter: "blur(20px)",
-                        border: `1px solid ${themeColor}40`,
-                        boxShadow: isDarkMode
-                          ? `0 4px 25px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`
-                          : `0 4px 25px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)`,
-                        transition: "all 0.3s ease",
-                      }}
+              {session?.user ? (
+                <div className="flex items-center gap-4">
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      onClick={() => setDropdownOpen(!dropdownOpen)}
+                      className="flex items-center gap-2 hover:opacity-90 transition"
                     >
-                      {/* --- Profile Header --- */}
+                      <ProfileImageWithProgress
+                        imageUrl={session.user.image}
+                        completion={profileCompletion}
+                        hexColor={themeColor}
+                      />
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-300 ${
+                          dropdownOpen ? "rotate-180" : ""
+                        }`}
+                        style={{ color: themeColor }}
+                      />
+                    </button>
+
+                    {dropdownOpen && (
                       <div
-                        className="px-5 pb-2 border-b mb-2 mt-2"
-                        style={{ borderColor: `${themeColor}30` }}
+                        className="absolute right-0 mt-3 w-60 rounded-2xl overflow-hidden z-50 shadow-2xl animate-fadeIn"
+                        style={{
+                          background: isDarkMode
+                            ? `linear-gradient(180deg, rgba(45,45,45,0.98), rgba(35,35,35,0.96))`
+                            : `linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,245,245,0.96))`,
+                          backdropFilter: "blur(20px)",
+                          WebkitBackdropFilter: "blur(20px)",
+                          border: `1px solid ${themeColor}40`,
+                          boxShadow: isDarkMode
+                            ? `0 4px 25px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`
+                            : `0 4px 25px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)`,
+                          transition: "all 0.3s ease",
+                        }}
                       >
-                        <p
-                          className={`text-sm font-medium ${
-                            isDarkMode ? "text-gray-100" : "text-gray-800"
-                          }`}
+                        {/* Profile Header */}
+                        <div
+                          className="px-5 pb-2 border-b mb-2 mt-2"
+                          style={{ borderColor: `${themeColor}30` }}
                         >
-                          {session.user.name || session.user.email}
-                        </p>
-                        <p
-                          className={`text-xs truncate ${
-                            isDarkMode ? "text-gray-400" : "text-gray-500"
-                          }`}
-                        >
-                          {session.user.email}
-                        </p>
-
-                        <div className="mt-2 flex items-center gap-2">
-                          <div
-                            className="flex-1 h-1 rounded-full overflow-hidden"
-                            style={{
-                              backgroundColor: isDarkMode
-                                ? "rgba(255,255,255,0.15)"
-                                : "rgba(0,0,0,0.1)",
-                            }}
+                          <p
+                            className={`text-sm font-medium ${
+                              isDarkMode ? "text-gray-100" : "text-gray-800"
+                            }`}
                           >
+                            {session.user.name || session.user.email}
+                          </p>
+                          <p
+                            className={`text-xs truncate ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            }`}
+                          >
+                            {session.user.email}
+                          </p>
+
+                          <div className="mt-2 flex items-center gap-2">
                             <div
-                              className="h-full rounded-full transition-all duration-500"
+                              className="flex-1 h-1 rounded-full overflow-hidden"
                               style={{
-                                width: `${profileCompletion}%`,
-                                background: hexColor || "#007AFF",
+                                backgroundColor: isDarkMode
+                                  ? "rgba(255,255,255,0.15)"
+                                  : "rgba(0,0,0,0.1)",
                               }}
-                            />
+                            >
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${profileCompletion}%`,
+                                  background: hexColor || "#007AFF",
+                                }}
+                              />
+                            </div>
+                            <span
+                              className="text-xs font-medium"
+                              style={{ color: hexColor || "#007AFF" }}
+                            >
+                              {profileCompletion}%
+                            </span>
                           </div>
-                          <span
-                            className="text-xs font-medium"
-                            style={{ color: hexColor || "#007AFF" }}
-                          >
-                            {profileCompletion}%
-                          </span>
                         </div>
-                      </div>
 
-                      {/* --- Links --- */}
-                      <div className="flex flex-col gap-1 px-2 pb-2">
-                        <Link
-                          href="/profile"
-                          onClick={() => setDropdownOpen(false)}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
-                            isDarkMode ? "text-gray-200" : "text-gray-700"
-                          }`}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = `${themeColor}15`;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor =
-                              "transparent";
-                          }}
-                        >
-                          <User
-                            className="w-4 h-4"
-                            style={{ color: themeColor }}
-                          />
-                          <span className="text-sm font-medium">
-                            My Profile
-                          </span>
-                        </Link>
-
-                        <Link
-                          href="/purchase-history"
-                          onClick={() => setDropdownOpen(false)}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
-                            isDarkMode ? "text-gray-200" : "text-gray-700"
-                          }`}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = `${themeColor}15`;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor =
-                              "transparent";
-                          }}
-                        >
-                          <ShoppingBag
-                            className="w-4 h-4"
-                            style={{ color: themeColor }}
-                          />
-                          <span className="text-sm font-medium">
-                            Purchase History
-                          </span>
-                        </Link>
-
-                        {/* Cart option - visible only on medium screens and below */}
-                        <div className="md:hidden">
+                        {/* Links */}
+                        <div className="flex flex-col gap-1 px-2 pb-2">
                           <Link
-                            href="/Cart"
+                            href="/profile"
                             onClick={() => setDropdownOpen(false)}
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
                               isDarkMode ? "text-gray-200" : "text-gray-700"
@@ -307,50 +273,103 @@ export const Nav = () => {
                                 "transparent";
                             }}
                           >
-                            <ShoppingCart
+                            <User
                               className="w-4 h-4"
                               style={{ color: themeColor }}
                             />
-                            <span className="text-sm font-medium">My Cart</span>
+                            <span className="text-sm font-medium">
+                              My Profile
+                            </span>
                           </Link>
+
+                          <Link
+                            href="/purchase-history"
+                            onClick={() => setDropdownOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                              isDarkMode ? "text-gray-200" : "text-gray-700"
+                            }`}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = `${themeColor}15`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor =
+                                "transparent";
+                            }}
+                          >
+                            <ShoppingBag
+                              className="w-4 h-4"
+                              style={{ color: themeColor }}
+                            />
+                            <span className="text-sm font-medium">
+                              Purchase History
+                            </span>
+                          </Link>
+
+                          {/* Cart option - visible only on medium screens and below */}
+                          <div className="md:hidden">
+                            <Link
+                              href="/Cart"
+                              onClick={() => setDropdownOpen(false)}
+                              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                                isDarkMode ? "text-gray-200" : "text-gray-700"
+                              }`}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = `${themeColor}15`;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor =
+                                  "transparent";
+                              }}
+                            >
+                              <ShoppingCart
+                                className="w-4 h-4"
+                                style={{ color: themeColor }}
+                              />
+                              <span className="text-sm font-medium">
+                                My Cart
+                              </span>
+                            </Link>
+                          </div>
+                        </div>
+
+                        {/* Sign Out */}
+                        <div
+                          className="border-t"
+                          style={{ borderColor: `${themeColor}25` }}
+                        >
+                          <button
+                            onClick={() => {
+                              setDropdownOpen(false);
+                              signOutWithSave();
+                            }}
+                            className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-all duration-200 ${
+                              isDarkMode
+                                ? "text-red-400 hover:bg-red-900/20"
+                                : "text-red-600 hover:bg-red-100"
+                            }`}
+                          >
+                            <LogOut className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                              Sign Out
+                            </span>
+                          </button>
                         </div>
                       </div>
+                    )}
+                  </div>
 
-                      {/* --- Sign Out --- */}
-                      <div
-                        className="border-t"
-                        style={{ borderColor: `${themeColor}25` }}
-                      >
-                        <button
-                          onClick={() => {
-                            setDropdownOpen(false);
-                            signOutWithSave();
-                          }}
-                          className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-all duration-200 ${
-                            isDarkMode
-                              ? "text-red-400 hover:bg-red-900/20"
-                              : "text-red-600 hover:bg-red-100"
-                          }`}
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span className="text-sm font-medium">Sign Out</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  {/* Cart button - hidden on medium screens and below */}
+                  <div className="hidden lg:flex">
+                    <CartButton />
+                  </div>
                 </div>
-
-                {/* Cart button - hidden on medium screens and below */}
-                <div className="hidden lg:flex">
-                  <CartButton />
-                </div>
-              </div>
-            ) : (
-              <Account />
-            )}
-          </div>
-        </>
-      )}
-    </nav>
+              ) : (
+                <Account />
+              )}
+            </div>
+          </>
+        )}
+      </nav>
+    </>
   );
 };

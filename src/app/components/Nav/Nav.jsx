@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import "../../styles/globals.css";
-import { Logo } from "./Logo";
+import Logo from "./Logo";
 import { SearchBar } from "./SearchBar";
 import { Language } from "./Language";
 import { Account } from "./Account";

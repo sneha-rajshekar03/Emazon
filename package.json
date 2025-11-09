@@ -3,10 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "set NEXT_DISABLE_TURBOPACK=1 && next dev",
+    "build": "set TAILWIND_MODE=build && next build",
+    "start": "next start"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
@@ -33,6 +32,7 @@
     "@next/bundle-analyzer": "^16.0.1",
     "@tailwindcss/postcss": "^4",
     "critters": "^0.0.23",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "tailwindcss": "^4.1.13",

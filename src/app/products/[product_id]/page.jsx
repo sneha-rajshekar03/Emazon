@@ -324,6 +324,7 @@ export default function AmazonProductPage() {
         className="max-w-7xl mx-auto p-4 mt-6 rounded-3xl"
         style={{
           background: isDarkMode ? "rgba(15, 15, 15, 0.9)" : "#ffffff",
+
           border: isDarkMode
             ? "1px solid rgba(75, 85, 99, 0.3)"
             : "1px solid #e5e7eb",

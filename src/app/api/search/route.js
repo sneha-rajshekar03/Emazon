@@ -252,16 +252,34 @@ export async function GET(req) {
     try {
       await connectToDB();
 
-      // Fetch only recent 10 entries, newest first
-      const recent = await SearchHistory.find()
+      // 🔐 CRITICAL: Check user authentication
+      const session = await getServerSession(authOptions);
+      const userEmail = session?.user?.email;
+
+      // If no user is logged in, return empty array
+      if (!userEmail) {
+        console.log(
+          "📭 [API] No authenticated user - returning empty search history"
+        );
+        return NextResponse.json([], { status: 200 });
+      }
+
+      console.log(`🔍 [API] Fetching search history for user: ${userEmail}`);
+
+      // Fetch only THIS USER's recent 10 entries, newest first
+      const recent = await SearchHistory.find({ email: userEmail })
         .sort({ searchedAt: -1 })
         .limit(10)
         .select("category query searchedAt -_id");
 
+      console.log(
+        `✅ [API] Returning ${recent.length} search history items for ${userEmail}`
+      );
+
       // Return directly usable JSON for hero banner
       return NextResponse.json(recent || [], { status: 200 });
     } catch (error) {
-      console.error("Error fetching search history:", error);
+      console.error("❌ [API] Error fetching search history:", error);
       return NextResponse.json([], { status: 500 });
     }
   }

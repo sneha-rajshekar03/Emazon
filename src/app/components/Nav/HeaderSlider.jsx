@@ -26,36 +26,6 @@ const HeaderSlider = () => {
     );
   }, [session]);
 
-  // 🔹 Detect session changes (login/logout)
-  useEffect(() => {
-    if (status === "loading") return;
-
-    const prevUserId = prevUserIdRef.current;
-
-    // Logout detected: clear user's cache
-    if (prevUserId && !userId) {
-      console.log(
-        "🚪 [HeaderSlider] Logout detected, clearing cache for user:",
-        prevUserId
-      );
-      localStorage.removeItem(`sliderCategories_${prevUserId}`);
-      localStorage.removeItem(`sliderCategoriesTime_${prevUserId}`);
-      setCategories([]);
-      setLoading(true);
-    }
-
-    // Login detected: clear guest cache
-    if (!prevUserId && userId) {
-      console.log("🔑 [HeaderSlider] Login detected, clearing guest cache");
-      localStorage.removeItem("sliderCategories_guest");
-      localStorage.removeItem("sliderCategoriesTime_guest");
-      setCategories([]);
-      setLoading(true);
-    }
-
-    prevUserIdRef.current = userId;
-  }, [userId, status]);
-
   // 🔹 Text content for banners
   const categoryContent = useMemo(
     () => ({
@@ -153,6 +123,7 @@ const HeaderSlider = () => {
     console.log("🔍 [HeaderSlider] Fetching search history...", {
       userId,
       hasSession: !!session,
+      status,
     });
     try {
       // Build URL with userId parameter if available
@@ -254,8 +225,60 @@ const HeaderSlider = () => {
     localStorage.setItem(cacheTimeKey, Date.now().toString());
   };
 
+  // 🔹 Detect session changes (login/logout)
+  useEffect(() => {
+    if (status === "loading") return;
+
+    const prevUserId = prevUserIdRef.current;
+    const hasChanged = prevUserId !== userId;
+
+    console.log("🔐 [HeaderSlider] Session check:", {
+      status,
+      prevUserId,
+      currentUserId: userId,
+      hasChanged,
+    });
+
+    if (!hasChanged) {
+      prevUserIdRef.current = userId;
+      return;
+    }
+
+    // Logout detected: clear user's cache
+    if (prevUserId && !userId) {
+      console.log(
+        "🚪 [HeaderSlider] Logout detected, clearing cache for user:",
+        prevUserId
+      );
+      localStorage.removeItem(`sliderCategories_${prevUserId}`);
+      localStorage.removeItem(`sliderCategoriesTime_${prevUserId}`);
+      setCategories([]);
+      setLoading(true);
+      // Force immediate refetch as guest
+      setTimeout(() => fetchSearchHistory(), 100);
+    }
+
+    // Login detected: clear guest cache
+    if (!prevUserId && userId) {
+      console.log("🔑 [HeaderSlider] Login detected, clearing guest cache");
+      localStorage.removeItem("sliderCategories_guest");
+      localStorage.removeItem("sliderCategoriesTime_guest");
+      setCategories([]);
+      setLoading(true);
+      // Force immediate refetch for logged-in user
+      setTimeout(() => fetchSearchHistory(), 100);
+    }
+
+    prevUserIdRef.current = userId;
+  }, [userId, status]);
+
   // 🔹 Load cache or fetch new personalized data
   useEffect(() => {
+    if (status === "loading") {
+      console.log("⏳ [HeaderSlider] Session still loading, waiting...");
+      return;
+    }
+
     const loadCategories = () => {
       // Use user-specific cache keys
       const cacheKey = userId
@@ -275,14 +298,18 @@ const HeaderSlider = () => {
         hasCached: !!cached,
         cacheAge: Math.floor(cacheAge / 1000) + "s",
         userId,
+        status,
       });
 
-      // ✅ Reduced cache time to 30 seconds for faster updates
-      if (!cached || cacheAge > 30 * 1000) {
-        fetchSearchHistory();
-      } else {
+      // ✅ Cache is fresh (< 30 seconds)
+      if (cached && cacheAge <= 30 * 1000) {
+        console.log("✅ [HeaderSlider] Using fresh cache");
         setCategories(JSON.parse(cached));
         setLoading(false);
+      } else {
+        // ❌ Cache expired or doesn't exist - fetch new data
+        console.log("🔄 [HeaderSlider] Cache expired or missing, fetching...");
+        fetchSearchHistory();
       }
     };
 
@@ -290,7 +317,7 @@ const HeaderSlider = () => {
 
     // 🔹 Listen for search updates from other components
     const handleSearchUpdate = () => {
-      console.log("Search history updated, refreshing slider...");
+      console.log("🔔 [HeaderSlider] Search history updated event received");
       fetchSearchHistory();
     };
 
@@ -304,7 +331,7 @@ const HeaderSlider = () => {
         ? Date.now() - parseInt(cachedTime)
         : Infinity;
       if (cacheAge > 30 * 1000) {
-        console.log("Tab refocused, checking for updates...");
+        console.log("👁️ [HeaderSlider] Tab refocused, checking for updates...");
         fetchSearchHistory();
       }
     };
@@ -316,7 +343,7 @@ const HeaderSlider = () => {
       window.removeEventListener("searchHistoryUpdated", handleSearchUpdate);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [userId, session]); // Add userId and session as dependencies
+  }, [userId, status]); // Re-run when userId or status changes
 
   // 🔹 Auto-rotate slides
   useEffect(() => {

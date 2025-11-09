@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function GET(request, context) {
   try {
-    const { userId } = await context.params; // ✅ await params
+    const { userId } = await context.params;
 
     console.log("📥 Incoming request for user profile:", userId);
 
@@ -20,18 +20,79 @@ export async function GET(request, context) {
 
     console.log("🚀 Sending request to FastAPI:", apiUrl);
 
-    const response = await fetch(apiUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    // Add timeout and better error handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-    console.log(`📡 FastAPI Response Status: ${response.status}`);
+    try {
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        console.log("🆕 User not found — returning default profile.");
+      clearTimeout(timeoutId);
+      console.log(`📡 FastAPI Response Status: ${response.status}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log("🆕 User not found — returning default profile.");
+          return NextResponse.json({
+            user_id: userId,
+            age: 30,
+            gender: "Male",
+            occupation: "Other",
+            region: "Urban",
+            device_type: "Mobile",
+            past_transactions: 0,
+            past_upi_ratio: 0,
+            past_card_ratio: 0,
+            past_cod_ratio: 0,
+            average_order_value: 0,
+            last_payment_method: "upi",
+            days_since_last_purchase: 999,
+            is_new_user: true,
+          });
+        }
+
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ FastAPI Error:", errorData);
+        return NextResponse.json(
+          { error: "Failed to fetch user profile", details: errorData },
+          { status: response.status }
+        );
+      }
+
+      const profileData = await response.json();
+      console.log(
+        "✅ FastAPI Response Data:",
+        JSON.stringify(profileData, null, 2)
+      );
+
+      const transformedResponse = {
+        ...profileData,
+        is_new_user: false,
+      };
+
+      console.log(
+        "📊 Transformed Response to Frontend:",
+        JSON.stringify(transformedResponse, null, 2)
+      );
+
+      return NextResponse.json(transformedResponse);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+
+      // Handle connection refused - return default profile instead of erroring
+      if (
+        fetchError.cause?.code === "ECONNREFUSED" ||
+        fetchError.name === "AbortError"
+      ) {
+        console.warn(
+          "⚠️ FastAPI server unreachable, returning default profile"
+        );
         return NextResponse.json({
           user_id: userId,
           age: 30,
@@ -47,40 +108,19 @@ export async function GET(request, context) {
           last_payment_method: "upi",
           days_since_last_purchase: 999,
           is_new_user: true,
+          _fallback: true, // Flag to indicate this is a fallback response
         });
       }
 
-      const errorData = await response.json().catch(() => ({}));
-      console.error("❌ FastAPI Error:", errorData);
-      return NextResponse.json(
-        { error: "Failed to fetch user profile", details: errorData },
-        { status: response.status }
-      );
+      throw fetchError; // Re-throw other errors
     }
-
-    const profileData = await response.json();
-    console.log(
-      "✅ FastAPI Response Data:",
-      JSON.stringify(profileData, null, 2)
-    );
-
-    const transformedResponse = {
-      ...profileData,
-      is_new_user: false,
-    };
-
-    console.log(
-      "📊 Transformed Response to Frontend:",
-      JSON.stringify(transformedResponse, null, 2)
-    );
-
-    return NextResponse.json(transformedResponse);
   } catch (error) {
     console.error("💥 User profile fetch error:", error);
     return NextResponse.json(
       {
         error: "Internal server error",
         message: error instanceof Error ? error.message : "Unknown error",
+        suggestion: "Check if FastAPI server is running on the correct port",
       },
       { status: 500 }
     );

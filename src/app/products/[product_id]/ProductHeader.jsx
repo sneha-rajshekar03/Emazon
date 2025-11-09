@@ -157,19 +157,6 @@ export function ProductHeader({ product, ...props }) {
             product.inStock ? "bg-green-500" : "bg-red-500"
           }`}
         />
-        <span
-          className={`text-sm font-medium ${
-            product.inStock
-              ? isDarkMode
-                ? "text-green-400"
-                : "text-green-600"
-              : isDarkMode
-              ? "text-red-400"
-              : "text-red-600"
-          }`}
-        >
-          {product.inStock ? "In Stock" : "Out of Stock"}
-        </span>
       </div>
     </motion.div>
   );

@@ -15,9 +15,21 @@ export function MainImage({
 
   return (
     <div className="relative group mt-20">
+      {/* Lamp Glow Overlay */}
+      <div
+        className="absolute -top-32 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[120px] opacity-40 pointer-events-none transition-all duration-700"
+        style={{
+          background: isDarkMode
+            ? "radial-gradient(circle, rgba(255,255,200,0.25) 0%, transparent 70%)"
+            : "radial-gradient(circle, rgba(255,255,230,0.55) 0%, transparent 70%)",
+          mixBlendMode: isDarkMode ? "screen" : "overlay",
+          zIndex: 1,
+        }}
+      />
+
       {/* Main Image Container */}
       <div
-        className={`relative rounded-2xl overflow-hidden shadow-sm transition-all duration-500 ease-out ${
+        className={`relative rounded-2xl overflow-hidden shadow-lg transition-all duration-500 ease-out ${
           isZoomed ? "cursor-zoom-out scale-[1.02]" : "cursor-zoom-in"
         }`}
         onClick={onZoomToggle}
@@ -26,10 +38,24 @@ export function MainImage({
             ? "1px solid rgba(255,255,255,0.1)"
             : "1px solid rgb(229, 231, 235)",
           background: isDarkMode
-            ? "linear-gradient(to bottom right, rgb(40, 40, 40), rgb(30, 30, 30))"
-            : "linear-gradient(to bottom right, rgb(243, 244, 246), rgb(255, 255, 255))",
+            ? "radial-gradient(circle at top, rgba(60,60,60,0.8) 0%, rgb(25,25,25) 80%)"
+            : "radial-gradient(circle at top, rgba(255,255,255,0.9) 0%, rgb(240,240,240) 90%)",
+          boxShadow: isDarkMode
+            ? "0 20px 50px rgba(0,0,0,0.6), 0 -20px 30px rgba(255,255,255,0.08) inset"
+            : "0 15px 40px rgba(0,0,0,0.15), 0 -10px 30px rgba(255,255,255,0.6) inset",
         }}
       >
+        {/* Gentle glow gradient from top to center */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: isDarkMode
+              ? "linear-gradient(to bottom, rgba(255,255,200,0.15), transparent 60%)"
+              : "linear-gradient(to bottom, rgba(255,255,220,0.35), transparent 70%)",
+            zIndex: 1,
+          }}
+        />
+
         <Image
           src={images[selectedImage]}
           alt={product.title}
@@ -37,8 +63,11 @@ export function MainImage({
           height={800}
           priority
           unoptimized
-          style={{ aspectRatio: "1/1" }}
-          className={`w-full h-auto object-contain transform transition-transform duration-500 ease-in-out ${
+          style={{
+            aspectRatio: "1/1",
+            objectFit: "contain",
+          }}
+          className={`w-full h-auto transform transition-transform duration-500 ease-in-out ${
             isZoomed ? "scale-150" : "scale-100"
           }`}
         />
@@ -58,6 +87,16 @@ export function MainImage({
           </div>
         )}
       </div>
+
+      {/* Subtle reflection on surface below product */}
+      <div
+        className="absolute left-1/2 bottom-[-80px] -translate-x-1/2 w-[60%] h-[80px] rounded-full opacity-25 blur-[40px] pointer-events-none"
+        style={{
+          background: isDarkMode
+            ? "radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 80%)"
+            : "radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, transparent 80%)",
+        }}
+      />
 
       {/* Image Counter */}
       <div

@@ -13,7 +13,13 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { usePreferences } from "@/app/hooks/usePreferences";
 import { useColor } from "@/app/context/ColorContext";
-import { ChevronDown, User, ShoppingBag, LogOut } from "lucide-react";
+import {
+  ChevronDown,
+  User,
+  ShoppingBag,
+  LogOut,
+  ShoppingCart,
+} from "lucide-react";
 
 const ProfileImageWithProgress = ({ imageUrl, completion = 0, hexColor }) => {
   const radius = 16;
@@ -284,6 +290,30 @@ export const Nav = () => {
                             Purchase History
                           </span>
                         </Link>
+
+                        {/* Cart option - visible only on medium screens and below */}
+                        <div className="md:hidden">
+                          <Link
+                            href="/Cart"
+                            onClick={() => setDropdownOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                              isDarkMode ? "text-gray-200" : "text-gray-700"
+                            }`}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = `${themeColor}15`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor =
+                                "transparent";
+                            }}
+                          >
+                            <ShoppingCart
+                              className="w-4 h-4"
+                              style={{ color: themeColor }}
+                            />
+                            <span className="text-sm font-medium">My Cart</span>
+                          </Link>
+                        </div>
                       </div>
 
                       {/* --- Sign Out --- */}
@@ -310,7 +340,8 @@ export const Nav = () => {
                   )}
                 </div>
 
-                <div className="hidden md:flex">
+                {/* Cart button - hidden on medium screens and below */}
+                <div className="hidden lg:flex">
                   <CartButton />
                 </div>
               </div>

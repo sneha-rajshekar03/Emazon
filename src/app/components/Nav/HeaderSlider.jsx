@@ -120,21 +120,14 @@ const HeaderSlider = () => {
 
   // 🔹 Fetch personalized categories based on user's search history
   const fetchSearchHistory = async () => {
-    console.log("🔍 [HeaderSlider] Fetching search history...", {
-      userId,
-      hasSession: !!session,
-      status,
-    });
     try {
       // Build URL with userId parameter if available
       const url = userId
         ? `/api/search?history=true&userId=${userId}`
         : `/api/search?history=true`;
 
-      console.log("🌐 [HeaderSlider] API URL:", url);
       const res = await fetch(url);
       const data = await res.json();
-      console.log("📦 [HeaderSlider] Raw search history data:", data);
 
       if (Array.isArray(data) && data.length > 0) {
         // ✅ Step 1: Clean + Group by category
@@ -150,23 +143,14 @@ const HeaderSlider = () => {
             categoryCount[cat] = (categoryCount[cat] || 0) + 1;
           }
         });
-        console.log("📊 [HeaderSlider] Category counts:", categoryCount);
 
         // ✅ Step 2: Sort by frequency (and recency if available)
         const sortedCategories = Object.entries(categoryCount)
           .sort((a, b) => b[1] - a[1])
           .map(([cat]) => cat);
-        console.log(
-          "🔢 [HeaderSlider] Sorted categories by frequency:",
-          sortedCategories
-        );
 
         // ✅ Step 3: Pick top 3 (personalized)
         const personalized = sortedCategories.slice(0, 3);
-        console.log(
-          "⭐ [HeaderSlider] Top 3 personalized categories:",
-          personalized
-        );
 
         // ✅ Step 4: Fill missing with defaults
         const remaining = defaultCategories.filter(
@@ -176,7 +160,6 @@ const HeaderSlider = () => {
           ...personalized,
           ...remaining.slice(0, 3 - personalized.length),
         ];
-        console.log("✅ [HeaderSlider] Final selected categories:", selected);
 
         // Store with user-specific cache key
         const cacheKey = userId
@@ -190,16 +173,9 @@ const HeaderSlider = () => {
         localStorage.setItem(cacheKey, JSON.stringify(selected));
         localStorage.setItem(cacheTimeKey, Date.now().toString());
       } else {
-        console.log(
-          "⚠️ [HeaderSlider] No valid search history, using fallback"
-        );
         useFallbackCategories();
       }
     } catch (err) {
-      console.error(
-        "❌ [HeaderSlider] Error fetching personalized history:",
-        err
-      );
       useFallbackCategories();
     } finally {
       setLoading(false);
@@ -207,10 +183,8 @@ const HeaderSlider = () => {
   };
 
   const useFallbackCategories = () => {
-    console.log("🎲 [HeaderSlider] Using fallback categories");
     const shuffled = [...defaultCategories].sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, 3);
-    console.log("🔀 [HeaderSlider] Shuffled fallback categories:", selected);
 
     // Store with user-specific cache key
     const cacheKey = userId
@@ -232,13 +206,6 @@ const HeaderSlider = () => {
     const prevUserId = prevUserIdRef.current;
     const hasChanged = prevUserId !== userId;
 
-    console.log("🔐 [HeaderSlider] Session check:", {
-      status,
-      prevUserId,
-      currentUserId: userId,
-      hasChanged,
-    });
-
     if (!hasChanged) {
       prevUserIdRef.current = userId;
       return;
@@ -246,10 +213,6 @@ const HeaderSlider = () => {
 
     // Logout detected: clear user's cache
     if (prevUserId && !userId) {
-      console.log(
-        "🚪 [HeaderSlider] Logout detected, clearing cache for user:",
-        prevUserId
-      );
       localStorage.removeItem(`sliderCategories_${prevUserId}`);
       localStorage.removeItem(`sliderCategoriesTime_${prevUserId}`);
       setCategories([]);
@@ -260,7 +223,6 @@ const HeaderSlider = () => {
 
     // Login detected: clear guest cache
     if (!prevUserId && userId) {
-      console.log("🔑 [HeaderSlider] Login detected, clearing guest cache");
       localStorage.removeItem("sliderCategories_guest");
       localStorage.removeItem("sliderCategoriesTime_guest");
       setCategories([]);
@@ -275,7 +237,6 @@ const HeaderSlider = () => {
   // 🔹 Load cache or fetch new personalized data
   useEffect(() => {
     if (status === "loading") {
-      console.log("⏳ [HeaderSlider] Session still loading, waiting...");
       return;
     }
 
@@ -293,22 +254,12 @@ const HeaderSlider = () => {
       const now = Date.now();
       const cacheAge = cachedTime ? now - parseInt(cachedTime) : Infinity;
 
-      console.log("💾 [HeaderSlider] Cache check:", {
-        cacheKey,
-        hasCached: !!cached,
-        cacheAge: Math.floor(cacheAge / 1000) + "s",
-        userId,
-        status,
-      });
-
       // ✅ Cache is fresh (< 30 seconds)
       if (cached && cacheAge <= 30 * 1000) {
-        console.log("✅ [HeaderSlider] Using fresh cache");
         setCategories(JSON.parse(cached));
         setLoading(false);
       } else {
         // ❌ Cache expired or doesn't exist - fetch new data
-        console.log("🔄 [HeaderSlider] Cache expired or missing, fetching...");
         fetchSearchHistory();
       }
     };
@@ -317,7 +268,6 @@ const HeaderSlider = () => {
 
     // 🔹 Listen for search updates from other components
     const handleSearchUpdate = () => {
-      console.log("🔔 [HeaderSlider] Search history updated event received");
       fetchSearchHistory();
     };
 
@@ -331,7 +281,6 @@ const HeaderSlider = () => {
         ? Date.now() - parseInt(cachedTime)
         : Infinity;
       if (cacheAge > 30 * 1000) {
-        console.log("👁️ [HeaderSlider] Tab refocused, checking for updates...");
         fetchSearchHistory();
       }
     };
@@ -348,30 +297,21 @@ const HeaderSlider = () => {
   // 🔹 Auto-rotate slides
   useEffect(() => {
     if (categories.length === 0) return;
-    console.log(
-      "🎠 [HeaderSlider] Starting auto-rotation with categories:",
-      categories
-    );
     const timer = setInterval(
       () =>
         setCurrentSlide((prev) => {
           const next = (prev + 1) % categories.length;
-          console.log(
-            `🔄 [HeaderSlider] Slide changed: ${prev} → ${next} (${categories[next]})`
-          );
           return next;
         }),
       4000
     );
     return () => {
-      console.log("⏸️ [HeaderSlider] Stopping auto-rotation");
       clearInterval(timer);
     };
   }, [categories]);
 
   // ✅ Match correct image dynamically (.png / .jpg)
   const getCategoryImage = (category) => {
-    console.log("🖼️ [HeaderSlider] Looking for image for category:", category);
     const variants = [
       `${category}_image`,
       `${category}.png`,
@@ -380,7 +320,6 @@ const HeaderSlider = () => {
     ];
     for (const v of variants) {
       if (assets[v]) {
-        console.log(`✅ [HeaderSlider] Found image variant: ${v}`);
         return assets[v];
       }
     }
@@ -393,27 +332,17 @@ const HeaderSlider = () => {
     ];
     for (const f of fallbackKeys) {
       if (assets[f]) {
-        console.log(`⚠️ [HeaderSlider] Using fallback image: ${f}`);
         return assets[f];
       }
     }
-    console.log("❌ [HeaderSlider] No image found for:", category);
     return null;
   };
 
   // 🟢 When "Shop Now" clicked → redirect to personalized search
   const handleShopNow = () => {
     const currentCategory = categories[currentSlide];
-    console.log(
-      "🛒 [HeaderSlider] Shop Now clicked for category:",
-      currentCategory
-    );
     if (!currentCategory) return;
     const queryToSearch = currentCategory.replace(/_/g, " ");
-    console.log(
-      "🔍 [HeaderSlider] Redirecting to search with query:",
-      queryToSearch
-    );
     router.push(`/search?q=${encodeURIComponent(queryToSearch)}`);
   };
 

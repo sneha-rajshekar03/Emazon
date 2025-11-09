@@ -7,6 +7,7 @@ import ThemeProvider from "./components/ThemeProvider";
 import { CartProvider } from "./context/CartContent";
 import ProfilePopupManager from "./components/ProfilePopupManager/ProfilePopupManager";
 import { ColorProvider } from "./context/ColorContext";
+import { LanguageProvider } from "./context/LanguageContext";
 
 export const metadata = {
   title: "Online Shopping website",
@@ -25,7 +26,6 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        {/* Only preload the main font – correct as value */}
         <link
           rel="preload"
           href="/fonts/inter.woff2"
@@ -38,13 +38,15 @@ export default async function RootLayout({ children }) {
       <body>
         <Provider session={session}>
           <ColorProvider>
-            <ThemeProvider>
-              <CartProvider>
-                <Nav />
-                {children}
-                <ProfilePopupManager />
-              </CartProvider>
-            </ThemeProvider>
+            <LanguageProvider>
+              <ThemeProvider>
+                <CartProvider>
+                  <Nav />
+                  {children}
+                  <ProfilePopupManager />
+                </CartProvider>
+              </ThemeProvider>
+            </LanguageProvider>
           </ColorProvider>
         </Provider>
       </body>

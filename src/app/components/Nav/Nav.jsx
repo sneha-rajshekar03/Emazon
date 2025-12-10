@@ -22,6 +22,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 
+// Profile image component with circular progress ring
 const ProfileImageWithProgress = ({ imageUrl, completion = 0, hexColor }) => {
   const radius = 16;
   const circumference = 2 * Math.PI * radius;
@@ -61,6 +62,7 @@ const ProfileImageWithProgress = ({ imageUrl, completion = 0, hexColor }) => {
           width={31}
           height={31}
           className="rounded-full cursor-pointer"
+          unoptimized={false}
         />
       </div>
     </div>
@@ -74,8 +76,6 @@ export const Nav = () => {
   const hideOnLogin = pathname === "/login";
   const { signOutWithSave } = usePreferences();
   const { hexColor, isDarkMode } = useColor();
-
-  console.log("🎯 Nav rendering - Session:", userName, "Status:", status);
 
   const [profileCompletion, setProfileCompletion] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -94,7 +94,7 @@ export const Nav = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Profile completion
+  // Fetch profile completion
   useEffect(() => {
     if (session?.user) {
       fetch(`/api/profile?userId=${session.user.id}`)
@@ -132,7 +132,7 @@ export const Nav = () => {
 
   return (
     <>
-      {/* Welcome Greeting Message - Pass userName as prop */}
+      {/* Greeting Banner */}
       {!hideOnLogin && (
         <WelcomeGreeting
           isDarkMode={isDarkMode}
@@ -141,6 +141,7 @@ export const Nav = () => {
         />
       )}
 
+      {/* Navigation Bar */}
       <nav
         className="fixed top-0 left-0 right-0 z-50 px-6 py-2 flex items-center justify-between transition-all duration-500"
         style={{
@@ -169,7 +170,7 @@ export const Nav = () => {
               <SearchBar />
             </div>
 
-            {/* Right icons */}
+            {/* Right Side Controls */}
             <div className="flex items-center gap-5">
               <div className="hidden md:flex">
                 <Language />
@@ -177,6 +178,7 @@ export const Nav = () => {
 
               {session?.user ? (
                 <div className="flex items-center gap-4">
+                  {/* Profile Dropdown */}
                   <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -211,7 +213,7 @@ export const Nav = () => {
                           transition: "all 0.3s ease",
                         }}
                       >
-                        {/* Profile Header */}
+                        {/* Profile Info */}
                         <div
                           className="px-5 pb-2 border-b mb-2 mt-2"
                           style={{ borderColor: `${themeColor}30` }}
@@ -231,6 +233,7 @@ export const Nav = () => {
                             {session.user.email}
                           </p>
 
+                          {/* Profile Completion Progress */}
                           <div className="mt-2 flex items-center gap-2">
                             <div
                               className="flex-1 h-1 rounded-full overflow-hidden"
@@ -265,13 +268,13 @@ export const Nav = () => {
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
                               isDarkMode ? "text-gray-200" : "text-gray-700"
                             }`}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = `${themeColor}15`;
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor =
-                                "transparent";
-                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.backgroundColor = `${themeColor}15`)
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.backgroundColor =
+                                "transparent")
+                            }
                           >
                             <User
                               className="w-4 h-4"
@@ -288,13 +291,13 @@ export const Nav = () => {
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
                               isDarkMode ? "text-gray-200" : "text-gray-700"
                             }`}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = `${themeColor}15`;
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor =
-                                "transparent";
-                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.backgroundColor = `${themeColor}15`)
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.backgroundColor =
+                                "transparent")
+                            }
                           >
                             <ShoppingBag
                               className="w-4 h-4"
@@ -305,7 +308,7 @@ export const Nav = () => {
                             </span>
                           </Link>
 
-                          {/* Cart option - visible only on medium screens and below */}
+                          {/* My Cart (Visible on mobile) */}
                           <div className="md:hidden">
                             <Link
                               href="/Cart"
@@ -313,13 +316,13 @@ export const Nav = () => {
                               className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
                                 isDarkMode ? "text-gray-200" : "text-gray-700"
                               }`}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = `${themeColor}15`;
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor =
-                                  "transparent";
-                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.backgroundColor = `${themeColor}15`)
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.backgroundColor =
+                                  "transparent")
+                              }
                             >
                               <ShoppingCart
                                 className="w-4 h-4"
@@ -358,7 +361,7 @@ export const Nav = () => {
                     )}
                   </div>
 
-                  {/* Cart button - hidden on medium screens and below */}
+                  {/* Cart Button - Hidden on Medium Screens */}
                   <div className="hidden lg:flex">
                     <CartButton />
                   </div>

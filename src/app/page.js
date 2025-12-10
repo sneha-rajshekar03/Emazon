@@ -72,106 +72,57 @@ export default function Home() {
   // Track previous session state to detect logout
   const prevSessionRef = useRef(null);
   const isLoggingOutRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
-  // 🔹 Detect logout and refresh page
+  // 🔹 Fixed logout detection logic
   useEffect(() => {
-    console.log("🔍 [Home] Session effect triggered", {
-      status,
-      timestamp: new Date().toISOString(),
-    });
-
+    // Skip during loading
     if (status === "loading") {
-      console.log("⏳ [Home] Status is 'loading', waiting...");
-      return; // Wait for session to load
+      return;
     }
 
     const currentUserId = getUserIdFromSession(session);
     const prevUserId = prevSessionRef.current;
 
-    console.log("🔐 [Home] Session state check:", {
-      status,
-      prevUserId,
-      currentUserId,
-      hasSession: !!session,
-      isLoggingOut: isLoggingOutRef.current,
-      sessionObject: session ? "present" : "null",
-      timestamp: new Date().toISOString(),
-    });
+    // Initialize on first render
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      prevSessionRef.current = currentUserId;
+      return;
+    }
 
-    // Detect logout: had a session before, now don't
+    // Detect logout: had user ID, now don't
     if (prevUserId && !currentUserId && !isLoggingOutRef.current) {
-      console.log("🚨 [Home] ===== LOGOUT DETECTED =====");
-      console.log("👋 [Home] User logged out. Previous ID:", prevUserId);
-      console.log("🧹 [Home] Starting immediate cleanup and reload...");
-
+      console.log("🚨 [Home] Logout detected");
       isLoggingOutRef.current = true;
-      console.log("🔒 [Home] Set isLoggingOut flag to true");
 
-      // Clear ALL localStorage and sessionStorage
-      console.log("🗑️ [Home] Clearing ALL storage...");
+      // Clear user-specific cache
       if (prevUserId) {
         localStorage.removeItem(`sliderCategories_${prevUserId}`);
         localStorage.removeItem(`sliderCategoriesTime_${prevUserId}`);
       }
-      localStorage.removeItem("sliderCategories_guest");
-      localStorage.removeItem("sliderCategoriesTime_guest");
 
-      // Also clear any session storage
-      sessionStorage.clear();
-      console.log("✅ [Home] All storage cleared");
-
-      // Clear all cookies to force fresh session
-      console.log("🍪 [Home] Clearing cookies...");
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-      console.log("✅ [Home] Cookies cleared");
-
-      // CRITICAL: Use location.replace instead of href for a true hard refresh
-      console.log("🔄 [Home] ===== FORCING COMPLETE PAGE RELOAD =====");
-      console.log("🌐 [Home] Using location.replace for complete refresh");
-      console.log("⏰ [Home] Refresh timestamp:", new Date().toISOString());
-
-      // location.replace forces a complete page reload and clears browser cache
-      window.location.replace("/");
-
-      console.log(
-        "⚠️ [Home] This line should NEVER execute after location.replace"
-      );
+      // Reload to guest state
+      window.location.href = "/";
+      return;
     }
 
-    // Detect login: didn't have session before, now do
-    if (!prevUserId && currentUserId) {
-      console.log("🎉 [Home] ===== LOGIN DETECTED =====");
-      console.log("👤 [Home] User logged in. New ID:", currentUserId);
+    // Detect login: didn't have user ID, now do
+    if (!prevUserId && currentUserId && !isLoggingOutRef.current) {
+      console.log("🎉 [Home] Login detected");
 
-      isLoggingOutRef.current = false;
-      console.log("🔓 [Home] Set isLoggingOut flag to false");
-
-      // Clear old guest cache
-      console.log("🗑️ [Home] Clearing guest cache");
+      // Clear guest cache
       localStorage.removeItem("sliderCategories_guest");
       localStorage.removeItem("sliderCategoriesTime_guest");
-      window.dispatchEvent(new Event("searchHistoryUpdated"));
 
-      // Trigger data reload
-      console.log("🔄 [Home] Triggering user data reload");
+      // Reset state to fetch new user data
       setUserProfile(null);
       setColorLoaded(false);
-      console.log("✅ [Home] Login handling complete");
     }
 
-    // Update previous session reference
-    console.log(
-      "📝 [Home] Updating prevSessionRef from",
-      prevUserId,
-      "to",
-      currentUserId
-    );
+    // Update reference
     prevSessionRef.current = currentUserId;
-  }, [session, status, router]);
+  }, [session, status]);
 
   useEffect(() => {
     if (status === "loading") {

@@ -10,8 +10,9 @@ import { ColorProvider } from "./context/ColorContext";
 import { LanguageProvider } from "./context/LanguageContext";
 
 export const metadata = {
-  title: "Online Shopping website",
-  description: "E-commerce Website",
+  title: "Emzon | Online Shopping Website",
+  description:
+    "An e-commerce platform built with Next.js, Firebase & NextAuth.",
   icons: {
     icon: [
       { url: "/logo.svg", media: "(prefers-color-scheme: light)" },
@@ -42,7 +43,7 @@ export default async function RootLayout({ children }) {
               <ThemeProvider>
                 <CartProvider>
                   <Nav />
-                  {children}
+                  <main>{children}</main>
                   <ProfilePopupManager />
                 </CartProvider>
               </ThemeProvider>

@@ -421,7 +421,9 @@ const HeaderSlider = () => {
                 <div className="flex items-center mt-6 gap-4 justify-center md:justify-start">
                   <button
                     onClick={handleShopNow}
-                    className="px-8 py-2.5 rounded-full text-white font-medium shadow-md hover:scale-[1.03]"
+                    className={`px-8 py-2.5 rounded-full font-medium shadow-md hover:scale-[1.03] ${
+                      session?.user ? "text-white" : "text-black"
+                    }`}
                     style={{
                       background: `linear-gradient(145deg, ${hexColor}, ${hexColor}cc)`,
                       boxShadow: `0 5px 15px ${hexColor}40`,

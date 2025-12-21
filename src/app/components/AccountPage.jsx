@@ -237,7 +237,7 @@ export default function AccountPage() {
         <button
           onClick={isLogin ? handleLogin : handleSignup}
           disabled={loading}
-          className="w-full py-3 rounded-lg font-semibold text-white"
+          className="w-full py-3 rounded-lg font-semibold text-black"
           style={{
             background: themeColor,
             opacity: loading ? 0.6 : 1,

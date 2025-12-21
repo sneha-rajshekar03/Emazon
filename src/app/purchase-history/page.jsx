@@ -284,7 +284,7 @@ export default function PurchaseHistoryPage() {
                             isDarkMode ? "text-gray-400" : "text-gray-600"
                           }`}
                         >
-                          ${item.unit_price.toFixed(2)} × {item.quantity}
+                          ${(item.unit_price ?? 0).toFixed(2)} × {item.quantity}
                         </p>
                       </div>
                       <p
@@ -292,7 +292,10 @@ export default function PurchaseHistoryPage() {
                           isDarkMode ? "text-gray-100" : "text-gray-800"
                         }`}
                       >
-                        ${(item.unit_price * item.quantity).toFixed(2)}
+                        $
+                        {(
+                          (item.unit_price ?? 0) * (item.quantity ?? 1)
+                        ).toFixed(2)}
                       </p>
                     </div>
                   ))}

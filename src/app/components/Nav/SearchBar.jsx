@@ -193,15 +193,17 @@ export const SearchBar = () => {
             strokeWidth={2}
           />
         </div>
-
         <button
           type="submit"
-          className="px-4 py-2.5 rounded-lg text-white transition-all hover:opacity-90 active:scale-95 flex-shrink-0"
+          className="px-4 py-2.5 rounded-lg transition-all hover:opacity-90 active:scale-95 flex-shrink-0"
           style={{
             background: `linear-gradient(135deg, ${hexColor} 0%, ${hexColor}dd 100%)`,
           }}
         >
-          <Search className="w-4 h-4" strokeWidth={2.5} />
+          <Search
+            className={`w-4 h-4 ${session?.user ? "text-white" : "text-black"}`}
+            strokeWidth={2.5}
+          />
         </button>
       </form>
 

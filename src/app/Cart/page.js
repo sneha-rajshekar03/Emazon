@@ -21,6 +21,10 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+// Repeat suggestions imports
+import { useRepeatSuggestions } from "@/app/hooks/useRepeatSuggestions";
+import RepeatOrderSlider from "@/app/components/RepeatOrderSlider";
+
 export default function CartPage() {
   const {
     cart,
@@ -29,6 +33,7 @@ export default function CartPage() {
     getCartTotal,
     checkout,
     isLoading,
+    addToCart,
   } = useCart();
   const { data: session } = useSession();
   const router = useRouter();
@@ -48,10 +53,33 @@ export default function CartPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
+  // Fetch repeat suggestions (API layer)
+  const {
+    suggestions: rawSuggestions,
+    loading: suggestionsLoading,
+    dismissSuggestion: apiDismiss,
+  } = useRepeatSuggestions(cart);
+
   const subtotal = getCartTotal();
   const tax = subtotal * 0.1;
   const shipping = subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
   const total = subtotal + tax + shipping;
+
+  // DEBUG: Log slider state
+  useEffect(() => {
+    console.log("=== CART PAGE SLIDER DEBUG ===");
+    console.log("Session user ID:", session?.user?.id);
+    console.log("Suggestions loading:", suggestionsLoading);
+    console.log("Raw suggestions:", rawSuggestions);
+    console.log("Raw suggestions length:", rawSuggestions?.length || 0);
+    console.log("Cart items:", cart.length);
+    console.log(
+      "Should render slider:",
+      !suggestionsLoading && rawSuggestions && rawSuggestions.length > 0
+    );
+    console.log("Storage available:", !!window.storage);
+    console.log("==============================");
+  }, [session, suggestionsLoading, rawSuggestions, cart]);
 
   const getDeviceType = () => {
     const ua = navigator.userAgent;
@@ -205,6 +233,34 @@ export default function CartPage() {
       setShowModal(true);
     } finally {
       setIsCheckingOut(false);
+    }
+  };
+
+  // Handler for adding suggestions to cart
+  // CartContext expects: addToCart(productObject, quantity)
+  const handleAddSuggestionToCart = async (productObject) => {
+    console.log("[CartPage] Adding suggestion to cart:", productObject);
+
+    try {
+      // Ensure the product object has all required fields
+      if (
+        !productObject.product_id ||
+        !productObject.title ||
+        productObject.price === undefined
+      ) {
+        console.error("[CartPage] Invalid product object:", productObject);
+        throw new Error("Invalid product data");
+      }
+
+      console.log("[CartPage] Product validation passed, calling addToCart...");
+
+      // addToCart expects (product, quantity)
+      await addToCart(productObject, 1);
+
+      console.log("[CartPage] ✓ Added to cart successfully");
+    } catch (error) {
+      console.error("[CartPage] ❌ Error adding to cart:", error);
+      throw error;
     }
   };
 
@@ -414,7 +470,8 @@ export default function CartPage() {
                             isDarkMode ? "text-gray-400" : "text-gray-500"
                           }`}
                         >
-                          ${item.price.toFixed(2)} each
+                          ${(item.price ?? item.unit_price ?? 0).toFixed(2)}{" "}
+                          each
                         </span>
                       </div>
                     </div>
@@ -537,6 +594,16 @@ export default function CartPage() {
         </div>
       </div>
 
+      {/* Repeat Order Slider - Main render */}
+      {!suggestionsLoading && rawSuggestions && rawSuggestions.length > 0 && (
+        <RepeatOrderSlider
+          suggestions={rawSuggestions}
+          onAddToCart={handleAddSuggestionToCart}
+          onDismiss={apiDismiss}
+        />
+      )}
+
+      {/* Payment Modal */}
       {showPaymentModal && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"
@@ -738,6 +805,7 @@ export default function CartPage() {
         </div>
       )}
 
+      {/* Success/Error Modal */}
       {showModal && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"

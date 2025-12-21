@@ -19,7 +19,7 @@ const transporter = nodemailer.createTransport({
 
 // Email templates
 const getWelcomeEmail = (email) => ({
-  from: `"Emazon" <${process.env.EMAIL_USER}>`,
+  from: `"Emzon" <${process.env.EMAIL_USER}>`,
   to: email,
   subject: "Welcome to Our Newsletter! 🎉",
   html: `
@@ -122,7 +122,7 @@ const getWelcomeEmail = (email) => ({
 });
 
 const getReturningUserEmail = (email) => ({
-  from: `"Emazon" <${process.env.EMAIL_USER}>`,
+  from: `"Emzon" <${process.env.EMAIL_USER}>`,
   to: email,
   subject: "Welcome Back! We've Missed You 💜",
   html: `

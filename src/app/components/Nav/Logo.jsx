@@ -41,7 +41,7 @@ export default function Logo() {
     >
       {/* 🌈 Circular Logo with Border Glow (No gap between image and border) */}
       <div
-        className="relative w-12 h-12 rounded-full overflow-hidden flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
+        className="relative w-11 h-11 rounded-full overflow-hidden flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
         style={{
           border: `2px solid ${hexColor || "#007AFF"}`,
           boxShadow: `0 0 10px ${hexColor || "#007AFF"}40`,

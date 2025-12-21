@@ -18,9 +18,7 @@ const Footer = () => {
           py-8 sm:py-10 md:py-12
           gap-8 sm:gap-10 md:gap-12 lg:gap-16
           backdrop-blur-md
-          ${
-            isDarkMode ? "border-t border-gray-800" : "border-t border-gray-200"
-          }
+         
         `}
         style={{
           background: isDarkMode
@@ -121,11 +119,18 @@ const Footer = () => {
 
       {/* Bottom Copyright */}
       <div
-        className={`py-3 sm:py-4 md:py-5 text-center text-xs sm:text-sm md:text-base ${
+        className={`py-3 mt-1 sm:py-4 md:py-5 pt-1 text-center text-xs sm:text-sm md:text-base border-t ${
           isDarkMode
-            ? "text-gray-500 border-t border-gray-800 bg-gray-950"
-            : "text-gray-500 border-t border-gray-200 bg-white"
+            ? "text-gray-100 border-gray-800"
+            : "text-gray-500 border-gray-200"
         }`}
+        style={{
+          background: isDarkMode
+            ? "rgba(30, 30, 30, 0.8)"
+            : "rgba(255, 255, 255, 0.8)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+        }}
       >
         © 2025 sneharajashekar.com — All Rights Reserved.
       </div>

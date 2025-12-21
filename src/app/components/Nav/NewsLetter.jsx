@@ -154,11 +154,20 @@ const NewsLetter = () => {
         <button
           onClick={handleSubscribe}
           disabled={loading}
-          className={`md:px-12 px-8 h-full font-medium rounded-r-xl transition-all duration-300 
-    disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90`}
+          className={`
+    px-8 md:px-14 lg:px-16
+    h-full font-medium rounded-r-xl
+    transition-all duration-300
+    disabled:opacity-60 
+        cursor-pointer
+    disabled:cursor-not-allowed
+    hover:opacity-90
+    hover:scale-[1.03]
+    active:scale-[0.97]
+  `}
           style={{
             background: `linear-gradient(135deg, ${hexColor}, ${hexColor}cc)`,
-            color: session?.user ? "#ffffff" : "#000000", // ✅ key line
+            color: session?.user ? "#ffffff" : "#000000",
           }}
         >
           {loading

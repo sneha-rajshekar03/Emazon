@@ -65,21 +65,19 @@ export default function CartPage() {
   const shipping = subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
   const total = subtotal + tax + shipping;
 
-  // DEBUG: Log slider state
+  // DEBUG: Log cart items with image info
   useEffect(() => {
-    console.log("=== CART PAGE SLIDER DEBUG ===");
-    console.log("Session user ID:", session?.user?.id);
-    console.log("Suggestions loading:", suggestionsLoading);
-    console.log("Raw suggestions:", rawSuggestions);
-    console.log("Raw suggestions length:", rawSuggestions?.length || 0);
-    console.log("Cart items:", cart.length);
-    console.log(
-      "Should render slider:",
-      !suggestionsLoading && rawSuggestions && rawSuggestions.length > 0
-    );
-    console.log("Storage available:", !!window.storage);
-    console.log("==============================");
-  }, [session, suggestionsLoading, rawSuggestions, cart]);
+    console.log("=== CART ITEMS DEBUG ===");
+    cart.forEach((item, idx) => {
+      console.log(`Item ${idx + 1}:`, {
+        product_id: item.product_id,
+        title: item.title,
+        imgUrl: item.imgUrl,
+        hasImage: !!item.imgUrl,
+      });
+    });
+    console.log("========================");
+  }, [cart]);
 
   const getDeviceType = () => {
     const ua = navigator.userAgent;
@@ -236,13 +234,10 @@ export default function CartPage() {
     }
   };
 
-  // Handler for adding suggestions to cart
-  // CartContext expects: addToCart(productObject, quantity)
   const handleAddSuggestionToCart = async (productObject) => {
     console.log("[CartPage] Adding suggestion to cart:", productObject);
 
     try {
-      // Ensure the product object has all required fields
       if (
         !productObject.product_id ||
         !productObject.title ||
@@ -252,11 +247,7 @@ export default function CartPage() {
         throw new Error("Invalid product data");
       }
 
-      console.log("[CartPage] Product validation passed, calling addToCart...");
-
-      // addToCart expects (product, quantity)
       await addToCart(productObject, 1);
-
       console.log("[CartPage] ✓ Added to cart successfully");
     } catch (error) {
       console.error("[CartPage] ❌ Error adding to cart:", error);
@@ -356,8 +347,11 @@ export default function CartPage() {
                 </p>
                 <Link href="/">
                   <button
-                    className="inline-block text-white px-6 py-3 rounded-lg transition-all hover:scale-105 hover:shadow-lg active:scale-95 font-semibold"
-                    style={{ background: hexColor }}
+                    className="inline-block px-6 py-3 rounded-lg transition-all hover:scale-105 hover:shadow-lg active:scale-95 font-semibold"
+                    style={{
+                      background: hexColor,
+                      color: session ? "white" : "black", // 👈 guest = black text
+                    }}
                   >
                     Browse Products
                   </button>
@@ -384,17 +378,53 @@ export default function CartPage() {
                 >
                   <div className="flex gap-4">
                     <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
-                      <div
-                        className={`w-full h-full rounded-xl flex items-center justify-center ${
-                          isDarkMode ? "bg-gray-800" : "bg-gray-200"
-                        }`}
-                      >
-                        <ShoppingBag
-                          className={`w-8 h-8 ${
-                            isDarkMode ? "text-gray-600" : "text-gray-400"
+                      {item.imgUrl ? (
+                        <>
+                          <img
+                            src={item.imgUrl}
+                            alt={item.title}
+                            className="w-full h-full object-cover rounded-xl"
+                            onLoad={(e) => {
+                              console.log("✅ Image loaded for:", item.title);
+                              e.target.style.display = "block";
+                              const placeholder = e.target.nextElementSibling;
+                              if (placeholder)
+                                placeholder.style.display = "none";
+                            }}
+                            onError={(e) => {
+                              console.error("❌ Image failed:", item.imgUrl);
+                              e.target.style.display = "none";
+                              const placeholder = e.target.nextElementSibling;
+                              if (placeholder)
+                                placeholder.style.display = "flex";
+                            }}
+                          />
+                          <div
+                            className={`absolute inset-0 w-full h-full rounded-xl flex items-center justify-center ${
+                              isDarkMode ? "bg-gray-800" : "bg-gray-200"
+                            }`}
+                            style={{ display: "none" }}
+                          >
+                            <ShoppingBag
+                              className={`w-8 h-8 ${
+                                isDarkMode ? "text-gray-600" : "text-gray-400"
+                              }`}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <div
+                          className={`w-full h-full rounded-xl flex items-center justify-center ${
+                            isDarkMode ? "bg-gray-800" : "bg-gray-200"
                           }`}
-                        />
-                      </div>
+                        >
+                          <ShoppingBag
+                            className={`w-8 h-8 ${
+                              isDarkMode ? "text-gray-600" : "text-gray-400"
+                            }`}
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -594,7 +624,6 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* Repeat Order Slider - Main render */}
       {!suggestionsLoading && rawSuggestions && rawSuggestions.length > 0 && (
         <RepeatOrderSlider
           suggestions={rawSuggestions}
@@ -603,7 +632,6 @@ export default function CartPage() {
         />
       )}
 
-      {/* Payment Modal */}
       {showPaymentModal && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"
@@ -805,7 +833,6 @@ export default function CartPage() {
         </div>
       )}
 
-      {/* Success/Error Modal */}
       {showModal && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"

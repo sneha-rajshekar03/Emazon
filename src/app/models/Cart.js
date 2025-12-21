@@ -9,13 +9,15 @@ const CartSchema = new Schema({
   },
   items: [
     {
-      _id: false, // ✅ CRITICAL FIX: Prevent MongoDB from adding _id to array items
+      _id: false, // Prevent MongoDB from adding _id to array items
       product_id: { type: String, required: true },
       title: { type: String, required: true },
       price: { type: Number, required: true },
       quantity: { type: Number, required: true, default: 1 },
-      image: String,
-      category_name: String,
+      imgUrl: String, // ✅ CHANGED from "image" to "imgUrl"
+      category: String, // ✅ Also changed from "category_name" to "category"
+      stars: Number,
+      listPrice: Number,
     },
   ],
   updated_at: {

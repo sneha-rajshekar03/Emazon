@@ -35,45 +35,7 @@ export default function PurchaseHistoryPage() {
       const data = await res.json();
       const purchasesList = data.purchases || [];
 
-      // 🔍 LOG ALL PURCHASE DETAILS
-      console.log("=".repeat(80));
-      console.log("📦 PURCHASE HISTORY DEBUG");
-      console.log("=".repeat(80));
-      console.log(`Total Purchases: ${purchasesList.length}`);
-
-      purchasesList.forEach((purchase, idx) => {
-        console.log(`\n--- Purchase ${idx + 1} ---`);
-        console.log(`Transaction ID: ${purchase.transaction_id}`);
-        console.log(`MongoDB _id: ${purchase._id}`);
-        console.log(`User ID: ${purchase.user_id}`);
-        console.log(`Date: ${purchase.transaction_date}`);
-        console.log(`Total Amount: ${purchase.total_amount}`);
-        console.log(`Payment Method: ${purchase.payment_method}`);
-        console.log(`Device: ${purchase.device_type}`);
-        console.log(`Status: ${purchase.status}`);
-        console.log(`\nItems (${purchase.items?.length || 0}):`);
-
-        purchase.items?.forEach((item, itemIdx) => {
-          console.log(`  Item ${itemIdx + 1}:`);
-          console.log(
-            `    - product_id: "${
-              item.product_id
-            }" (type: ${typeof item.product_id})`
-          );
-          console.log(`    - quantity: ${item.quantity}`);
-          console.log(`    - unit_price: ${item.unit_price}`);
-          console.log(`    - subtotal: ${item.unit_price * item.quantity}`);
-
-          // Check if it's a MongoDB ID format
-          const isMongoDB = /^[0-9a-f]{24}$/i.test(item.product_id);
-          console.log(`    - Is MongoDB ID format: ${isMongoDB}`);
-
-          // Log the entire item object
-          console.log(`    - Full item object:`, JSON.stringify(item, null, 2));
-        });
-      });
-
-      console.log("\n" + "=".repeat(80));
+      console.log("📦 Purchase History:", purchasesList.length, "purchases");
 
       setPurchases(purchasesList);
 
@@ -90,26 +52,18 @@ export default function PurchaseHistoryPage() {
 
   const fetchProductDetails = async (purchases) => {
     try {
-      // Extract all unique product IDs from all purchases
       const allProductIds = purchases.flatMap((purchase) =>
         purchase.items.map((item) => item.product_id)
       );
       const uniqueProductIds = [...new Set(allProductIds.filter(Boolean))];
 
-      console.log("\n🔍 PRODUCT FETCHING DEBUG");
-      console.log("=".repeat(80));
-      console.log(`Unique Product IDs to fetch: ${uniqueProductIds.length}`);
-      console.log("Product IDs:", uniqueProductIds);
+      console.log("🔍 Fetching", uniqueProductIds.length, "unique products");
 
       if (uniqueProductIds.length === 0) return;
 
-      // Fetch product details in parallel with error handling per product
       const productDetails = await Promise.allSettled(
         uniqueProductIds.map(async (id) => {
           const isMongoDB = /^[0-9a-f]{24}$/i.test(id);
-
-          console.log(`\n📍 Fetching product: ${id}`);
-          console.log(`   Is MongoDB ID format: ${isMongoDB}`);
 
           try {
             let res;
@@ -117,44 +71,35 @@ export default function PurchaseHistoryPage() {
 
             if (isMongoDB) {
               url = `/api/products/by-mongo-id?_id=${id}`;
-              console.log(`   Fetching via MongoDB _id: ${url}`);
               res = await fetch(url);
             } else {
               url = `/api/products/${id}`;
-              console.log(`   Fetching via product_id: ${url}`);
               res = await fetch(url);
             }
 
-            console.log(`   Response status: ${res.status}`);
-
             if (res.ok) {
               const product = await res.json();
-              console.log(`   ✅ Found: ${product.title || product.name}`);
+              console.log("✅ Found product:", product.title);
               return {
                 storedId: id,
                 actualProductId: product.product_id || id,
                 title: product.title || product.name || "Unknown Product",
-                image: product.imgUrl || product.image || null, // ✅ Check imgUrl first, then image
+                imgUrl: product.imgUrl || product.image || null,
               };
-            } else {
-              console.log(`   ❌ Not found (${res.status})`);
             }
           } catch (err) {
-            console.error(`   ❌ Error fetching product ${id}:`, err);
+            console.error(`❌ Error fetching product ${id}:`, err);
           }
 
-          // Fallback for products that couldn't be fetched
-          console.log(`   ⚠️ Using fallback data`);
           return {
             storedId: id,
             actualProductId: id,
             title: `Product (${id.slice(-8)})`,
-            image: null, // ✅ Fallback also uses null
+            imgUrl: null,
           };
         })
       );
 
-      // Build product map from settled promises
       const map = {};
       productDetails.forEach((result) => {
         if (result.status === "fulfilled" && result.value) {
@@ -163,11 +108,10 @@ export default function PurchaseHistoryPage() {
       });
 
       console.log(
-        "\n✅ Product map created with",
+        "✅ Product map created:",
         Object.keys(map).length,
         "products"
       );
-      console.log("=".repeat(80));
       setProductMap(map);
     } catch (err) {
       console.error("Error fetching product details:", err);
@@ -257,11 +201,10 @@ export default function PurchaseHistoryPage() {
 
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen pt-13"
       style={{ background: isDarkMode ? "#000000" : "#f9fafb" }}
     >
-      <div className="max-w-6xl mx-auto p-6 sm:p-8 pt-24">
-        {/* Header */}
+      <div className="max-w-6xl mx-auto p-6 sm:p-8 pb-8">
         <div className="mb-8">
           <h1
             className={`text-3xl sm:text-4xl font-bold mb-2 ${
@@ -338,7 +281,6 @@ export default function PurchaseHistoryPage() {
                     : `0 4px 20px rgba(0,0,0,0.06), inset 0 0 15px ${hexColor}08`,
                 }}
               >
-                {/* Purchase Header */}
                 <div
                   className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6 pb-6 border-b"
                   style={{
@@ -442,7 +384,6 @@ export default function PurchaseHistoryPage() {
                   </div>
                 </div>
 
-                {/* Items List */}
                 <div className="space-y-3">
                   <h4
                     className={`font-semibold mb-3 text-sm ${
@@ -457,11 +398,12 @@ export default function PurchaseHistoryPage() {
                       productInfo?.title || "Loading product...";
                     const linkProductId =
                       productInfo?.actualProductId || item.product_id;
+                    const productImage = productInfo?.imgUrl;
 
                     return (
                       <div
                         key={`${purchase._id}-${idx}`}
-                        className="flex items-center justify-between gap-4 p-4 rounded-xl transition-all hover:scale-[1.01] cursor-pointer"
+                        className="flex items-center gap-4 p-4 rounded-xl transition-all hover:scale-[1.01] cursor-pointer"
                         onClick={() => handleProductClick(linkProductId)}
                         style={{
                           background: isDarkMode
@@ -470,6 +412,65 @@ export default function PurchaseHistoryPage() {
                           border: `1px solid ${hexColor}10`,
                         }}
                       >
+                        {/* Product Image */}
+                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0">
+                          {productImage ? (
+                            <>
+                              <img
+                                src={productImage}
+                                alt={productTitle}
+                                className="w-full h-full object-cover rounded-lg"
+                                onLoad={(e) => {
+                                  console.log("✅ Image loaded:", productTitle);
+                                  e.target.style.display = "block";
+                                  const placeholder =
+                                    e.target.nextElementSibling;
+                                  if (placeholder)
+                                    placeholder.style.display = "none";
+                                }}
+                                onError={(e) => {
+                                  console.error(
+                                    "❌ Image failed:",
+                                    productImage
+                                  );
+                                  e.target.style.display = "none";
+                                  const placeholder =
+                                    e.target.nextElementSibling;
+                                  if (placeholder)
+                                    placeholder.style.display = "flex";
+                                }}
+                              />
+                              <div
+                                className={`absolute inset-0 w-full h-full rounded-lg flex items-center justify-center ${
+                                  isDarkMode ? "bg-gray-800" : "bg-gray-200"
+                                }`}
+                                style={{ display: "none" }}
+                              >
+                                <ShoppingBag
+                                  className={`w-6 h-6 ${
+                                    isDarkMode
+                                      ? "text-gray-600"
+                                      : "text-gray-400"
+                                  }`}
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <div
+                              className={`w-full h-full rounded-lg flex items-center justify-center ${
+                                isDarkMode ? "bg-gray-800" : "bg-gray-200"
+                              }`}
+                            >
+                              <ShoppingBag
+                                className={`w-6 h-6 ${
+                                  isDarkMode ? "text-gray-600" : "text-gray-400"
+                                }`}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Product Details */}
                         <div className="flex-1 min-w-0">
                           <p
                             className={`font-medium mb-1 truncate transition-colors ${
@@ -486,7 +487,7 @@ export default function PurchaseHistoryPage() {
                               isDarkMode ? "text-gray-500" : "text-gray-400"
                             }`}
                           >
-                            ID: {item.product_id}
+                            ID: {item.product_id.slice(-12)}
                           </p>
                           <p
                             className={`text-sm ${
@@ -497,6 +498,8 @@ export default function PurchaseHistoryPage() {
                             {item.quantity || 1}
                           </p>
                         </div>
+
+                        {/* Price */}
                         <div className="text-right">
                           <p
                             className={`font-semibold text-lg ${

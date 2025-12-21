@@ -39,13 +39,14 @@ export function CartProvider({ children }) {
               "items"
             );
 
-            // 🔍 DEBUG: Log each cart item's product_id
+            // 🔍 DEBUG: Log each cart item including imgUrl
             data.items?.forEach((item, idx) => {
               console.log(`📥 [CART CONTEXT] Item ${idx + 1}:`, {
                 product_id: item.product_id,
                 _id: item._id,
                 title: item.title,
-                isMongoDB: /^[0-9a-f]{24}$/i.test(item.product_id),
+                imgUrl: item.imgUrl,
+                hasImage: !!item.imgUrl,
               });
             });
 
@@ -127,6 +128,8 @@ export function CartProvider({ children }) {
       _id: product._id,
       title: product.title,
       price: product.price,
+      imgUrl: product.imgUrl,
+      hasImage: !!product.imgUrl,
     });
     console.log("➕ [CART CONTEXT] Quantity:", quantity);
     console.log("➕ [CART CONTEXT] User logged in:", !!session?.user?.id);
@@ -164,15 +167,22 @@ export function CartProvider({ children }) {
           );
         } else {
           console.log("➕ [CART CONTEXT] New item, adding to cart");
-          // ✅ Ensure we're storing the correct product_id
-          newCart = [
-            ...prevCart,
-            {
-              ...product,
-              quantity,
-              product_id: product.product_id, // Explicitly set product_id
-            },
-          ];
+          // ✅ Store ALL product data including imgUrl
+          const cartItem = {
+            product_id: product.product_id,
+            title: product.title,
+            price: product.price,
+            quantity: quantity,
+            imgUrl: product.imgUrl, // ✅ Explicitly preserve image URL
+            category: product.category_name || product.category,
+            // Include any other fields you might need
+            stars: product.stars,
+            listPrice: product.listPrice,
+          };
+
+          console.log("➕ [CART CONTEXT] Cart item to add:", cartItem);
+
+          newCart = [...prevCart, cartItem];
         }
 
         console.log("➕ [CART CONTEXT] New cart:", newCart.length, "items");
@@ -181,6 +191,8 @@ export function CartProvider({ children }) {
           newCart.map((i) => ({
             product_id: i.product_id,
             title: i.title,
+            hasImage: !!i.imgUrl,
+            imgUrl: i.imgUrl?.substring(0, 50) + "...",
           }))
         );
         resolve(newCart);

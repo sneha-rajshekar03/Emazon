@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { connectToDB } from "@/app/utils/database";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import User from "@/app/models/User";
-import Product from "@/app/models/product";
+import Product from "@/app/models/Product";
 const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
 
 // 🔹 Get user profile from database

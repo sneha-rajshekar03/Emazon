@@ -34,7 +34,10 @@ export async function GET(req) {
       console.log(
         `📦 [PURCHASE HISTORY API] Checking most frequent quantity for user=${userId}, product=${productId}`
       );
-
+      console.log("🔍 Query check:", {
+        userId,
+        productId,
+      });
       const purchases = await PurchaseHistory.find({
         user_id: userId,
         "items.product_id": productId,

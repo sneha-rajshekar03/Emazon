@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server";
 import { connectToDB } from "@/app/utils/database";
-import Product from "@/app/models/product";
+import Product from "@/app/models/Product";
 export async function GET(request, { params }) {
   const { product_id } = await params;
 

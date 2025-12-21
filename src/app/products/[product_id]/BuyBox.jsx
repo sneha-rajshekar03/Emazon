@@ -26,6 +26,7 @@ export function BuyBox({ product, ...props }) {
   const pathname = usePathname();
   const [quantity, setQuantity] = useState(1);
   const [mostFrequentQuantity, setMostFrequentQuantity] = useState(null);
+  const [userChangedQuantity, setUserChangedQuantity] = useState(false);
   const [added, setAdded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -80,21 +81,91 @@ export function BuyBox({ product, ...props }) {
   };
 
   useEffect(() => {
-    if (!session?.user?.id || !product?.product_id) return;
+    console.log("[BuyBox] useEffect triggered");
+    console.log("[BuyBox] Session user ID:", session?.user?.id);
+    console.log("[BuyBox] Product ID:", product?.product_id);
+
+    if (!session?.user?.id || !product?.product_id) {
+      console.log("[BuyBox] Missing session or product ID, skipping fetch");
+      return;
+    }
+
     const fetchMostFrequentQuantity = async () => {
       try {
-        const res = await fetch(
-          `/api/purchase-history?userId=${session.user.id}&productId=${product.product_id}`
-        );
+        const resolvedProductId =
+          product._id || product.id || product.productId || product.product_id;
+
+        const url = `/api/purchase-history?userId=${session.user.id}&productId=${resolvedProductId}`;
+
+        const res = await fetch(url);
+        console.log("[BuyBox] Response status:", res.status);
+        console.log("[BuyBox] Resolved Product ID:", resolvedProductId);
+
         const data = await res.json();
+        console.log("[BuyBox] Response data:", data);
+
         if (data.mostFrequentQuantity && data.mostFrequentQuantity > 0) {
+          console.log(
+            "[BuyBox] Setting quantity to:",
+            data.mostFrequentQuantity
+          );
           setQuantity(data.mostFrequentQuantity);
           setMostFrequentQuantity(data.mostFrequentQuantity);
+          console.log("[BuyBox] State updated successfully");
+        } else {
+          console.log(
+            "[BuyBox] No valid mostFrequentQuantity found, using default quantity = 1"
+          );
         }
       } catch (error) {
         console.error("[BuyBox] Error fetching most frequent quantity:", error);
+        useEffect(() => {
+          console.log("[BuyBox] useEffect triggered");
+          console.log("[BuyBox] Session user ID:", session?.user?.id);
+          console.log("[BuyBox] Mongo Product ID:", product?._id);
+
+          if (!session?.user?.id || !product?._id) {
+            console.log(
+              "[BuyBox] Missing session or product _id, skipping fetch"
+            );
+            return;
+          }
+
+          const fetchMostFrequentQuantity = async () => {
+            try {
+              const url = `/api/purchase-history?userId=${session.user.id}&productId=${product._id}`;
+
+              console.log("[BuyBox] Fetching from URL:", url);
+
+              const res = await fetch(url);
+              const data = await res.json();
+
+              console.log("[BuyBox] Response data:", data);
+
+              if (data.mostFrequentQuantity && data.mostFrequentQuantity > 0) {
+                console.log(
+                  "[BuyBox] Applying most frequent quantity:",
+                  data.mostFrequentQuantity
+                );
+                setMostFrequentQuantity(data.mostFrequentQuantity);
+                setQuantity(data.mostFrequentQuantity);
+              } else {
+                console.log(
+                  "[BuyBox] No valid mostFrequentQuantity found, keeping quantity = 1"
+                );
+              }
+            } catch (err) {
+              console.error("[BuyBox] Error fetching frequency:", err);
+            }
+          };
+
+          fetchMostFrequentQuantity();
+        }, [session?.user?.id, product?._id]);
+        console.error("[BuyBox] Error details:", error.message, error.stack);
+        // Silently fallback to default quantity = 1
       }
     };
+
     fetchMostFrequentQuantity();
   }, [session?.user?.id, product?.product_id]);
 
@@ -339,7 +410,15 @@ export function BuyBox({ product, ...props }) {
           </label>
           <div className="flex items-center gap-3 mb-3">
             <button
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              onClick={() => {
+                console.log(
+                  "[BuyBox] Minus button clicked, current quantity:",
+                  quantity
+                );
+                setQuantity(Math.max(1, quantity - 1));
+                setUserChangedQuantity(true);
+                console.log("[BuyBox] userChangedQuantity set to true");
+              }}
               className="w-11 h-11 rounded-xl text-white font-semibold text-xl"
               style={{
                 background: `linear-gradient(135deg, ${hexColor} 0%, ${hexColor}dd 100%)`,
@@ -351,9 +430,15 @@ export function BuyBox({ product, ...props }) {
               type="number"
               min="1"
               value={quantity}
-              onChange={(e) =>
-                setQuantity(Math.max(1, parseInt(e.target.value) || 1))
-              }
+              onChange={(e) => {
+                console.log(
+                  "[BuyBox] Input changed, new value:",
+                  e.target.value
+                );
+                setQuantity(Math.max(1, parseInt(e.target.value) || 1));
+                setUserChangedQuantity(true);
+                console.log("[BuyBox] userChangedQuantity set to true");
+              }}
               className={`w-20 text-center text-lg font-semibold border-2 rounded-xl py-2.5 ${
                 isDarkMode
                   ? "text-gray-100 bg-gray-800/50"
@@ -362,7 +447,15 @@ export function BuyBox({ product, ...props }) {
               style={{ borderColor: `${hexColor}30` }}
             />
             <button
-              onClick={() => setQuantity(quantity + 1)}
+              onClick={() => {
+                console.log(
+                  "[BuyBox] Plus button clicked, current quantity:",
+                  quantity
+                );
+                setQuantity(quantity + 1);
+                setUserChangedQuantity(true);
+                console.log("[BuyBox] userChangedQuantity set to true");
+              }}
               className="w-11 h-11 rounded-xl text-white font-semibold text-xl"
               style={{
                 background: `linear-gradient(135deg, ${hexColor} 0%, ${hexColor}dd 100%)`,
@@ -371,6 +464,52 @@ export function BuyBox({ product, ...props }) {
               +
             </button>
           </div>
+
+          {/* Smart Quantity Hint */}
+          {(() => {
+            console.log(
+              "[BuyBox Render] userChangedQuantity:",
+              userChangedQuantity
+            );
+            console.log(
+              "[BuyBox Render] mostFrequentQuantity:",
+              mostFrequentQuantity
+            );
+            console.log("[BuyBox Render] current quantity:", quantity);
+            console.log(
+              "[BuyBox Render] Should show hint:",
+              !userChangedQuantity &&
+                mostFrequentQuantity &&
+                mostFrequentQuantity > 1
+            );
+            return null;
+          })()}
+          {!userChangedQuantity &&
+            mostFrequentQuantity &&
+            mostFrequentQuantity > 1 && (
+              <div
+                className="mb-4 p-3 rounded-xl flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300"
+                style={{
+                  background: isDarkMode ? `${hexColor}15` : `${hexColor}08`,
+                  border: isDarkMode
+                    ? `1px solid ${hexColor}30`
+                    : `1px solid ${hexColor}20`,
+                }}
+              >
+                <Sparkles
+                  className="w-4 h-4 flex-shrink-0 mt-0.5"
+                  style={{ color: hexColor }}
+                />
+                <p
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  <span className="font-semibold">Smart suggestion:</span> You
+                  usually order {mostFrequentQuantity} of this item.
+                </p>
+              </div>
+            )}
 
           {/* Warning Message for Multiple Quantities */}
           {quantity > 1 && (

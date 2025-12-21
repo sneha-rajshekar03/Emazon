@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectToDB } from "@/app/utils/database";
-import Product from "@/app/models/product";
+import Product from "@/app/models/Product";
 // 🟢 POST — Add a new customer review
 export async function POST(request, { params }) {
   try {

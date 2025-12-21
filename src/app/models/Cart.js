@@ -9,8 +9,9 @@ const CartSchema = new Schema({
   },
   items: [
     {
+      _id: false, // ✅ CRITICAL FIX: Prevent MongoDB from adding _id to array items
       product_id: { type: String, required: true },
-      title: { type: String, required: true }, // Changed from name
+      title: { type: String, required: true },
       price: { type: Number, required: true },
       quantity: { type: Number, required: true, default: 1 },
       image: String,
@@ -18,7 +19,6 @@ const CartSchema = new Schema({
     },
   ],
   updated_at: {
-    // Changed from updatedAt
     type: Date,
     default: Date.now,
   },

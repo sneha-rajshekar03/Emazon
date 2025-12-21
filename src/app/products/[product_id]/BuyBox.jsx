@@ -65,7 +65,6 @@ export function BuyBox({ product, ...props }) {
     },
   ];
 
-  // Helper function to detect device type
   const getDeviceType = () => {
     const ua = navigator.userAgent;
     if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua))
@@ -80,26 +79,29 @@ export function BuyBox({ product, ...props }) {
     return "Desktop";
   };
 
+  // ✅ FIXED: Use product_id instead of _id
   useEffect(() => {
     console.log("[BuyBox] useEffect triggered");
     console.log("[BuyBox] Session user ID:", session?.user?.id);
     console.log("[BuyBox] Product ID:", product?.product_id);
 
     if (!session?.user?.id || !product?.product_id) {
-      console.log("[BuyBox] Missing session or product ID, skipping fetch");
+      console.log("[BuyBox] Missing session or product_id, skipping fetch");
       return;
     }
 
     const fetchMostFrequentQuantity = async () => {
       try {
-        const resolvedProductId =
-          product._id || product.id || product.productId || product.product_id;
+        // ✅ USE product_id, NOT _id
+        const productId = product.product_id;
 
-        const url = `/api/purchase-history?userId=${session.user.id}&productId=${resolvedProductId}`;
+        console.log("[BuyBox] Using product_id:", productId);
+
+        const url = `/api/purchase-history?userId=${session.user.id}&productId=${productId}`;
+        console.log("[BuyBox] Fetching from URL:", url);
 
         const res = await fetch(url);
         console.log("[BuyBox] Response status:", res.status);
-        console.log("[BuyBox] Resolved Product ID:", resolvedProductId);
 
         const data = await res.json();
         console.log("[BuyBox] Response data:", data);
@@ -119,55 +121,12 @@ export function BuyBox({ product, ...props }) {
         }
       } catch (error) {
         console.error("[BuyBox] Error fetching most frequent quantity:", error);
-        useEffect(() => {
-          console.log("[BuyBox] useEffect triggered");
-          console.log("[BuyBox] Session user ID:", session?.user?.id);
-          console.log("[BuyBox] Mongo Product ID:", product?._id);
-
-          if (!session?.user?.id || !product?._id) {
-            console.log(
-              "[BuyBox] Missing session or product _id, skipping fetch"
-            );
-            return;
-          }
-
-          const fetchMostFrequentQuantity = async () => {
-            try {
-              const url = `/api/purchase-history?userId=${session.user.id}&productId=${product._id}`;
-
-              console.log("[BuyBox] Fetching from URL:", url);
-
-              const res = await fetch(url);
-              const data = await res.json();
-
-              console.log("[BuyBox] Response data:", data);
-
-              if (data.mostFrequentQuantity && data.mostFrequentQuantity > 0) {
-                console.log(
-                  "[BuyBox] Applying most frequent quantity:",
-                  data.mostFrequentQuantity
-                );
-                setMostFrequentQuantity(data.mostFrequentQuantity);
-                setQuantity(data.mostFrequentQuantity);
-              } else {
-                console.log(
-                  "[BuyBox] No valid mostFrequentQuantity found, keeping quantity = 1"
-                );
-              }
-            } catch (err) {
-              console.error("[BuyBox] Error fetching frequency:", err);
-            }
-          };
-
-          fetchMostFrequentQuantity();
-        }, [session?.user?.id, product?._id]);
         console.error("[BuyBox] Error details:", error.message, error.stack);
-        // Silently fallback to default quantity = 1
       }
     };
 
     fetchMostFrequentQuantity();
-  }, [session?.user?.id, product?.product_id]);
+  }, [session?.user?.id, product?.product_id]); // ✅ Updated dependency
 
   const handleAddToCart = () => {
     if (!session) {
@@ -205,7 +164,6 @@ export function BuyBox({ product, ...props }) {
     setPredictionError(null);
 
     try {
-      // Fetch user profile first (same as Cart page)
       console.log("[BuyBox] Fetching user profile for:", userId);
       const profileResponse = await fetch(`/api/user-profile/${userId}`);
 
@@ -216,13 +174,11 @@ export function BuyBox({ product, ...props }) {
       const userProfile = await profileResponse.json();
       console.log("[BuyBox] User profile fetched:", userProfile);
 
-      // Get current date/time info
       const now = new Date();
       const isWeekend = now.getDay() === 0 || now.getDay() === 6 ? 1 : 0;
       const hourOfDay = now.getHours();
       const deviceType = getDeviceType();
 
-      // Build the COMPLETE payload (same as Cart page)
       const predictionPayload = {
         user_id: userProfile.user_id,
         age: userProfile.age,
@@ -244,7 +200,6 @@ export function BuyBox({ product, ...props }) {
 
       console.log("[BuyBox] Sending prediction payload:", predictionPayload);
 
-      // Call prediction API
       const predictionResponse = await fetch("/api/predict-payment", {
         method: "POST",
         headers: {
@@ -292,12 +247,14 @@ export function BuyBox({ product, ...props }) {
 
     try {
       const transactionId = `TXN${Date.now()}`;
-      const productId =
-        product._id || product.id || product.productId || product.product_id;
+      // ✅ FIXED: Use product_id directly
+      const productId = product.product_id;
       const totalAmount = product.price * quantity;
-      const deviceType = getDeviceType(); // Get device type
+      const deviceType = getDeviceType();
 
-      console.log("[BuyBox] Processing checkout with device_type:", deviceType);
+      console.log("[BuyBox] Processing checkout with:");
+      console.log("  - product_id:", productId);
+      console.log("  - device_type:", deviceType);
 
       const response = await fetch("/api/checkout", {
         method: "POST",
@@ -305,10 +262,10 @@ export function BuyBox({ product, ...props }) {
         body: JSON.stringify({
           transaction_id: transactionId,
           payment_method: selectedPayment,
-          device_type: deviceType, // Add device_type here
+          device_type: deviceType,
           items: [
             {
-              product_id: productId,
+              product_id: productId, // ✅ Now using correct product_id
               quantity: quantity,
               unit_price: product.price,
             },
@@ -332,7 +289,6 @@ export function BuyBox({ product, ...props }) {
       });
       setShowModal(true);
 
-      // Redirect to purchase history after 3 seconds
       setTimeout(() => {
         setShowModal(false);
         router.push("/purchase-history");
@@ -373,7 +329,6 @@ export function BuyBox({ product, ...props }) {
           overflow: "hidden",
         }}
       >
-        {/* Corner glow tint */}
         <div
           style={{
             position: "absolute",
@@ -388,7 +343,6 @@ export function BuyBox({ product, ...props }) {
         />
 
         <div className="relative z-10">
-          {/* Price */}
           <div className="mb-6">
             <span
               className="text-4xl font-bold"
@@ -401,7 +355,6 @@ export function BuyBox({ product, ...props }) {
             </span>
           </div>
 
-          {/* Quantity */}
           <label
             className="block text-sm font-semibold mb-3"
             style={{ color: isDarkMode ? `${hexColor}cc` : hexColor }}
@@ -411,13 +364,8 @@ export function BuyBox({ product, ...props }) {
           <div className="flex items-center gap-3 mb-3">
             <button
               onClick={() => {
-                console.log(
-                  "[BuyBox] Minus button clicked, current quantity:",
-                  quantity
-                );
                 setQuantity(Math.max(1, quantity - 1));
                 setUserChangedQuantity(true);
-                console.log("[BuyBox] userChangedQuantity set to true");
               }}
               className="w-11 h-11 rounded-xl text-white font-semibold text-xl"
               style={{
@@ -431,13 +379,8 @@ export function BuyBox({ product, ...props }) {
               min="1"
               value={quantity}
               onChange={(e) => {
-                console.log(
-                  "[BuyBox] Input changed, new value:",
-                  e.target.value
-                );
                 setQuantity(Math.max(1, parseInt(e.target.value) || 1));
                 setUserChangedQuantity(true);
-                console.log("[BuyBox] userChangedQuantity set to true");
               }}
               className={`w-20 text-center text-lg font-semibold border-2 rounded-xl py-2.5 ${
                 isDarkMode
@@ -448,13 +391,8 @@ export function BuyBox({ product, ...props }) {
             />
             <button
               onClick={() => {
-                console.log(
-                  "[BuyBox] Plus button clicked, current quantity:",
-                  quantity
-                );
                 setQuantity(quantity + 1);
                 setUserChangedQuantity(true);
-                console.log("[BuyBox] userChangedQuantity set to true");
               }}
               className="w-11 h-11 rounded-xl text-white font-semibold text-xl"
               style={{
@@ -465,25 +403,6 @@ export function BuyBox({ product, ...props }) {
             </button>
           </div>
 
-          {/* Smart Quantity Hint */}
-          {(() => {
-            console.log(
-              "[BuyBox Render] userChangedQuantity:",
-              userChangedQuantity
-            );
-            console.log(
-              "[BuyBox Render] mostFrequentQuantity:",
-              mostFrequentQuantity
-            );
-            console.log("[BuyBox Render] current quantity:", quantity);
-            console.log(
-              "[BuyBox Render] Should show hint:",
-              !userChangedQuantity &&
-                mostFrequentQuantity &&
-                mostFrequentQuantity > 1
-            );
-            return null;
-          })()}
           {!userChangedQuantity &&
             mostFrequentQuantity &&
             mostFrequentQuantity > 1 && (
@@ -511,7 +430,6 @@ export function BuyBox({ product, ...props }) {
               </div>
             )}
 
-          {/* Warning Message for Multiple Quantities */}
           {quantity > 1 && (
             <div
               className="mb-6 p-3 rounded-xl flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300"
@@ -548,7 +466,6 @@ export function BuyBox({ product, ...props }) {
             </div>
           )}
 
-          {/* Buttons */}
           <button
             onClick={handleAddToCart}
             disabled={isProcessing}
@@ -594,7 +511,6 @@ export function BuyBox({ product, ...props }) {
         </div>
       </div>
 
-      {/* Payment Modal */}
       {showPaymentModal && (
         <div
           className="fixed inset-0 flex items-start justify-center z-50 p-4 pt-16 overflow-y-auto"
@@ -796,7 +712,6 @@ export function BuyBox({ product, ...props }) {
         </div>
       )}
 
-      {/* Success/Error Modal */}
       {showModal && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"

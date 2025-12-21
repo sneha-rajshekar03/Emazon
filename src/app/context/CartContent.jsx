@@ -38,6 +38,17 @@ export function CartProvider({ children }) {
               data.items?.length || 0,
               "items"
             );
+
+            // 🔍 DEBUG: Log each cart item's product_id
+            data.items?.forEach((item, idx) => {
+              console.log(`📥 [CART CONTEXT] Item ${idx + 1}:`, {
+                product_id: item.product_id,
+                _id: item._id,
+                title: item.title,
+                isMongoDB: /^[0-9a-f]{24}$/i.test(item.product_id),
+              });
+            });
+
             setCart(data.items || []);
           } else {
             const errorData = await res.json();
@@ -111,13 +122,25 @@ export function CartProvider({ children }) {
 
   const addToCart = async (product, quantity = 1) => {
     console.log("➕ [CART CONTEXT] addToCart called");
-    console.log("➕ [CART CONTEXT] Product:", product.product_id);
+    console.log("➕ [CART CONTEXT] Product object:", {
+      product_id: product.product_id,
+      _id: product._id,
+      title: product.title,
+      price: product.price,
+    });
     console.log("➕ [CART CONTEXT] Quantity:", quantity);
     console.log("➕ [CART CONTEXT] User logged in:", !!session?.user?.id);
 
     if (!session?.user?.id) {
       console.error("❌ [CART CONTEXT] User must be logged in to add to cart");
       return;
+    }
+
+    // 🔍 VALIDATION: Ensure we're using product_id, not _id
+    if (!product.product_id) {
+      console.error("❌ [CART CONTEXT] Product missing product_id field!");
+      console.error("❌ [CART CONTEXT] Product object:", product);
+      throw new Error("Product must have a product_id field");
     }
 
     const updatedCart = await new Promise((resolve) => {
@@ -141,10 +164,25 @@ export function CartProvider({ children }) {
           );
         } else {
           console.log("➕ [CART CONTEXT] New item, adding to cart");
-          newCart = [...prevCart, { ...product, quantity }];
+          // ✅ Ensure we're storing the correct product_id
+          newCart = [
+            ...prevCart,
+            {
+              ...product,
+              quantity,
+              product_id: product.product_id, // Explicitly set product_id
+            },
+          ];
         }
 
         console.log("➕ [CART CONTEXT] New cart:", newCart.length, "items");
+        console.log(
+          "➕ [CART CONTEXT] New cart items:",
+          newCart.map((i) => ({
+            product_id: i.product_id,
+            title: i.title,
+          }))
+        );
         resolve(newCart);
         return newCart;
       });
@@ -320,18 +358,50 @@ export function CartProvider({ children }) {
     console.log("📱 [CART CONTEXT] Device type detected:", deviceType);
 
     // Generate transaction ID
-    const transactionId = `TXN-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)
-      .toUpperCase()}`;
+    const transactionId = `TXN${Date.now()}`;
     console.log("🆔 [CART CONTEXT] Transaction ID generated:", transactionId);
 
-    // Map cart items to match schema (price -> unit_price)
-    const formattedItems = cart.map((item) => ({
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.price, // Map price to unit_price
-    }));
+    // 🔍 DEBUG: Log cart items before formatting
+    console.log("🛒 [CART CONTEXT] Cart items before formatting:");
+    cart.forEach((item, idx) => {
+      console.log(`  Item ${idx + 1}:`, {
+        product_id: item.product_id,
+        _id: item._id,
+        title: item.title,
+        price: item.price,
+        quantity: item.quantity,
+        isMongoDB: /^[0-9a-f]{24}$/i.test(item.product_id),
+      });
+    });
+
+    // ✅ Map cart items to match schema - ensure product_id is correct
+    const formattedItems = cart.map((item) => {
+      const formatted = {
+        product_id: item.product_id, // This should be like "B08LYT4Q2X"
+        quantity: item.quantity,
+        unit_price: item.price,
+      };
+
+      console.log("🛒 [CART CONTEXT] Formatted item:", formatted);
+
+      // ⚠️ VALIDATION: Warn if product_id looks like MongoDB _id
+      if (/^[0-9a-f]{24}$/i.test(formatted.product_id)) {
+        console.warn(
+          "⚠️ [CART CONTEXT] WARNING: product_id looks like MongoDB _id!",
+          formatted.product_id
+        );
+        console.warn(
+          "⚠️ [CART CONTEXT] This should be the actual product_id like 'B08LYT4Q2X'"
+        );
+      }
+
+      return formatted;
+    });
+
+    console.log(
+      "🛒 [CART CONTEXT] All formatted items:",
+      JSON.stringify(formattedItems, null, 2)
+    );
 
     try {
       console.log("🛒 [CART CONTEXT] Sending checkout request...");
@@ -341,7 +411,7 @@ export function CartProvider({ children }) {
         body: JSON.stringify({
           transaction_id: transactionId,
           user_id: session.user.id,
-          items: formattedItems, // Use formatted items
+          items: formattedItems,
           payment_method: paymentMethod,
           device_type: deviceType,
         }),
@@ -377,6 +447,7 @@ export function CartProvider({ children }) {
       throw error;
     }
   };
+
   return (
     <CartContext.Provider
       value={{

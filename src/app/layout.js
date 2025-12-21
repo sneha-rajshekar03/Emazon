@@ -16,7 +16,7 @@ export const metadata = {
   icons: {
     icon: [
       { url: "/logo.svg", media: "(prefers-color-scheme: light)" },
-      { url: "/fav.jpeg", media: "(prefers-color-scheme: dark)" },
+      { url: "/fav.png", media: "(prefers-color-scheme: dark)" },
     ],
   },
 };

@@ -119,7 +119,11 @@ const NewsLetter = () => {
           isDarkMode ? "text-gray-100" : "text-gray-800"
         }`}
       >
-        {isReturningUser ? <>Welcome back 👋</> : <>Join our newsletter</>}
+        {isReturningUser ? (
+          <>Welcome back {session?.user?.name.split(" ")[0]} !</>
+        ) : (
+          <>Join our newsletter</>
+        )}
       </h1>
 
       <p

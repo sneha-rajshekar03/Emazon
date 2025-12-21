@@ -19,11 +19,11 @@ export const WelcomeGreeting = ({ isDarkMode, hexColor, userName }) => {
     } else if (hour >= 6 && hour < 8) {
       timeGreeting = `Hey Early Bird! Let's grab our products, ${firstName}`;
     } else if (hour >= 8 && hour < 12) {
-      timeGreeting = `Good Morning, ${firstName}! Welcome to Shop`;
+      timeGreeting = `Good Morning, ${firstName}! Welcome to Emazon`;
     } else if (hour >= 12 && hour < 18) {
       timeGreeting = `Good Afternoon, ${firstName}! Let's shop`;
     } else if (hour >= 18 && hour < 21) {
-      timeGreeting = `Good Evening, ${firstName}! Welcome to Shop`;
+      timeGreeting = `Good Evening, ${firstName}! Welcome to Emazon`;
     } else {
       timeGreeting = `Ready for your after-dinner shopping, ${firstName}?`;
     }

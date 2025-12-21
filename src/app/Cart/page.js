@@ -361,7 +361,8 @@ export default function CartPage() {
               cart.map((item) => (
                 <div
                   key={item.product_id}
-                  className="rounded-2xl p-4 sm:p-6 transition-all hover:shadow-lg"
+                  onClick={() => router.push(`/products/${item.product_id}`)}
+                  className="rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-lg cursor-pointer group"
                   style={{
                     background: isDarkMode
                       ? `linear-gradient(145deg, rgba(31,41,55,0.6) 0%, rgba(31,41,55,0.4) 50%, ${hexColor}10 100%)`

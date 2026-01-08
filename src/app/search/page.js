@@ -39,6 +39,7 @@ const DEFAULT_PROFILE = {
   age: 25,
   occupation: "professional",
   pets: [],
+  priceRange: null, // ✅ Added for price seeding
 };
 
 // ✅ Page-level weak signal tracking
@@ -129,6 +130,7 @@ export default function ProductSearchPage() {
               profileData.occupation || "professional"
             ).toLowerCase(),
             pets: parsedPets,
+            priceRange: profileData.priceRange || null, // ✅ Extract priceRange from profile
           };
 
           console.log("✅ [Search] Profile loaded:", profile);
@@ -234,6 +236,7 @@ export default function ProductSearchPage() {
             age: userProfile.age || 25,
             occupation: userProfile.occupation || "professional",
             pets: userProfile.pets || [],
+            priceRange: userProfile.priceRange || null, // ✅ Pass priceRange to backend
           },
           alphas: [0.25, 0.25, 0.2, 0.3],
         };
@@ -265,8 +268,52 @@ export default function ProductSearchPage() {
             }
           });
 
-          console.log("✅ [Search] Products loaded:", uniqueProductsMap.size);
-          setProducts(Array.from(uniqueProductsMap.values()));
+          let productsArray = Array.from(uniqueProductsMap.values());
+
+          // ✅ Sort by price (ascending) within price range first
+          if (userProfile.priceRange) {
+            // Parse user's price range
+            const priceRangeMatch = userProfile.priceRange.match(/\d+\.?\d*/g);
+            if (priceRangeMatch && priceRangeMatch.length >= 2) {
+              const minPrice = parseFloat(priceRangeMatch[0]);
+              const maxPrice = parseFloat(priceRangeMatch[1]);
+
+              console.log(
+                `💰 [SORT] User price range: ${minPrice} - ${maxPrice}`
+              );
+
+              // Separate products into two groups
+              const inRange = [];
+              const outRange = [];
+
+              productsArray.forEach((product) => {
+                const priceStr = String(product.price || "0").replace(
+                  /[^0-9.]/g,
+                  ""
+                );
+                const price = parseFloat(priceStr) || 0;
+
+                if (price >= minPrice && price <= maxPrice) {
+                  inRange.push({ ...product, numPrice: price });
+                } else {
+                  outRange.push({ ...product, numPrice: price });
+                }
+              });
+
+              // Sort in-range products by price (ascending)
+              inRange.sort((a, b) => a.numPrice - b.numPrice);
+
+              // Combine: in-range first, then out-range
+              productsArray = [...inRange, ...outRange];
+
+              console.log(
+                `✅ [SORT] ${inRange.length} products in range (sorted ascending), ${outRange.length} outside range`
+              );
+            }
+          }
+
+          console.log("✅ [Search] Products loaded:", productsArray.length);
+          setProducts(productsArray);
 
           if (searchQuery && data.personalized) {
             setDisplayText(`Personalized results for "${searchQuery}" ✨`);

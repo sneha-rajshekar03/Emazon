@@ -247,14 +247,17 @@ export default function CartPage() {
         throw new Error("Invalid product data");
       }
 
-      await addToCart(productObject, 1);
+      // ✅ Use the quantity from the product object (suggested/modified quantity)
+      const quantity = productObject.quantity || 1;
+      console.log("[CartPage] Adding with quantity:", quantity);
+
+      await addToCart(productObject, quantity);
       console.log("[CartPage] ✓ Added to cart successfully");
     } catch (error) {
       console.error("[CartPage] ❌ Error adding to cart:", error);
       throw error;
     }
   };
-
   const paymentMethods = [
     {
       id: "upi",

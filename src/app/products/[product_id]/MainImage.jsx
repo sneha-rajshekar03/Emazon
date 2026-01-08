@@ -10,14 +10,21 @@ export function MainImage({
   selectedImage,
   isZoomed,
   onZoomToggle,
+  isVerticalLayout = false,
 }) {
   const { isDarkMode } = useColor();
 
   return (
-    <div className="relative group mt-20">
+    <div
+      className={`relative group mt-20 ${
+        isVerticalLayout ? "max-w-sm mx-auto" : ""
+      }`}
+    >
       {/* Lamp Glow Overlay */}
       <div
-        className="absolute -top-32 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[120px] opacity-40 pointer-events-none transition-all duration-700"
+        className={`absolute -top-32 left-1/2 -translate-x-1/2 rounded-full blur-[120px] opacity-40 pointer-events-none transition-all duration-700 ${
+          isVerticalLayout ? "w-[200px] h-[200px]" : "w-[300px] h-[300px]"
+        }`}
         style={{
           background: isDarkMode
             ? "radial-gradient(circle, rgba(255,255,200,0.25) 0%, transparent 70%)"
@@ -59,8 +66,8 @@ export function MainImage({
         <Image
           src={images[selectedImage]}
           alt={product.title}
-          width={800}
-          height={800}
+          width={isVerticalLayout ? 500 : 800}
+          height={isVerticalLayout ? 500 : 800}
           priority
           unoptimized
           style={{
@@ -90,7 +97,9 @@ export function MainImage({
 
       {/* Subtle reflection on surface below product */}
       <div
-        className="absolute left-1/2 bottom-[-80px] -translate-x-1/2 w-[60%] h-[80px] rounded-full opacity-25 blur-[40px] pointer-events-none"
+        className={`absolute left-1/2 bottom-[-80px] -translate-x-1/2 rounded-full opacity-25 blur-[40px] pointer-events-none ${
+          isVerticalLayout ? "w-[50%] h-[60px]" : "w-[60%] h-[80px]"
+        }`}
         style={{
           background: isDarkMode
             ? "radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 80%)"

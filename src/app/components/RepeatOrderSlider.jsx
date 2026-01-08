@@ -6,6 +6,8 @@ import {
   ChevronRight,
   TrendingUp,
   Sparkles,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { useRepeatSliderState } from "@/app/hooks/useRepeatSliderState";
 import { useColor } from "@/app/context/ColorContext";
@@ -18,17 +20,27 @@ export default function RepeatOrderSlider({
   const { hexColor, isDarkMode } = useColor();
   const [adding, setAdding] = useState(null);
   const [timeLeft, setTimeLeft] = useState(5);
+  const [quantities, setQuantities] = useState({});
 
-  // Use local state management hook
   const {
     visibleSuggestions,
     currentIndex,
     setCurrentIndex,
     dismissSuggestion,
-    removeSuggestion,
   } = useRepeatSliderState(suggestions);
 
-  // DEBUG: Log component state
+  // Initialize quantities when suggestions change
+  useEffect(() => {
+    if (visibleSuggestions && visibleSuggestions.length > 0) {
+      const initialQuantities = {};
+      visibleSuggestions.forEach((suggestion) => {
+        initialQuantities[suggestion.product_id] =
+          suggestion.suggestedQuantity || 1;
+      });
+      setQuantities(initialQuantities);
+    }
+  }, [visibleSuggestions]);
+
   useEffect(() => {
     console.log("\n=== REPEAT ORDER SLIDER STATE ===");
     console.log("[Slider] Props suggestions:", suggestions?.length || 0);
@@ -37,14 +49,10 @@ export default function RepeatOrderSlider({
       visibleSuggestions?.length || 0
     );
     console.log("[Slider] Current index:", currentIndex);
-    console.log(
-      "[Slider] Will render:",
-      visibleSuggestions && visibleSuggestions.length > 0
-    );
+    console.log("[Slider] Quantities:", quantities);
     console.log("================================\n");
-  }, [suggestions, visibleSuggestions, currentIndex]);
+  }, [suggestions, visibleSuggestions, currentIndex, quantities]);
 
-  // Auto-dismiss timer
   useEffect(() => {
     if (!visibleSuggestions || visibleSuggestions.length === 0 || adding)
       return;
@@ -52,7 +60,6 @@ export default function RepeatOrderSlider({
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          // Time's up - dismiss current suggestion
           const currentSuggestion = visibleSuggestions[currentIndex];
           if (currentSuggestion) {
             handleDismiss(currentSuggestion.product_id);
@@ -66,16 +73,22 @@ export default function RepeatOrderSlider({
     return () => clearInterval(timer);
   }, [visibleSuggestions, currentIndex, adding]);
 
-  // Reset timer when switching suggestions
   useEffect(() => {
     setTimeLeft(5);
   }, [currentIndex]);
+
+  const updateQuantity = (productId, delta) => {
+    setQuantities((prev) => ({
+      ...prev,
+      [productId]: Math.max(1, (prev[productId] || 1) + delta),
+    }));
+    setTimeLeft(5); // Reset timer when user interacts
+  };
 
   const handleAddToCart = async (productId) => {
     console.log("[Slider] Adding to cart:", productId);
     setAdding(productId);
     try {
-      // Get the full suggestion with all product details
       const suggestion = visibleSuggestions.find(
         (s) => s.product_id === productId
       );
@@ -84,36 +97,36 @@ export default function RepeatOrderSlider({
         throw new Error("Suggestion not found");
       }
 
-      // Format the product object to match what CartContext expects
+      const quantity =
+        quantities[productId] || suggestion.suggestedQuantity || 1;
+
+      // ✅ Include quantity in product data
       const productForCart = {
         product_id: suggestion.product_id,
         title: suggestion.title,
         category: suggestion.category,
         price: suggestion.price,
         image: suggestion.image,
+        imgUrl: suggestion.image,
+        quantity: quantity, // ✅ Add the selected/suggested quantity
       };
 
       console.log("[Slider] Product formatted for cart:", productForCart);
 
-      // Call the parent's handler with the formatted product
-      console.log("[Slider] Calling parent onAddToCart handler...");
       await onAddToCart(productForCart);
       console.log("[Slider] ✓ Added to cart successfully");
 
-      // Dismiss the suggestion (both local and parent state)
       dismissSuggestion(productId);
 
-      // Notify parent to dismiss from API/storage
       if (onDismiss) {
         try {
           await onDismiss(suggestion);
-          console.log("[Slider] ✓ Parent notified of dismissal after add");
+          console.log("[Slider] ✓ Parent notified of dismissal");
         } catch (error) {
           console.error("[Slider] ❌ Parent dismiss callback failed:", error);
         }
       }
 
-      // Reset timer for next suggestion
       setTimeLeft(5);
     } catch (error) {
       console.error("[Slider] ❌ Failed to add to cart:", error);
@@ -129,10 +142,8 @@ export default function RepeatOrderSlider({
       (s) => s.product_id === productId
     );
 
-    // Dismiss locally first (immediate UI update)
     dismissSuggestion(productId);
 
-    // Call parent callback if provided
     if (onDismiss && suggestion) {
       try {
         await onDismiss(suggestion);
@@ -142,7 +153,6 @@ export default function RepeatOrderSlider({
       }
     }
 
-    // Reset timer for next suggestion
     setTimeLeft(5);
   };
 
@@ -159,28 +169,21 @@ export default function RepeatOrderSlider({
     setTimeLeft(5);
   };
 
-  // Don't render if no visible suggestions
   if (!visibleSuggestions || visibleSuggestions.length === 0) {
     console.log("[Slider] Not rendering - no visible suggestions");
     return null;
   }
 
   const currentSuggestion = visibleSuggestions[currentIndex];
-  console.log(
-    "[Slider] Rendering suggestion",
-    currentIndex + 1,
-    "of",
-    visibleSuggestions.length,
-    ":",
-    currentSuggestion?.product_id
-  );
+  const currentQuantity =
+    quantities[currentSuggestion.product_id] ||
+    currentSuggestion.suggestedQuantity ||
+    1;
 
   return (
     <div
       className="fixed top-20 right-4 z-[60] max-w-[360px]"
-      style={{
-        animation: "slideInFromRight 0.5s ease-out",
-      }}
+      style={{ animation: "slideInFromRight 0.5s ease-out" }}
     >
       <style jsx>{`
         @keyframes slideInFromRight {
@@ -298,6 +301,70 @@ export default function RepeatOrderSlider({
             </div>
           </div>
 
+          {/* Quantity Selector */}
+          <div
+            className={`rounded-lg p-3 mb-3 border ${
+              isDarkMode
+                ? "bg-gray-700/50 border-gray-600"
+                : "bg-gradient-to-br from-purple-50 to-pink-50 border-purple-100"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p
+                  className={`text-xs font-semibold mb-0.5 ${
+                    isDarkMode ? "text-gray-200" : "text-gray-700"
+                  }`}
+                >
+                  Quantity
+                </p>
+                <p
+                  className={`text-xs ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  You usually order {currentSuggestion.suggestedQuantity}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    updateQuantity(currentSuggestion.product_id, -1)
+                  }
+                  disabled={currentQuantity <= 1}
+                  className={`p-1.5 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                    isDarkMode
+                      ? "bg-gray-600 hover:bg-gray-500 text-white"
+                      : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
+                  }`}
+                  aria-label="Decrease quantity"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span
+                  className={`text-lg font-bold min-w-[2rem] text-center ${
+                    isDarkMode ? "text-gray-100" : "text-gray-900"
+                  }`}
+                >
+                  {currentQuantity}
+                </span>
+                <button
+                  onClick={() =>
+                    updateQuantity(currentSuggestion.product_id, 1)
+                  }
+                  className={`p-1.5 rounded-lg transition-all ${
+                    isDarkMode
+                      ? "bg-gray-600 hover:bg-gray-500 text-white"
+                      : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
+                  }`}
+                  aria-label="Increase quantity"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Reorder Info */}
           <div
             className={`rounded-lg p-3 mb-3 border ${
@@ -381,7 +448,9 @@ export default function RepeatOrderSlider({
                   Adding...
                 </span>
               ) : (
-                "Repeat Order"
+                <span>
+                  Add {currentQuantity > 1 ? `${currentQuantity} ` : ""}to Cart
+                </span>
               )}
             </button>
             <button
@@ -395,6 +464,22 @@ export default function RepeatOrderSlider({
               Not now
             </button>
           </div>
+
+          {/* Total Price Display */}
+          {currentQuantity > 1 && (
+            <div className="mt-3 text-center">
+              <p
+                className={`text-xs ${
+                  isDarkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                Total:{" "}
+                <span className="font-bold" style={{ color: hexColor }}>
+                  ${(currentSuggestion.price * currentQuantity).toFixed(2)}
+                </span>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Navigation */}
@@ -452,7 +537,7 @@ export default function RepeatOrderSlider({
           </div>
         )}
 
-        {/* Subtle footer */}
+        {/* Footer */}
         <div className="mt-3 text-center">
           <p
             className={`text-xs ${

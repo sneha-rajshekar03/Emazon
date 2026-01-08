@@ -72,12 +72,20 @@ function analyzeReorderPatterns(purchases) {
     purchaseHistory.sort((a, b) => a.date - b.date);
 
     const intervals = [];
+    const quantities = [];
+
     for (let i = 1; i < purchaseHistory.length; i++) {
       const daysDiff = Math.floor(
         (purchaseHistory[i].date - purchaseHistory[i - 1].date) / 86400000
       );
       intervals.push(daysDiff);
+      quantities.push(purchaseHistory[i].quantity);
     }
+
+    // Calculate average quantity
+    const avgQuantity = Math.round(
+      quantities.reduce((a, b) => a + b, 0) / quantities.length
+    );
 
     const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
 
@@ -91,10 +99,13 @@ function analyzeReorderPatterns(purchases) {
       patterns.push({
         product_id: productId,
         avgReorderInterval: Math.round(avgInterval),
+        avgQuantity: avgQuantity, // ✅ Added typical quantity
         consistency,
         lastPurchaseDate: purchaseHistory[purchaseHistory.length - 1].date,
+        lastQuantity: purchaseHistory[purchaseHistory.length - 1].quantity, // ✅ Added last quantity
         purchaseCount: purchaseHistory.length,
         intervals,
+        quantities, // ✅ Keep quantity history for reference
       });
     }
   });
@@ -128,6 +139,7 @@ function getEligibleReminders(
     console.log(`[Eligibility Check] ${pattern.product_id}:`, {
       daysSinceLastPurchase,
       avgInterval: pattern.avgReorderInterval,
+      avgQuantity: pattern.avgQuantity,
       daysUntilExpected,
       expectedNextDate: expectedNextDate.toISOString(),
       inWindow: daysUntilExpected >= -3 && daysUntilExpected <= 3,
@@ -259,6 +271,7 @@ export async function GET(request) {
 
     // ============================================
     // FETCH PRODUCT DETAILS - HANDLES BOTH _id AND product_id
+    // ✅ FIXED: Now fetches imgUrl instead of image
     // ============================================
     const productIds = prioritized.map((p) => p.product_id);
     console.log("[API] Looking for products:", productIds);
@@ -267,7 +280,7 @@ export async function GET(request) {
     let products = await Product.find({
       product_id: { $in: productIds },
     })
-      .select("product_id title price category image")
+      .select("product_id title price category imgUrl")
       .lean();
 
     console.log("[API] Found by product_id field:", products.length);
@@ -286,7 +299,7 @@ export async function GET(request) {
         products = await Product.find({
           _id: { $in: validIds },
         })
-          .select("_id title price category image")
+          .select("_id title price category imgUrl")
           .lean();
 
         console.log("[API] Found by _id:", products.length);
@@ -297,7 +310,7 @@ export async function GET(request) {
           title: p.title,
           price: p.price,
           category: p.category,
-          image: p.image,
+          imgUrl: p.imgUrl,
         }));
       }
     }
@@ -330,16 +343,22 @@ export async function GET(request) {
           "| Raw price:",
           product.price,
           "| Parsed price:",
-          price
+          price,
+          "| Avg Quantity:",
+          p.avgQuantity,
+          "| Image URL:",
+          product.imgUrl
         );
 
         return {
           product_id: p.product_id,
           title: product.title || "Unknown Product",
-          price: price, // ← Guaranteed to be a number
+          price: price,
           category: product.category || "Uncategorized",
-          image: product.image || null,
+          image: product.imgUrl || null,
           avgReorderInterval: p.avgReorderInterval,
+          suggestedQuantity: p.avgQuantity, // ✅ Added suggested quantity
+          lastQuantity: p.lastQuantity, // ✅ Added last ordered quantity
           confidence: p.confidence,
           expectedNextDate: p.expectedNextDate,
           lastPurchasedDays: Math.floor(
@@ -354,7 +373,9 @@ export async function GET(request) {
       "[API] ✓ Returning",
       suggestions.length,
       "suggestions:",
-      suggestions.map((s) => `${s.product_id} ($${s.price})`)
+      suggestions.map(
+        (s) => `${s.product_id} ($${s.price} x${s.suggestedQuantity})`
+      )
     );
     console.log("=== REPEAT SUGGESTIONS API END ===\n");
 

@@ -516,10 +516,17 @@ export function BuyBox({ product, ...props }) {
           className="fixed inset-0 flex items-start justify-center z-50 p-4 pt-16 overflow-y-auto"
           style={{
             backgroundColor: isDarkMode
-              ? "rgba(0, 0, 0, 0.7)"
-              : `${hexColor}40`,
-            backdropFilter: "blur(12px) saturate(150%)",
-            WebkitBackdropFilter: "blur(12px) saturate(150%)",
+              ? "rgba(0, 0, 0, 0.8)"
+              : "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(16px) saturate(150%)",
+            WebkitBackdropFilter: "blur(16px) saturate(150%)",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: "100vw",
+            height: "100vh",
           }}
         >
           <div

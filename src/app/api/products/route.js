@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { connectToDB } from "@/app/utils/database";
 import Product from "@/app/models/Product";
+
 const ML_API_URL = process.env.ML_API_URL || "http://localhost:8000";
 
 function deduplicateProducts(products) {
@@ -59,45 +60,122 @@ export async function GET(request) {
 
     console.log("🔍 Fetching product IDs from ML model:", apiUrl);
 
-    // Step 1: Get product IDs and scores from ML model
-    const mlResponse = await fetch(apiUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    let mlData;
+    try {
+      // Step 1: Get product IDs and scores from ML model
+      const mlResponse = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-    if (!mlResponse.ok) {
-      const errorData = await mlResponse.json().catch(() => ({}));
-      console.error("ML API error:", errorData);
-      throw new Error(
-        `ML API returned ${mlResponse.status}: ${
-          errorData.detail || "Unknown error"
-        }`
-      );
-    }
+      console.log("📥 ML API response status:", mlResponse.status);
 
-    const mlData = await mlResponse.json();
+      if (!mlResponse.ok) {
+        console.error("⚠️ ML API returned error status:", mlResponse.status);
+        throw new Error(`ML API returned ${mlResponse.status}`);
+      }
 
-    if (!mlData.products || mlData.products.length === 0) {
+      mlData = await mlResponse.json();
+      console.log("✅ ML API response received:", {
+        hasProducts: !!mlData.products,
+        productCount: mlData.products?.length || 0,
+      });
+    } catch (mlError) {
+      console.error("⚠️ ML API failed, using fallback:", mlError.message);
+      // Fall back to MongoDB without ML scores
+      await connectToDB();
+
+      let products;
+      if (category) {
+        products = await Product.find({
+          category_name: { $regex: category, $options: "i" },
+        })
+          .limit(parseInt(limit))
+          .lean();
+      } else if (query) {
+        products = await Product.find({
+          $or: [
+            { title: { $regex: query, $options: "i" } },
+            { category_name: { $regex: query, $options: "i" } },
+          ],
+        })
+          .limit(parseInt(limit))
+          .lean();
+      } else {
+        products = await Product.find({}).limit(parseInt(limit)).lean();
+      }
+
+      // Convert _id to string
+      products = products.map((p) => ({
+        ...p,
+        _id: p._id.toString(),
+      }));
+
+      console.log(`🔄 Fallback returned ${products.length} products`);
+
       return NextResponse.json({
         success: true,
-        products: [],
-        total: 0,
+        products: products,
+        total: products.length,
         personalized: false,
-        message: "No products found",
+        fallback: true,
+        message: "Using database fallback (ML model unavailable)",
+      });
+    }
+
+    // Check if ML returned empty results
+    if (!mlData.products || mlData.products.length === 0) {
+      console.log("⚠️ ML returned no products, using fallback");
+
+      await connectToDB();
+      let products;
+
+      if (category) {
+        products = await Product.find({
+          category_name: { $regex: category, $options: "i" },
+        })
+          .limit(parseInt(limit))
+          .lean();
+      } else if (query) {
+        products = await Product.find({
+          $or: [
+            { title: { $regex: query, $options: "i" } },
+            { category_name: { $regex: query, $options: "i" } },
+          ],
+        })
+          .limit(parseInt(limit))
+          .lean();
+      } else {
+        products = await Product.find({}).limit(parseInt(limit)).lean();
+      }
+
+      products = products.map((p) => ({
+        ...p,
+        _id: p._id.toString(),
+      }));
+
+      return NextResponse.json({
+        success: true,
+        products: products,
+        total: products.length,
+        personalized: false,
+        fallback: true,
+        message: "No ML recommendations, showing general results",
       });
     }
 
     console.log(`✅ ML model returned ${mlData.products.length} product IDs`);
 
     // Step 2: Extract product IDs from ML results
-    const productIds = mlData.products.map((p) => p.product_id);
+    const productIds = mlData.products.map((p) => p.product_id || p.id);
 
     // Create a map of product_id -> ML scores for later merging
     const mlScoresMap = {};
     mlData.products.forEach((p) => {
-      mlScoresMap[p.product_id] = {
+      const id = p.product_id || p.id;
+      mlScoresMap[id] = {
         relevance_score:
           p.relevance_score ||
           p.recommendation_score ||
@@ -165,11 +243,11 @@ export async function GET(request) {
       query: query,
     });
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error("❌ Error fetching products:", error);
 
-    // Fallback to MongoDB-only if ML model fails
+    // Ultimate fallback to MongoDB-only if everything fails
     try {
-      console.log("⚠️ ML model failed, falling back to MongoDB only...");
+      console.log("⚠️ Critical error, using final fallback...");
       await connectToDB();
 
       const { searchParams } = new URL(request.url);
@@ -199,10 +277,10 @@ export async function GET(request) {
         total: products.length,
         personalized: false,
         fallback: true,
-        message: "Using database fallback (ML model unavailable)",
+        message: "Using database fallback (critical error)",
       });
     } catch (fallbackError) {
-      console.error("Fallback also failed:", fallbackError);
+      console.error("❌ Fallback also failed:", fallbackError);
       return NextResponse.json(
         {
           success: false,
@@ -224,19 +302,32 @@ export async function POST(request) {
     const {
       user_id,
       query,
+      preferred_category,
       seed_item_idx,
       top_k = 20,
       user_profile,
       alphas = [0.25, 0.25, 0.2, 0.3],
     } = body;
 
+    // ✅ CRITICAL: Determine if this is a homepage request
+    const isHomepage = !query && !!preferred_category;
+
+    console.log("🎯 Request mode detection:", {
+      query: query,
+      preferred_category: preferred_category,
+      is_homepage: isHomepage,
+      user_gender: user_profile?.gender,
+      user_pets: user_profile?.pets,
+    });
+
     // Use the main recommend endpoint with full profile
     const apiUrl = `${ML_API_URL}/recommend`;
 
-    // Match the exact schema expected by ML API
+    // ✅ CRITICAL: Include is_homepage flag in payload
     const requestBody = {
-      user_id: user_id || "guest_user", // Send string instead of null
+      user_id: user_id || "guest_user",
       query: query || null,
+      preferred_category: preferred_category || null,
       seed_item_idx: seed_item_idx !== undefined ? seed_item_idx : null,
       top_k: top_k,
       user_profile: {
@@ -246,65 +337,81 @@ export async function POST(request) {
         pets: user_profile?.pets || [],
       },
       alphas: alphas,
+      is_homepage: isHomepage, // ✅ ADD THIS LINE
     };
 
     console.log("🎯 Sending to ML API:", apiUrl);
     console.log("📤 Request payload:", JSON.stringify(requestBody, null, 2));
 
-    // Step 1: Get recommendations from ML model
-    const mlResponse = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+    let mlData;
+    try {
+      // Step 1: Get recommendations from ML model
+      const mlResponse = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
 
-    console.log("📥 ML API response status:", mlResponse.status);
-    console.log("📥 ML API response OK:", mlResponse.ok);
+      console.log("📥 ML API response status:", mlResponse.status);
+      console.log("📥 ML API response OK:", mlResponse.ok);
 
-    if (!mlResponse.ok) {
-      const errorText = await mlResponse.text();
-      console.error("❌ ML API error response:", errorText);
-
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { detail: errorText };
+      if (!mlResponse.ok) {
+        const errorText = await mlResponse.text();
+        console.error("❌ ML API error response:", errorText);
+        throw new Error(`ML API returned ${mlResponse.status}`);
       }
 
-      console.error("❌ ML API error data:", errorData);
+      mlData = await mlResponse.json();
+      console.log("✅ ML API response received");
+      console.log("📊 ML response structure:", {
+        hasRecommendations: !!mlData.recommendations,
+        recommendationsCount: mlData.recommendations?.length || 0,
+        hasUserPreferences: !!mlData.user_preferences,
+      });
+    } catch (mlError) {
+      console.error("⚠️ ML API failed:", mlError.message);
 
-      // Return more detailed error
-      return NextResponse.json(
-        {
-          success: false,
-          error: `ML API returned ${mlResponse.status}`,
-          details: errorData,
-          products: [],
-        },
-        { status: 500 }
-      );
-    }
+      // Fallback for POST requests
+      await connectToDB();
+      const products = await Product.find({}).limit(top_k).lean();
 
-    const mlData = await mlResponse.json();
-    console.log("✅ ML API response received");
-    console.log("📊 ML response structure:", {
-      hasRecommendations: !!mlData.recommendations,
-      recommendationsCount: mlData.recommendations?.length || 0,
-      hasUserPreferences: !!mlData.user_preferences,
-    });
+      const fallbackProducts = products.map((p) => ({
+        ...p,
+        _id: p._id.toString(),
+      }));
 
-    if (!mlData.recommendations || mlData.recommendations.length === 0) {
-      console.log("⚠️ No recommendations in ML response");
       return NextResponse.json({
         success: true,
-        products: [],
-        total: 0,
+        products: fallbackProducts,
+        total: fallbackProducts.length,
+        user_preferences: null,
+        personalized: false,
+        fallback: true,
+        message: "Using database fallback for personalized request",
+      });
+    }
+
+    if (!mlData.recommendations || mlData.recommendations.length === 0) {
+      console.log("⚠️ No recommendations in ML response, using fallback");
+
+      await connectToDB();
+      const products = await Product.find({}).limit(top_k).lean();
+
+      const fallbackProducts = products.map((p) => ({
+        ...p,
+        _id: p._id.toString(),
+      }));
+
+      return NextResponse.json({
+        success: true,
+        products: fallbackProducts,
+        total: fallbackProducts.length,
         user_preferences: mlData.user_preferences,
-        personalized: true,
-        message: "No recommendations found",
+        personalized: false,
+        fallback: true,
+        message: "No ML recommendations, showing general results",
       });
     }
 
@@ -385,14 +492,36 @@ export async function POST(request) {
     console.error("❌ Error fetching personalized recommendations:", error);
     console.error("❌ Error stack:", error.stack);
 
-    return NextResponse.json(
-      {
-        success: false,
+    // Final fallback
+    try {
+      await connectToDB();
+      const products = await Product.find({}).limit(20).lean();
+
+      const fallbackProducts = products.map((p) => ({
+        ...p,
+        _id: p._id.toString(),
+      }));
+
+      return NextResponse.json({
+        success: true,
+        products: fallbackProducts,
+        total: fallbackProducts.length,
+        user_preferences: null,
+        personalized: false,
+        fallback: true,
         error: error.message,
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
-        products: [],
-      },
-      { status: 500 }
-    );
+      });
+    } catch (fallbackError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+          stack:
+            process.env.NODE_ENV === "development" ? error.stack : undefined,
+          products: [],
+        },
+        { status: 500 }
+      );
+    }
   }
 }

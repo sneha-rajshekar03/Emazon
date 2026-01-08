@@ -70,17 +70,36 @@ export const authOptions = {
   ],
 
   callbacks: {
-    async session({ session }) {
-      await connectToDB();
-      const dbUser = await User.findOne({ email: session.user.email });
+    async jwt({ token, user, account }) {
+      if (user) {
+        await connectToDB();
+        const dbUser = await User.findOne({ email: user.email });
 
-      session.user.id = dbUser._id.toString();
-      session.user.firebaseUid = dbUser.firebaseUid;
+        token.id = dbUser._id.toString();
+        token.role = dbUser.role || "user";
+        token.firebaseUid = dbUser.firebaseUid;
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      session.user.id = token.id;
+      session.user.role = token.role;
+      session.user.firebaseUid = token.firebaseUid;
       return session;
+    },
+
+    async redirect({ url, baseUrl }) {
+      // Check if redirecting after sign-in
+      if (url.startsWith(baseUrl)) return url;
+
+      // Default redirect
+      return baseUrl;
     },
 
     async signIn({ account, profile, user }) {
       await connectToDB();
+
       if (account?.provider === "google") {
         const existing = await User.findOne({ email: profile.email });
 
@@ -90,14 +109,23 @@ export const authOptions = {
             username: profile.name.replace(/\s+/g, "").toLowerCase(),
             googleId: profile.sub,
             image: profile.picture,
+            role: "user",
           });
+        } else {
+          // Attach role to user object for redirect logic
+          user.role = existing.role;
         }
+      }
+
+      // For credentials provider, fetch role
+      if (account?.provider === "credentials") {
+        const dbUser = await User.findOne({ email: user.email });
+        user.role = dbUser?.role || "user";
       }
 
       return true;
     },
   },
-
   pages: {
     signIn: "/account",
     error: "/account",

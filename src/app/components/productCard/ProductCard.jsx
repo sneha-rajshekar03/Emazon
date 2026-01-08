@@ -1,84 +1,129 @@
-// /app/components/productCard/ProductCard.jsx
+// app/components/productCard/ProductCard.jsx
 "use client";
+
+import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useColor } from "@/app/context/ColorContext";
 
-// 🔹 Record interaction when user clicks on product
-async function recordProductClick(product) {
+// ✅ REMOVED: Weak signal tracking (moved to page level)
+// ✅ ONLY handles STRONG signals (clicks)
+
+async function recordProductClick({ userId, product }) {
+  const productId = product.product_id || product._id || product.id;
+  const title = product.title || "Untitled Product";
+
+  const cleanValue = (val) => {
+    if (!val || val === "N/A" || val === "" || val === 0 || val === "0") {
+      return null;
+    }
+    return String(val);
+  };
+
+  const payload = {
+    user_id: userId || "guest_user",
+    product_id: String(productId),
+    title: String(title),
+    category: cleanValue(product.category_name || product.category),
+    price: cleanValue(product.price),
+    stars: cleanValue(product.stars),
+    seller_name: cleanValue(product.seller_name),
+    weak_signal: false, // ✅ ALWAYS false for clicks
+  };
+
+  console.log("🟣 [CLICK] Sending strong signal:", {
+    user_id: payload.user_id,
+    product_id: payload.product_id,
+    category: payload.category,
+  });
+
   try {
-    await fetch("/api/interaction", {
+    const res = await fetch("/api/product-interaction", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        product_id: product.product_id || product._id || product.id,
-        title: product.title,
-        category: product.category_name || product.category,
-        price: product.price,
-        stars: product.stars,
-        seller_name: product.seller_name,
-        action: "click",
-      }),
+      body: JSON.stringify(payload),
     });
-  } catch (error) {
-    console.error("Error recording product click:", error);
-    // Don't block navigation if tracking fails
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("🔴 [CLICK] Failed:", {
+        status: res.status,
+        data,
+      });
+    } else {
+      console.log("✅ [CLICK] Recorded:", {
+        total_clicks: data.total_clicks,
+        status: data.status,
+      });
+    }
+  } catch (err) {
+    console.error("🔴 [CLICK] Error:", err);
   }
 }
 
 export default function ProductCard({ product, onProductClick }) {
   const { hexColor, isDarkMode } = useColor();
+  const { data: session } = useSession();
+  const clickGuardRef = useRef(false);
 
-  // Ensure we have a valid product ID
+  const userId = session?.user?.id || session?.user?._id || "guest_user";
   const productId = product.product_id || product._id || product.id;
 
-  // Don't render if no valid ID
-  const validProductId =
-    productId || product.product_id || product._id || product.id;
-
-  if (!validProductId) {
-    console.error("Invalid product ID:", product);
+  if (!productId) {
+    console.warn("⚠️ [ProductCard] Missing productId");
     return null;
   }
 
-  // Don't render products with price of "0", 0, or invalid prices
-  if (
-    !product.price ||
-    product.price === "0" ||
-    product.price === 0 ||
-    product.price === "N/A"
-  ) {
+  const price = product.price;
+  const isPriceValid =
+    price &&
+    price !== "N/A" &&
+    price !== "" &&
+    price !== 0 &&
+    price !== "0" &&
+    price !== "0.0";
+
+  if (!isPriceValid) {
+    console.warn("⚠️ [ProductCard] Invalid price, skipping");
     return null;
   }
 
   const handleClick = () => {
-    // Record interaction in Python API for preference learning
-    recordProductClick(product);
+    if (clickGuardRef.current) {
+      console.warn("⚠️ [CLICK] Duplicate ignored");
+      return;
+    }
 
-    // Track interaction with parent component callback (if provided)
+    clickGuardRef.current = true;
+
+    console.log("🔵 [CLICK] Product clicked", {
+      userId,
+      productId,
+      title: product.title,
+    });
+
+    // Record strong signal
+    recordProductClick({ userId, product });
+
+    // Parent callback
     if (onProductClick) {
       onProductClick(product);
     }
+
+    setTimeout(() => {
+      clickGuardRef.current = false;
+    }, 1000);
   };
 
-  // Calculate match score from various sources
   const getMatchScore = () => {
-    // Priority: preference_score > final_score > ml_scores
-    if (
-      product.preference_score !== undefined &&
-      product.preference_score > 0
-    ) {
-      return Math.round(product.preference_score * 100);
-    }
-    if (product.final_score !== undefined && product.final_score > 0) {
-      return Math.round(product.final_score * 100);
-    }
     if (product.ml_scores) {
-      return Math.round(
-        (product.ml_scores.recommendation_score ||
-          product.ml_scores.relevance_score ||
-          0) * 100
-      );
+      const score =
+        product.ml_scores.final_score ||
+        product.ml_scores.recommendation_score ||
+        0;
+      return Math.round(score * 100);
     }
     return null;
   };
@@ -87,50 +132,31 @@ export default function ProductCard({ product, onProductClick }) {
 
   return (
     <Link
-      href={`/products/${validProductId}`}
+      href={`/products/${productId}`}
       prefetch={false}
       onClick={handleClick}
-      scroll={true}
+      scroll
     >
       <div
         className="relative rounded-3xl p-6 border transition-all duration-500 cursor-pointer
-       hover:-translate-y-[4px] flex flex-col justify-between min-h-[420px]"
+                   hover:-translate-y-[4px] flex flex-col justify-between min-h-[420px]"
         style={{
           background: isDarkMode
-            ? "rgba(45, 45, 45, 0.6)"
-            : "rgba(255, 255, 255, 0.6)",
+            ? "rgba(45,45,45,0.6)"
+            : "rgba(255,255,255,0.6)",
           backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
           border: isDarkMode
-            ? "1px solid rgba(255, 255, 255, 0.1)"
-            : "1px solid rgba(255, 255, 255, 0.6)",
-          borderRadius: "28px",
+            ? "1px solid rgba(255,255,255,0.1)"
+            : "1px solid rgba(255,255,255,0.6)",
           boxShadow: isDarkMode
-            ? `0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.05)`
-            : `0 4px 20px rgba(0, 0, 0, 0.05), inset 0 0 10px rgba(255, 255, 255, 0.3)`,
-          position: "relative",
-          overflow: "hidden",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = isDarkMode
-            ? `0 15px 30px rgba(0, 0, 0, 0.5)`
-            : `0 15px 30px rgba(0, 0, 0, 0.08)`;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = isDarkMode
-            ? `0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.05)`
-            : `0 4px 20px rgba(0, 0, 0, 0.05), inset 0 0 10px rgba(255, 255, 255, 0.3)`;
+            ? "0 4px 20px rgba(0,0,0,0.3)"
+            : "0 4px 20px rgba(0,0,0,0.05)",
         }}
       >
-        {/* Match Score Badge - Shows personalization strength */}
-        {matchScore > 0 && (
+        {matchScore !== null && (
           <div
-            className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full text-xs font-semibold"
+            className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold"
             style={{
-              background: isDarkMode
-                ? "rgba(255, 255, 255, 0.1)"
-                : "rgba(0, 0, 0, 0.05)",
-              backdropFilter: "blur(8px)",
               color: hexColor,
               border: `1px solid ${hexColor}40`,
             }}
@@ -139,141 +165,32 @@ export default function ProductCard({ product, onProductClick }) {
           </div>
         )}
 
-        {/* Hybrid Recommender Badge - Shows if from hybrid system */}
-        {(product.final_score || product.preference_score) && (
-          <div
-            className="absolute top-4 left-4 z-20 px-2 py-1 rounded-full text-[10px] font-medium"
-            style={{
-              background: isDarkMode
-                ? "rgba(147, 51, 234, 0.2)"
-                : "rgba(147, 51, 234, 0.1)",
-              backdropFilter: "blur(8px)",
-              color: isDarkMode ? "#c084fc" : "#9333ea",
-              border: `1px solid ${isDarkMode ? "#9333ea40" : "#9333ea20"}`,
-            }}
-          >
+        {(product.final_score || product.ml_scores) && (
+          <div className="absolute top-4 left-4 text-[10px] font-medium text-purple-500">
             ✨ AI Picked
           </div>
         )}
 
-        {/* Color tint in bottom-right corner */}
-        <div
-          style={{
-            content: '""',
-            position: "absolute",
-            bottom: "-10%",
-            right: "-10%",
-            width: "45%",
-            height: "45%",
-            background: `radial-gradient(circle at bottom right, ${hexColor}55 0%, transparent 75%)`,
-            pointerEvents: "none",
-            zIndex: 0,
-            filter: "blur(12px)",
-          }}
-        />
-
-        {/* Product Image */}
-        <div className="relative w-full h-48 flex justify-center items-center z-10">
-          {product.imgUrl && product.imgUrl !== "N/A" ? (
+        <div className="relative w-full h-48 flex items-center justify-center">
+          {product.imgUrl ? (
             <Image
               src={product.imgUrl}
               alt={product.title || "Product"}
               fill
-              className="object-contain p-4 scale-95 transition-transform duration-500 hover:scale-100"
+              className="object-contain p-4"
               unoptimized
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-200 rounded">
-              <span className="text-gray-400">No Image</span>
-            </div>
+            <div className="text-gray-400">No Image</div>
           )}
         </div>
 
-        {/* Product Info */}
-        <div className="mt-4 text-center space-y-2 z-10">
-          <h2
-            className={`font-semibold text-lg tracking-tight line-clamp-2 ${
-              isDarkMode ? "text-gray-100" : "text-gray-800"
-            }`}
-          >
-            {product.title || "Untitled Product"}
-          </h2>
-
-          {/* Rating */}
-          {product.stars && product.stars !== "N/A" && (
-            <div className="flex items-center justify-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => {
-                const rating = parseFloat(product.stars);
-                const filled = star <= Math.floor(rating);
-                const partial = star === Math.ceil(rating) && rating % 1 !== 0;
-
-                return (
-                  <span
-                    key={star}
-                    className="relative inline-block"
-                    style={{ fontSize: "16px" }}
-                  >
-                    {filled ? (
-                      <span className="text-yellow-500">★</span>
-                    ) : partial ? (
-                      <>
-                        <span
-                          className={
-                            isDarkMode ? "text-gray-600" : "text-gray-300"
-                          }
-                        >
-                          ★
-                        </span>
-                        <span
-                          className="absolute top-0 left-0 text-yellow-500 overflow-hidden"
-                          style={{ width: `${(rating % 1) * 100}%` }}
-                        >
-                          ★
-                        </span>
-                      </>
-                    ) : (
-                      <span
-                        className={
-                          isDarkMode ? "text-gray-600" : "text-gray-300"
-                        }
-                      >
-                        ★
-                      </span>
-                    )}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Price */}
-          <p
-            className={`text-[1.1rem] font-medium ${
-              isDarkMode ? "text-gray-200" : "text-gray-900"
-            }`}
-          >
-            ${product.price}
-          </p>
-
-          {/* Category */}
+        <div className="text-center mt-4 space-y-2">
+          <h2 className="font-semibold line-clamp-2">{product.title}</h2>
+          <p className="font-medium">${product.price}</p>
           {product.category_name && (
-            <p
-              className={`text-xs ${
-                isDarkMode ? "text-gray-500" : "text-gray-400"
-              }`}
-            >
-              {product.category_name}
-            </p>
+            <p className="text-xs text-gray-400">{product.category_name}</p>
           )}
-
-          {/* Delivery info */}
-          <p
-            className={`text-sm ${
-              isDarkMode ? "text-gray-500" : "text-gray-400"
-            }`}
-          >
-            Free delivery · Fast shipping
-          </p>
         </div>
       </div>
     </Link>

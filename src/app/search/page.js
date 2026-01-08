@@ -1,12 +1,11 @@
+// app/search/page.jsx
 "use client";
-import React, { useState, useEffect, useMemo, useCallback } from "react"; // Added useMemo, useCallback
-import { Loader2 } from "lucide-react";
-import { useSearchParams, useRouter } from "next/navigation";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Loader2, AlertCircle } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import ProductCard from "@/app/components/productCard/ProductCard";
-import { AlertCircle } from "lucide-react";
 
-// Helper functions and constants moved outside the component to prevent re-creation
 const getUserIdFromSession = (session) =>
   session?.users?.id ||
   session?.users?._id ||
@@ -14,14 +13,23 @@ const getUserIdFromSession = (session) =>
   session?.user?._id;
 
 const parsePets = (data) => {
+  if (data.petType && data.petType !== "" && data.petType !== null) {
+    const petType = String(data.petType).toLowerCase();
+    if (petType !== "no" && petType !== "none") {
+      return [petType];
+    }
+  }
   if (data.pets && data.pets !== "" && data.pets !== null) {
     if (Array.isArray(data.pets)) {
-      return data.pets.filter((pet) => pet && pet !== "");
+      return data.pets
+        .filter((pet) => pet && pet !== "")
+        .map((pet) => String(pet).toLowerCase())
+        .filter((pet) => pet !== "yes" && pet !== "no" && pet !== "none");
     }
-    return [data.pets];
-  }
-  if (data.petType && data.petType !== "" && data.petType !== null) {
-    return [data.petType];
+    const pet = String(data.pets).toLowerCase();
+    if (pet !== "yes" && pet !== "no" && pet !== "none" && pet !== "") {
+      return [pet];
+    }
   }
   return [];
 };
@@ -31,41 +39,72 @@ const DEFAULT_PROFILE = {
   age: 25,
   occupation: "professional",
   pets: [],
-  hobbies: [],
-  region: "Urban",
-  location: "",
 };
+
+// ✅ Page-level weak signal tracking
+async function recordCategoryView(userId, category) {
+  if (!userId || userId === "guest_user" || !category) {
+    return;
+  }
+
+  try {
+    console.log("🟦 [SEARCH] Recording weak signal:", category);
+
+    await fetch("/api/product-interaction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        product_id: "__CATEGORY_VIEW__",
+        title: `Category View: ${category}`,
+        category: category,
+        price: null,
+        stars: null,
+        seller_name: null,
+        weak_signal: true,
+      }),
+    });
+  } catch (err) {
+    console.error("❌ [SEARCH] Weak signal failed:", err);
+  }
+}
 
 export default function ProductSearchPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { data: session } = useSession();
   const urlCategory = searchParams.get("category");
   const searchQuery = searchParams.get("q");
 
-  // State initialization (minimal changes needed here)
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [userColor, setUserColor] = useState("#ffffff");
   const [error, setError] = useState(null);
   const [displayText, setDisplayText] = useState("");
-  const [userProfile, setUserProfile] = useState(null); // userId state removed
+  const [userProfile, setUserProfile] = useState(null);
 
-  // 1. Use useMemo for stable userId: Prevents unnecessary state updates and ensures stable dependency.
   const userId = useMemo(() => getUserIdFromSession(session), [session]);
 
-  // 2. Consolidated User Data Fetching: Combines all user-related API calls (profile/color).
+  const isCategoryView = useMemo(() => {
+    return Boolean(urlCategory && !searchQuery);
+  }, [urlCategory, searchQuery]);
+
+  // ✅ Refs for guarding weak signals
+  const categoryViewRecordedRef = useRef(new Set());
+  const isRecordingRef = useRef(false);
+
+  console.log("🔍 [Search] Detection:", {
+    urlCategory,
+    searchQuery,
+    isCategoryView,
+  });
+
   useEffect(() => {
     if (session === undefined) {
       return;
     }
 
-    // Function defined inside useEffect or use useCallback if needed elsewhere
     async function fetchUserData() {
-      // setUserId(userIdFromSession); -> Removed, using memoized userId
-
       try {
-        // Parallel fetching of Profile and Color
         const profileUrl = userId
           ? `/api/profile?userId=${userId}`
           : "/api/profile";
@@ -78,7 +117,6 @@ export default function ProductSearchPage() {
           fetch("/api/userColor"),
         ]);
 
-        // Process Profile Data
         if (profileRes.ok) {
           const profileResponse = await profileRes.json();
           const profileData = profileResponse.data || profileResponse;
@@ -91,28 +129,20 @@ export default function ProductSearchPage() {
               profileData.occupation || "professional"
             ).toLowerCase(),
             pets: parsedPets,
-            hobbies: Array.isArray(profileData.hobbies)
-              ? profileData.hobbies
-              : [],
-            region: profileData.region || "Urban",
-            location: profileData.location || "",
           };
+
+          console.log("✅ [Search] Profile loaded:", profile);
           setUserProfile(profile);
         } else {
           setUserProfile(DEFAULT_PROFILE);
         }
 
-        // Process User Color
         if (colorRes.ok) {
           const body = await colorRes.json();
           const colorFromApi =
             typeof body === "string"
               ? body
-              : body?.color ||
-                body?.value ||
-                body?.themeColor?.value ||
-                body?.themeColor ||
-                null;
+              : body?.color || body?.value || body?.themeColor?.value || null;
           setUserColor(colorFromApi || "#ffffff");
         }
       } catch (err) {
@@ -123,60 +153,80 @@ export default function ProductSearchPage() {
     }
 
     fetchUserData();
-  }, [session, userId]); // Dependency on userId (from useMemo)
+  }, [session, userId]);
 
-  // 3. Main effect to fetch ML-powered search results
   useEffect(() => {
-    // Wait until we have user profile - this is the critical dependency
     if (!userProfile) {
       return;
     }
 
-    const abortController = new AbortController(); // Use AbortController for cleanup
+    const abortController = new AbortController();
 
     async function handleSearch() {
-      // 3A. Initial state reset
       setLoading(true);
       setError(null);
       setProducts([]);
 
       let queryToUse = null;
       let displayQuery = null;
+      let categoryToUse = null;
 
       try {
-        // 3B. Determine Search Query
         if (searchQuery) {
           queryToUse = searchQuery;
           displayQuery = searchQuery;
+          categoryToUse = null;
+          console.log("🔎 [Search] Text search mode:", searchQuery);
         } else if (urlCategory) {
-          queryToUse = urlCategory;
-          displayQuery = urlCategory;
+          queryToUse = null;
+          displayQuery = urlCategory.replace(/_/g, " ");
+          categoryToUse = urlCategory;
+          console.log("📁 [Search] Category browse mode:", urlCategory);
+
+          // ✅ Record weak signal ONCE per category
+          if (
+            userId &&
+            userId !== "guest_user" &&
+            !categoryViewRecordedRef.current.has(urlCategory) &&
+            !isRecordingRef.current
+          ) {
+            isRecordingRef.current = true;
+            try {
+              await recordCategoryView(userId, urlCategory);
+              categoryViewRecordedRef.current.add(urlCategory);
+              console.log("✅ [SEARCH] Weak signal recorded:", urlCategory);
+            } catch (err) {
+              console.error("❌ [SEARCH] Weak signal error:", err);
+            } finally {
+              isRecordingRef.current = false;
+            }
+          }
         } else {
-          // Priority 3: Last search from database - executed if no URL query/category
           const lastSearchRes = await fetch("/api/lastSearch", {
             signal: abortController.signal,
           });
 
           if (lastSearchRes.ok) {
             const data = await lastSearchRes.json();
-            queryToUse = data?.category || "Appliances";
-            displayQuery = queryToUse;
+            queryToUse = null;
+            categoryToUse = data?.category || "Appliances";
+            displayQuery = categoryToUse.replace(/_/g, " ");
           } else {
-            queryToUse = "Appliances";
+            queryToUse = null;
+            categoryToUse = "Appliances";
             displayQuery = "Appliances";
           }
         }
 
-        // 3C. Set initial display text before the slow ML call
         const initialDisplayText = searchQuery
           ? `Search results for "${searchQuery}"`
           : `${displayQuery} Products`;
         setDisplayText(initialDisplayText);
 
-        // 3D. Build & Call ML model endpoint
         const requestPayload = {
           user_id: userId || "guest_user",
           query: queryToUse,
+          preferred_category: categoryToUse,
           seed_item_idx: null,
           top_k: 20,
           user_profile: {
@@ -192,7 +242,7 @@ export default function ProductSearchPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestPayload),
-          signal: abortController.signal, // Pass signal to ML fetch
+          signal: abortController.signal,
         });
 
         if (!res.ok) {
@@ -202,7 +252,6 @@ export default function ProductSearchPage() {
         const data = await res.json();
 
         if (data.success && data.products?.length > 0) {
-          // **Performance Improvement: Optimized Deduplication (Single Pass Map)**
           const uniqueProductsMap = new Map();
           data.products.forEach((p, idx) => {
             const id = p.product_id || p._id || p.id;
@@ -216,27 +265,31 @@ export default function ProductSearchPage() {
             }
           });
 
+          console.log("✅ [Search] Products loaded:", uniqueProductsMap.size);
           setProducts(Array.from(uniqueProductsMap.values()));
 
-          // Update display text post-fetch
           if (searchQuery && data.personalized) {
             setDisplayText(`Personalized results for "${searchQuery}" ✨`);
           } else {
-            // Fallback/standard update
             setDisplayText(initialDisplayText);
           }
         } else {
           setProducts([]);
           const errorMsg =
             data.message ||
-            `No products found${queryToUse ? ` for "${queryToUse}"` : ""}`;
+            `No products found${
+              queryToUse || categoryToUse
+                ? ` for "${queryToUse || categoryToUse}"`
+                : ""
+            }`;
           setError(errorMsg);
         }
       } catch (err) {
         if (err.name === "AbortError") {
           console.log("Fetch aborted");
-          return; // Skip error state on intentional abort
+          return;
         }
+        console.error("❌ [Search] Error:", err);
         setError("Failed to load products. Please try again.");
         setProducts([]);
       } finally {
@@ -246,13 +299,11 @@ export default function ProductSearchPage() {
 
     handleSearch();
 
-    // Cleanup function: abort ongoing fetch if dependencies change/component unmounts
     return () => {
       abortController.abort();
     };
-  }, [urlCategory, searchQuery, userId, userProfile]); // Dependencies are clean
+  }, [urlCategory, searchQuery, userId, userProfile]);
 
-  // 4. Use useMemo to prevent redundant ProductCard rendering
   const productCards = useMemo(() => {
     if (loading || error || products.length === 0) {
       return null;
@@ -263,7 +314,6 @@ export default function ProductSearchPage() {
         key={product.uniqueKey || `${product.product_id}_${index}`}
         product={product}
         color={userColor}
-        // Increased priority for first 4 product images
         priority={index < 4}
       />
     ));
@@ -271,7 +321,6 @@ export default function ProductSearchPage() {
 
   return (
     <main className="p-6">
-      {/* Search Header */}
       {displayText && !loading && (
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800">{displayText}</h1>
@@ -284,7 +333,6 @@ export default function ProductSearchPage() {
         </div>
       )}
 
-      {/* Loading State - unchanged */}
       {loading && (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
@@ -292,7 +340,6 @@ export default function ProductSearchPage() {
         </div>
       )}
 
-      {/* Error State - unchanged */}
       {error && !loading && (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md text-center">
@@ -308,14 +355,12 @@ export default function ProductSearchPage() {
         </div>
       )}
 
-      {/* Product Grid */}
       {productCards && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {productCards}
         </div>
       )}
 
-      {/* Empty State - unchanged */}
       {!loading && !error && products.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="text-center">

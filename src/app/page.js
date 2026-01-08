@@ -1,3 +1,4 @@
+// app/page.jsx
 "use client";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -13,12 +14,10 @@ const HeaderSlider = dynamic(() => import("./components/Nav/HeaderSlider"), {
 
 const NewsLetter = dynamic(() => import("./components/Nav/NewsLetter"), {
   ssr: false,
-  loading: () => <div style={{ height: 120 }} />,
 });
 
 const Footer = dynamic(() => import("./components/Nav/Footer"), {
   ssr: false,
-  loading: () => <div style={{ height: 120 }} />,
 });
 
 const getUserIdFromSession = (session) =>
@@ -28,17 +27,24 @@ const getUserIdFromSession = (session) =>
   session?.user?._id;
 
 const parsePets = (data) => {
+  if (data.petType && data.petType !== "" && data.petType !== null) {
+    const petType = String(data.petType).toLowerCase();
+    if (petType !== "no" && petType !== "none") {
+      return [petType];
+    }
+  }
   if (data.pets && data.pets !== "" && data.pets !== null) {
     if (Array.isArray(data.pets)) {
-      return data.pets.filter((pet) => pet && pet !== "");
+      return data.pets
+        .filter((pet) => pet && pet !== "")
+        .map((pet) => String(pet).toLowerCase())
+        .filter((pet) => pet !== "yes" && pet !== "no" && pet !== "none");
     }
-    return [data.pets];
+    const pet = String(data.pets).toLowerCase();
+    if (pet !== "yes" && pet !== "no" && pet !== "none" && pet !== "") {
+      return [pet];
+    }
   }
-
-  if (data.petType && data.petType !== "" && data.petType !== null) {
-    return [data.petType];
-  }
-
   return [];
 };
 
@@ -47,17 +53,41 @@ const DEFAULT_PROFILE = {
   age: 25,
   occupation: "professional",
   pets: [],
-  hobbies: [],
-  region: "Urban",
-  location: "",
 };
+
+// ✅ Page-level weak signal tracking (fires ONCE per category)
+async function recordCategoryView(userId, category) {
+  if (!userId || userId === "guest_user" || !category) {
+    return;
+  }
+
+  try {
+    console.log("🟦 [PAGE] Recording weak signal:", category);
+
+    await fetch("/api/product-interaction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        product_id: "__CATEGORY_VIEW__",
+        title: `Category View: ${category}`,
+        category: category,
+        price: null,
+        stars: null,
+        seller_name: null,
+        weak_signal: true, // ✅ WEAK SIGNAL
+      }),
+    });
+  } catch (err) {
+    console.error("❌ [PAGE] Weak signal failed:", err);
+  }
+}
 
 export default function Home() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session, status } = useSession();
   const urlCategory = searchParams.get("category");
-  const urlQuery = searchParams.get("query");
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -69,89 +99,35 @@ export default function Home() {
 
   const userId = useMemo(() => getUserIdFromSession(session), [session]);
 
-  // Track previous session state to detect logout
-  const prevSessionRef = useRef(null);
-  const isLoggingOutRef = useRef(false);
-  const hasInitializedRef = useRef(false);
-
-  // 🔹 Fixed logout detection logic
-  useEffect(() => {
-    // Skip during loading
-    if (status === "loading") {
-      return;
-    }
-
-    const currentUserId = getUserIdFromSession(session);
-    const prevUserId = prevSessionRef.current;
-
-    // Initialize on first render
-    if (!hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      prevSessionRef.current = currentUserId;
-      return;
-    }
-
-    // Detect logout: had user ID, now don't
-    if (prevUserId && !currentUserId && !isLoggingOutRef.current) {
-      console.log("🚨 [Home] Logout detected");
-      isLoggingOutRef.current = true;
-
-      // Clear user-specific cache
-      if (prevUserId) {
-        localStorage.removeItem(`sliderCategories_${prevUserId}`);
-        localStorage.removeItem(`sliderCategoriesTime_${prevUserId}`);
-      }
-
-      // Reload to guest state
-      window.location.href = "/";
-      return;
-    }
-
-    // Detect login: didn't have user ID, now do
-    if (!prevUserId && currentUserId && !isLoggingOutRef.current) {
-      console.log("🎉 [Home] Login detected");
-
-      // Clear guest cache
-      localStorage.removeItem("sliderCategories_guest");
-      localStorage.removeItem("sliderCategoriesTime_guest");
-
-      // Reset state to fetch new user data
-      setUserProfile(null);
-      setColorLoaded(false);
-    }
-
-    // Update reference
-    prevSessionRef.current = currentUserId;
-  }, [session, status]);
+  // ✅ Refs for guarding weak signals
+  const categoryViewRecordedRef = useRef(new Set()); // Track recorded categories
+  const isRecordingRef = useRef(false); // Prevent concurrent calls
 
   useEffect(() => {
-    if (status === "loading") {
-      return;
+    if (status === "authenticated" && session?.user?.role === "admin") {
+      router.push("/admin");
     }
+  }, [status, session, router]);
+
+  useEffect(() => {
+    if (status === "loading") return;
 
     async function fetchUserData() {
       try {
-        console.log("📊 [Home] Fetching user data...", {
-          userId,
-          hasSession: !!session,
-        });
-
         const profileUrl = userId
           ? `/api/profile?userId=${userId}`
           : "/api/profile";
 
         const profileRes = await fetch(profileUrl, {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         });
 
         if (profileRes.ok) {
           const profileResponse = await profileRes.json();
           const profileData = profileResponse.data || profileResponse;
-
           const parsedPets = parsePets(profileData);
+
           const profile = {
             gender: (profileData.gender || "female").toLowerCase(),
             age: parseInt(profileData.age) || 25,
@@ -159,16 +135,11 @@ export default function Home() {
               profileData.occupation || "professional"
             ).toLowerCase(),
             pets: parsedPets,
-            hobbies: Array.isArray(profileData.hobbies)
-              ? profileData.hobbies
-              : [],
-            region: profileData.region || "Urban",
-            location: profileData.location || "",
           };
+
           console.log("✅ [Home] Profile loaded:", profile);
           setUserProfile(profile);
         } else {
-          console.log("⚠️ [Home] No profile found, using default");
           setUserProfile(DEFAULT_PROFILE);
         }
 
@@ -178,14 +149,8 @@ export default function Home() {
           const colorFromApi =
             typeof body === "string"
               ? body
-              : body?.color ||
-                body?.value ||
-                body?.themeColor?.value ||
-                body?.themeColor ||
-                null;
-          const finalColor = colorFromApi || "#3b82f6";
-          console.log("🎨 [Home] Color loaded:", finalColor);
-          setUserColor(finalColor);
+              : body?.color || body?.value || body?.themeColor?.value || null;
+          setUserColor(colorFromApi || "#3b82f6");
         } else {
           setUserColor("#3b82f6");
         }
@@ -209,13 +174,7 @@ export default function Home() {
           return;
         }
 
-        if (urlQuery) {
-          setCategory(urlQuery);
-          return;
-        }
-
         const res = await fetch("/api/lastSearch");
-
         if (res.ok) {
           const data = await res.json();
           setCategory(data?.category || "Appliances");
@@ -228,24 +187,51 @@ export default function Home() {
       }
     }
     initCategory();
-  }, [urlCategory, urlQuery]);
+  }, [urlCategory]);
 
   useEffect(() => {
     if (!category || !userProfile || !colorLoaded) {
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    setProducts([]);
+    // ✅ Record weak signal ONCE per category (with guards)
+    const recordWeakSignal = async () => {
+      if (
+        !userId ||
+        userId === "guest_user" ||
+        categoryViewRecordedRef.current.has(category) ||
+        isRecordingRef.current
+      ) {
+        return;
+      }
+
+      isRecordingRef.current = true;
+
+      try {
+        await recordCategoryView(userId, category);
+        categoryViewRecordedRef.current.add(category);
+        console.log("✅ [HOME] Weak signal recorded for:", category);
+      } catch (err) {
+        console.error("❌ [HOME] Weak signal error:", err);
+      } finally {
+        isRecordingRef.current = false;
+      }
+    };
+
+    recordWeakSignal();
 
     async function fetchProducts() {
       try {
-        console.log("🛍️ [Home] Fetching products for category:", category);
+        setLoading(true);
+        setError(null);
+        setProducts([]);
+
+        // Around line 215 in your fetchProducts function:
 
         const requestPayload = {
           user_id: userId || "guest_user",
-          query: category,
+          query: null,
+          preferred_category: category || "All_Beauty", // ✅ FIX: Pass the category
           seed_item_idx: null,
           top_k: 20,
           user_profile: {
@@ -254,14 +240,12 @@ export default function Home() {
             occupation: userProfile.occupation || "professional",
             pets: userProfile.pets || [],
           },
-          alphas: [0.25, 0.25, 0.2, 0.3],
+          alphas: [0.15, 0.35, 0.1, 0.4],
+          is_homepage: true, // ✅ This will now work correctly
         };
-
         const res = await fetch("/api/products", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestPayload),
         });
 
@@ -270,6 +254,12 @@ export default function Home() {
         }
 
         const data = await res.json();
+
+        if (!data.products || data.products.length === 0) {
+          console.warn("⚠️ ML returned no products");
+          router.push(`/search?category=${category}`);
+          return;
+        }
 
         if (data.success && data.products?.length > 0) {
           const uniqueProductsMap = new Map();
@@ -292,7 +282,7 @@ export default function Home() {
           setError(data.message || "No products found");
         }
       } catch (err) {
-        console.error("❌ [Home] Error in fetchProducts:", err);
+        console.error("❌ [Home] Error:", err);
         setError("Failed to load recommendations");
         setProducts([]);
       } finally {
@@ -301,7 +291,7 @@ export default function Home() {
     }
 
     fetchProducts();
-  }, [category, userId, userProfile, colorLoaded]);
+  }, [category, userId, userProfile, colorLoaded, router]);
 
   const productCards = useMemo(() => {
     if (loading || error || products.length === 0) {
@@ -320,36 +310,36 @@ export default function Home() {
       ));
   }, [products, loading, error, userColor]);
 
+  if (
+    status === "loading" ||
+    (status === "authenticated" && session?.user?.role === "admin")
+  ) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2
+          className="w-12 h-12 animate-spin"
+          style={{ color: userColor }}
+        />
+      </div>
+    );
+  }
+
   return (
     <main className="p-6">
       <HeaderSlider color={userColor} />
 
-      {/* Themed Loading State */}
       {loading && (
         <div className="flex flex-col justify-center items-center py-20">
-          <div className="relative">
-            {/* Outer glow ring */}
-            <div
-              className="absolute inset-0 rounded-full animate-pulse"
-              style={{
-                background: `radial-gradient(circle, ${userColor}30 0%, transparent 70%)`,
-                filter: "blur(20px)",
-                transform: "scale(1.5)",
-              }}
-            />
-            {/* Main spinner */}
-            <Loader2
-              className="w-12 h-12 animate-spin relative z-10"
-              style={{ color: userColor }}
-            />
-          </div>
+          <Loader2
+            className="w-12 h-12 animate-spin"
+            style={{ color: userColor }}
+          />
           <p className="mt-6 font-medium" style={{ color: userColor }}>
             Loading personalized recommendations...
           </p>
         </div>
       )}
 
-      {/* Error State */}
       {error && !loading && (
         <div className="flex flex-col items-center justify-center py-20">
           <div
@@ -370,21 +360,16 @@ export default function Home() {
               Unable to Load Products
             </h2>
             <p className="text-gray-600">{error}</p>
-            <p className="text-sm text-gray-500 mt-4">
-              Try refreshing or searching for something else
-            </p>
           </div>
         </div>
       )}
 
-      {/* Product Grid */}
       {productCards && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {productCards}
         </div>
       )}
 
-      {/* Empty State */}
       {!loading && !error && products.length === 0 && (
         <div className="text-center py-10">
           <p className="text-gray-500">No products available</p>

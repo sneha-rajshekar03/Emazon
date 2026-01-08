@@ -142,55 +142,149 @@ export default function ProductCard({ product, onProductClick }) {
                    hover:-translate-y-[4px] flex flex-col justify-between min-h-[420px]"
         style={{
           background: isDarkMode
-            ? "rgba(45,45,45,0.6)"
-            : "rgba(255,255,255,0.6)",
+            ? "rgba(45, 45, 45, 0.6)"
+            : "rgba(255, 255, 255, 0.6)",
           backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
           border: isDarkMode
-            ? "1px solid rgba(255,255,255,0.1)"
-            : "1px solid rgba(255,255,255,0.6)",
+            ? "1px solid rgba(255, 255, 255, 0.1)"
+            : "1px solid rgba(255, 255, 255, 0.6)",
+          borderRadius: "28px",
           boxShadow: isDarkMode
-            ? "0 4px 20px rgba(0,0,0,0.3)"
-            : "0 4px 20px rgba(0,0,0,0.05)",
+            ? `0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.05)`
+            : `0 4px 20px rgba(0, 0, 0, 0.05), inset 0 0 10px rgba(255, 255, 255, 0.3)`,
+          position: "relative",
+          overflow: "hidden",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = isDarkMode
+            ? `0 15px 30px rgba(0, 0, 0, 0.5)`
+            : `0 15px 30px rgba(0, 0, 0, 0.08)`;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = isDarkMode
+            ? `0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.05)`
+            : `0 4px 20px rgba(0, 0, 0, 0.05), inset 0 0 10px rgba(255, 255, 255, 0.3)`;
         }}
       >
-        {matchScore !== null && (
-          <div
-            className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold"
-            style={{
-              color: hexColor,
-              border: `1px solid ${hexColor}40`,
-            }}
-          >
-            {matchScore}% Match
-          </div>
-        )}
+        {/* Color tint in bottom-right corner */}
+        <div
+          style={{
+            content: '""',
+            position: "absolute",
+            bottom: "-10%",
+            right: "-10%",
+            width: "45%",
+            height: "45%",
+            background: `radial-gradient(circle at bottom right, ${hexColor}55 0%, transparent 75%)`,
+            pointerEvents: "none",
+            zIndex: 0,
+            filter: "blur(12px)",
+          }}
+        />
 
-        {(product.final_score || product.ml_scores) && (
-          <div className="absolute top-4 left-4 text-[10px] font-medium text-purple-500">
-            ✨ AI Picked
-          </div>
-        )}
-
-        <div className="relative w-full h-48 flex items-center justify-center">
-          {product.imgUrl ? (
+        {/* Product Image */}
+        <div className="relative w-full h-48 flex justify-center items-center z-10">
+          {product.imgUrl && product.imgUrl !== "N/A" ? (
             <Image
               src={product.imgUrl}
               alt={product.title || "Product"}
               fill
-              className="object-contain p-4"
+              className="object-contain p-4 scale-95 transition-transform duration-500 hover:scale-100"
               unoptimized
             />
           ) : (
-            <div className="text-gray-400">No Image</div>
+            <div className="w-full h-full flex items-center justify-center bg-gray-200 rounded">
+              <span className="text-gray-400">No Image</span>
+            </div>
           )}
         </div>
 
-        <div className="text-center mt-4 space-y-2">
-          <h2 className="font-semibold line-clamp-2">{product.title}</h2>
-          <p className="font-medium">${product.price}</p>
-          {product.category_name && (
-            <p className="text-xs text-gray-400">{product.category_name}</p>
+        {/* Product Info */}
+        <div className="mt-4 text-center space-y-2 z-10">
+          <h2
+            className={`font-semibold text-lg tracking-tight line-clamp-2 ${
+              isDarkMode ? "text-gray-100" : "text-gray-800"
+            }`}
+          >
+            {product.title || "Untitled Product"}
+          </h2>
+
+          {/* Rating */}
+          {product.stars && product.stars !== "N/A" && (
+            <div className="flex items-center justify-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => {
+                const rating = parseFloat(product.stars);
+                const filled = star <= Math.floor(rating);
+                const partial = star === Math.ceil(rating) && rating % 1 !== 0;
+
+                return (
+                  <span
+                    key={star}
+                    className="relative inline-block"
+                    style={{ fontSize: "16px" }}
+                  >
+                    {filled ? (
+                      <span className="text-yellow-500">★</span>
+                    ) : partial ? (
+                      <>
+                        <span
+                          className={
+                            isDarkMode ? "text-gray-600" : "text-gray-300"
+                          }
+                        >
+                          ★
+                        </span>
+                        <span
+                          className="absolute top-0 left-0 text-yellow-500 overflow-hidden"
+                          style={{ width: `${(rating % 1) * 100}%` }}
+                        >
+                          ★
+                        </span>
+                      </>
+                    ) : (
+                      <span
+                        className={
+                          isDarkMode ? "text-gray-600" : "text-gray-300"
+                        }
+                      >
+                        ★
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
           )}
+
+          {/* Price */}
+          <p
+            className={`text-[1.1rem] font-medium ${
+              isDarkMode ? "text-gray-200" : "text-gray-900"
+            }`}
+          >
+            ${product.price}
+          </p>
+
+          {/* Category */}
+          {product.category_name && (
+            <p
+              className={`text-xs ${
+                isDarkMode ? "text-gray-500" : "text-gray-400"
+              }`}
+            >
+              {product.category_name}
+            </p>
+          )}
+
+          {/* Delivery info */}
+          <p
+            className={`text-sm ${
+              isDarkMode ? "text-gray-500" : "text-gray-400"
+            }`}
+          >
+            Free delivery · Fast shipping
+          </p>
         </div>
       </div>
     </Link>

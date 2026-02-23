@@ -111,7 +111,7 @@ export const Nav = () => {
               profile.livingStatus,
               profile.location,
               profile.pets,
-              profile.paymentMode,
+              profile.region,
             ];
             const filled = fields.filter((f) => f && f !== "").length;
             const hobbiesScore = profile.hobbies?.length > 0 ? 1 : 0;

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 const POPUP_INTERVAL_MS = 700000;
-const POPUP_INITIAL_DELAY_MS = 200000;
+const POPUP_INITIAL_DELAY_MS = 20000;
 
 const iconMap = {
   User,
